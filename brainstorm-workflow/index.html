@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow Brainstorm — Build Your Master Prompt</title>
+<style>
+/* ==========================================================================
+   Brainstorm Workflow Activity
+   All styles are scoped under .bw so nothing leaks into (or out of) Rise.
+   ========================================================================== */
+
+.bw {
+  /* ---- palette (light) ---- */
+  --bw-bg: #ffffff;
+  --bw-surface: #f7f8fa;
+  --bw-surface-2: #eef0f4;
+  --bw-border: #dfe3ea;
+  --bw-border-strong: #c3c9d4;
+  --bw-text: #1c2333;
+  --bw-text-muted: #5b6478;
+  --bw-text-faint: #858ea3;
+  --bw-accent: #2f5bd7;
+  --bw-accent-hover: #244aba;
+  --bw-accent-soft: #e8eeff;
+  --bw-good: #12805c;
+  --bw-good-soft: #e2f4ed;
+  --bw-warn: #9a5b00;
+  --bw-warn-soft: #fdf0dc;
+  --bw-danger: #b3261e;
+  --bw-danger-soft: #fdeceb;
+  --bw-final: #6b3fd4;
+  --bw-final-soft: #f1ecff;
+
+  --bw-radius: 10px;
+  --bw-radius-sm: 7px;
+  --bw-gap: 16px;
+  --bw-shadow: 0 1px 2px rgba(20, 28, 48, .06), 0 4px 14px rgba(20, 28, 48, .05);
+
+  box-sizing: border-box;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 4px;
+  color: var(--bw-text);
+  background: var(--bw-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.bw *, .bw *::before, .bw *::after { box-sizing: inherit; }
+
+@media (prefers-color-scheme: dark) {
+  .bw:not([data-theme="light"]) {
+    --bw-bg: #14171f;
+    --bw-surface: #1b1f2a;
+    --bw-surface-2: #232836;
+    --bw-border: #2e3444;
+    --bw-border-strong: #3f4759;
+    --bw-text: #e8ebf2;
+    --bw-text-muted: #a4adc0;
+    --bw-text-faint: #7d869b;
+    --bw-accent: #7d9cff;
+    --bw-accent-hover: #9ab1ff;
+    --bw-accent-soft: #1e2740;
+    --bw-good: #4fc79c;
+    --bw-good-soft: #16302a;
+    --bw-warn: #e0a458;
+    --bw-warn-soft: #322616;
+    --bw-danger: #f08079;
+    --bw-danger-soft: #341d1d;
+    --bw-final: #b19bf5;
+    --bw-final-soft: #241d3b;
+    --bw-shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  }
+}
+
+/* ---- typography ---- */
+.bw h1, .bw h2, .bw h3, .bw h4, .bw p, .bw ol, .bw ul, .bw figure { margin: 0; }
+.bw h1 { font-size: clamp(1.5rem, 1.15rem + 1.6vw, 2rem); line-height: 1.2; letter-spacing: -.015em; font-weight: 700; }
+.bw h2, .bw .bw-h2 { display: block; font-size: 1.0625rem; font-weight: 650; letter-spacing: -.005em; }
+.bw h3 { font-size: .9375rem; font-weight: 650; }
+.bw .bw-lede { color: var(--bw-text-muted); font-size: 1.0625rem; }
+.bw .bw-small { font-size: .8125rem; color: var(--bw-text-muted); }
+.bw .bw-eyebrow {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--bw-text-faint);
+}
+.bw code, .bw pre, .bw textarea.bw-mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ---- hero ---- */
+.bw-hero {
+  padding: 26px 22px 22px;
+  background: linear-gradient(160deg, var(--bw-accent-soft), var(--bw-surface) 70%);
+  border: 1px solid var(--bw-border);
+  border-radius: var(--bw-radius);
+  margin-bottom: var(--bw-gap);
+}
+.bw-hero h1 { margin-bottom: 10px; }
+.bw-hero .bw-lede + .bw-lede { margin-top: 10px; }
+.bw-outcome {
+  margin-top: 18px; padding: 12px 14px;
+  background: var(--bw-bg); border: 1px solid var(--bw-border);
+  border-left: 3px solid var(--bw-accent);
+  border-radius: var(--bw-radius-sm);
+  font-size: .9375rem;
+}
+.bw-outcome strong { font-weight: 650; }
+
+/* ---- worked example (details/summary) ---- */
+.bw-example { margin-top: 16px; }
+.bw-example > summary {
+  cursor: pointer; list-style: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: .875rem; font-weight: 600; color: var(--bw-accent);
+  padding: 7px 12px; border-radius: 999px;
+  background: var(--bw-bg); border: 1px solid var(--bw-border-strong);
+}
+.bw-example > summary::-webkit-details-marker { display: none; }
+.bw-example > summary::after { content: "▾"; font-size: .7em; transition: transform .15s ease; }
+.bw-example[open] > summary::after { transform: rotate(180deg); }
+.bw-example > summary:hover { border-color: var(--bw-accent); }
+.bw-example-body {
+  margin-top: 12px; padding: 16px;
+  background: var(--bw-bg); border: 1px solid var(--bw-border);
+  border-radius: var(--bw-radius-sm); font-size: .9375rem;
+}
+.bw-example-body p + p, .bw-example-body ol { margin-top: 10px; }
+.bw-example-body ol { padding-left: 20px; }
+.bw-example-body li + li { margin-top: 4px; }
+.bw-example-body .bw-eyebrow { margin-bottom: 4px; }
+.bw-example-row + .bw-example-row { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--bw-border); }
+.bw-example-body pre {
+  margin-top: 8px; padding: 12px; overflow-x: auto;
+  background: var(--bw-surface); border: 1px solid var(--bw-border);
+  border-radius: var(--bw-radius-sm);
+  font-size: .8125rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+}
+
+/* ---- progress rail ---- */
+.bw-progress { display: flex; align-items: center; gap: 6px; margin-bottom: var(--bw-gap); }
+.bw-progress-track { flex: 1; height: 5px; border-radius: 999px; background: var(--bw-surface-2); overflow: hidden; }
+.bw-progress-fill { height: 100%; width: 0%; background: var(--bw-accent); border-radius: 999px; transition: width .3s ease; }
+.bw-progress-label { font-size: .75rem; font-weight: 600; color: var(--bw-text-muted); white-space: nowrap; }
+
+/* ---- steps / accordion ---- */
+.bw-steps { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.bw-step {
+  background: var(--bw-bg); border: 1px solid var(--bw-border);
+  border-radius: var(--bw-radius); box-shadow: var(--bw-shadow); overflow: hidden;
+}
+.bw-step[data-state="active"] { border-color: var(--bw-accent); }
+.bw-step[data-state="locked"] { opacity: .62; box-shadow: none; }
+.bw-step-head {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; background: none; border: 0; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.bw-step[data-state="locked"] .bw-step-head { cursor: not-allowed; }
+.bw-step-head:hover:not(:disabled) { background: var(--bw-surface); }
+.bw-step-num {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: .8125rem; font-weight: 700;
+  background: var(--bw-surface-2); color: var(--bw-text-muted);
+}
+.bw-step[data-state="active"] .bw-step-num { background: var(--bw-accent); color: #fff; }
+.bw-step[data-done="true"] .bw-step-num { background: var(--bw-good-soft); color: var(--bw-good); }
+.bw-step[data-done="true"] .bw-step-num::after { content: "✓"; }
+.bw-step[data-done="true"] .bw-step-num span { display: none; }
+.bw-step-titles { flex: 1 1 auto; min-width: 0; }
+.bw-step-sub { display: block; font-size: .8125rem; color: var(--bw-text-muted); margin-top: 1px; }
+.bw-chip {
+  flex: 0 0 auto; font-size: .6875rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  background: var(--bw-surface-2); color: var(--bw-text-faint);
+}
+.bw-step[data-state="active"] .bw-chip { background: var(--bw-accent-soft); color: var(--bw-accent); }
+.bw-step[data-done="true"] .bw-chip { background: var(--bw-good-soft); color: var(--bw-good); }
+.bw-step-caret { flex: 0 0 auto; color: var(--bw-text-faint); transition: transform .18s ease; }
+.bw-step[data-state="active"] .bw-step-caret { transform: rotate(180deg); }
+.bw-step-panel { padding: 2px 16px 18px; border-top: 1px solid var(--bw-border); }
+.bw-step-panel[hidden] { display: none !important; }
+.bw-step-panel > * + * { margin-top: 14px; }
+.bw-step-intro { color: var(--bw-text-muted); font-size: .9375rem; padding-top: 14px; }
+
+/* ---- form controls ---- */
+.bw-field { display: block; }
+.bw-field > .bw-label {
+  display: block; font-size: .8125rem; font-weight: 650; margin-bottom: 6px;
+}
+.bw-hint { display: block; font-size: .8125rem; color: var(--bw-text-muted); margin-bottom: 8px; }
+.bw input[type="text"], .bw textarea {
+  width: 100%; padding: 10px 12px;
+  font: inherit; font-size: .9375rem; color: var(--bw-text);
+  background: var(--bw-bg); border: 1px solid var(--bw-border-strong);
+  border-radius: var(--bw-radius-sm);
+  resize: vertical;
+}
+.bw textarea { min-height: 88px; line-height: 1.5; }
+.bw textarea.bw-mono { font-size: .8125rem; line-height: 1.55; min-height: 260px; }
+.bw input:focus-visible, .bw textarea:focus-visible, .bw button:focus-visible, .bw summary:focus-visible {
+  outline: 2px solid var(--bw-accent); outline-offset: 2px;
+}
+.bw input::placeholder, .bw textarea::placeholder { color: var(--bw-text-faint); }
+.bw-counter { display: block; text-align: right; font-size: .75rem; color: var(--bw-text-faint); margin-top: 4px; }
+
+/* ---- workflow step cards ---- */
+.bw-cards { display: flex; flex-direction: column; gap: 10px; }
+.bw-card {
+  display: grid; gap: 10px; align-items: start;
+  grid-template-columns: 26px minmax(0, 1.35fr) minmax(0, 1fr) 32px;
+  padding: 12px; background: var(--bw-surface);
+  border: 1px solid var(--bw-border); border-radius: var(--bw-radius-sm);
+}
+.bw-card-num {
+  margin-top: 9px; font-size: .8125rem; font-weight: 700; color: var(--bw-text-faint); text-align: center;
+}
+.bw-card .bw-label { font-size: .6875rem; text-transform: uppercase; letter-spacing: .06em; color: var(--bw-text-faint); font-weight: 700; }
+.bw-card-remove {
+  margin-top: 20px; width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: var(--bw-radius-sm); border: 1px solid transparent;
+  background: none; color: var(--bw-text-faint); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.bw-card-remove:hover { background: var(--bw-danger-soft); color: var(--bw-danger); border-color: var(--bw-danger); }
+.bw-card-remove[disabled] { opacity: .3; cursor: not-allowed; }
+@media (max-width: 620px) {
+  .bw-card { grid-template-columns: 22px minmax(0, 1fr) 30px; }
+  .bw-card-tools { grid-column: 2 / 3; }
+  .bw-card-remove { grid-row: 1 / 2; grid-column: 3 / 4; }
+}
+
+/* ---- buttons ---- */
+.bw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 16px; font: inherit; font-size: .875rem; font-weight: 600;
+  border-radius: var(--bw-radius-sm); border: 1px solid transparent; cursor: pointer;
+  background: var(--bw-accent); color: #fff; transition: background .15s ease, border-color .15s ease;
+}
+.bw-btn:hover:not(:disabled) { background: var(--bw-accent-hover); }
+.bw-btn:disabled { opacity: .45; cursor: not-allowed; }
+.bw-btn-ghost { background: none; color: var(--bw-text); border-color: var(--bw-border-strong); }
+.bw-btn-ghost:hover:not(:disabled) { background: var(--bw-surface); border-color: var(--bw-accent); color: var(--bw-accent); }
+.bw-btn-quiet { background: none; color: var(--bw-text-muted); border-color: transparent; padding: 6px 8px; font-size: .8125rem; }
+.bw-btn-quiet:hover:not(:disabled) { background: var(--bw-surface); color: var(--bw-text); }
+.bw-btn-final { background: var(--bw-final); }
+.bw-btn-final:hover:not(:disabled) { background: var(--bw-final); filter: brightness(.92); }
+.bw-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bw-actions .bw-spacer { flex: 1 1 auto; }
+
+/* ---- validation / notices ---- */
+.bw-notice {
+  display: flex; gap: 9px; padding: 10px 12px; font-size: .875rem;
+  border-radius: var(--bw-radius-sm); border: 1px solid;
+}
+.bw-notice[hidden] { display: none !important; }
+.bw-notice-warn { background: var(--bw-warn-soft); border-color: var(--bw-warn); color: var(--bw-warn); }
+.bw-notice-error { background: var(--bw-danger-soft); border-color: var(--bw-danger); color: var(--bw-danger); }
+.bw-notice-info { background: var(--bw-surface); border-color: var(--bw-border); color: var(--bw-text-muted); }
+.bw-notice .bw-btn { margin-left: auto; flex: 0 0 auto; }
+
+/* ---- prompt display ---- */
+.bw-prompt {
+  padding: 14px; background: var(--bw-surface); border: 1px solid var(--bw-border);
+  border-radius: var(--bw-radius-sm);
+  font-size: .8125rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  max-height: 380px; overflow: auto;
+}
+.bw-prompt-final { background: var(--bw-final-soft); border-color: var(--bw-final); }
+.bw-final-wrap { border: 2px solid var(--bw-final); border-radius: var(--bw-radius); padding: 14px; background: var(--bw-bg); }
+.bw-final-wrap > * + * { margin-top: 12px; }
+.bw-final-wrap textarea { border-color: var(--bw-final); background: var(--bw-final-soft); }
+
+/* ---- chat ---- */
+.bw-chat {
+  border: 1px solid var(--bw-border); border-radius: var(--bw-radius-sm);
+  background: var(--bw-surface); overflow: hidden;
+}
+.bw-chat-log {
+  height: clamp(260px, 42vh, 420px); overflow-y: auto;
+  padding: 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.bw-msg { display: flex; flex-direction: column; gap: 4px; max-width: 88%; }
+.bw-msg-who { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bw-text-faint); }
+.bw-msg-body {
+  padding: 10px 13px; border-radius: 12px; font-size: .9375rem; line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+}
+.bw-msg-bot .bw-msg-body { background: var(--bw-bg); border: 1px solid var(--bw-border); border-bottom-left-radius: 4px; }
+.bw-msg-user { align-self: flex-end; align-items: flex-end; }
+.bw-msg-user .bw-msg-body { background: var(--bw-accent); color: #fff; border-bottom-right-radius: 4px; }
+.bw-msg-body pre {
+  margin: 8px 0 2px; padding: 10px; overflow-x: auto;
+  background: var(--bw-surface-2); border: 1px solid var(--bw-border);
+  border-radius: 6px; font-size: .75rem; line-height: 1.5; white-space: pre-wrap;
+}
+.bw-typing { display: inline-flex; gap: 4px; padding: 12px 14px; }
+.bw-typing i {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--bw-text-faint);
+  animation: bw-bounce 1.1s infinite ease-in-out;
+}
+.bw-typing i:nth-child(2) { animation-delay: .16s; }
+.bw-typing i:nth-child(3) { animation-delay: .32s; }
+@keyframes bw-bounce { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .bw-typing i { animation: none; opacity: .6; }
+  .bw-progress-fill, .bw-step-caret { transition: none; }
+}
+.bw-chat-compose {
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 10px; border-top: 1px solid var(--bw-border); background: var(--bw-bg);
+}
+.bw-chat-compose textarea { min-height: 44px; max-height: 140px; font-size: .9375rem; }
+.bw-chat-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.bw-badge {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; background: var(--bw-surface-2); color: var(--bw-text-faint);
+}
+.bw-badge-live { background: var(--bw-good-soft); color: var(--bw-good); }
+.bw-badge-mock { background: var(--bw-warn-soft); color: var(--bw-warn); }
+
+/* ---- footer ---- */
+.bw-foot {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--bw-border);
+  font-size: .8125rem; color: var(--bw-text-faint);
+}
+.bw-foot .bw-spacer { flex: 1 1 auto; }
+.bw-saved { transition: opacity .3s ease; }
+.bw-saved[data-idle="true"] { opacity: .45; }
+
+.bw-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+@media (max-width: 480px) {
+  .bw { font-size: 15px; }
+  .bw-hero { padding: 20px 16px 18px; }
+  .bw-step-head { padding: 12px; gap: 10px; }
+  .bw-step-panel { padding: 2px 12px 16px; }
+  .bw-step-sub { display: none; }
+  .bw-msg { max-width: 96%; }
+}
+</style>
+</head>
+<body>
+
+<div class="bw" id="bw">
+
+  <!-- ================= INTRO / FRAMING ================= -->
+  <header class="bw-hero">
+    <p class="bw-eyebrow">Workflow Brainstorm</p>
+    <h1>We all have that ONE THING.</h1>
+    <p class="bw-lede">
+      The task you do every week that eats an hour and teaches you nothing new. The one you'd hand
+      off tomorrow if you had someone to hand it to.
+    </p>
+    <p class="bw-lede">
+      You do have someone. You just haven't briefed them properly.
+    </p>
+    <div class="bw-outcome">
+      <strong>What you'll walk out with:</strong> a master prompt — a specific, reusable brief you can
+      paste into Claude, ChatGPT, or Copilot and put to work on that task immediately. Five steps,
+      about fifteen minutes.
+    </div>
+
+    <details class="bw-example">
+      <summary>See the whole thing done first</summary>
+      <div class="bw-example-body">
+        <p><strong>Maya</strong> manages client success for a mid-size agency. Here's her run through all five steps.</p>
+
+        <div class="bw-example-row">
+          <p class="bw-eyebrow">Step 1 — The problem</p>
+          <p>"Every Monday I spend two hours building status updates for eleven clients. I'm pulling
+          the same numbers from the same places and rewriting the same sentences with different names in them."</p>
+        </div>
+
+        <div class="bw-example-row">
+          <p class="bw-eyebrow">Step 2 — The workflow</p>
+          <ol>
+            <li>Pull last week's delivery numbers — <em>Asana, Harvest</em></li>
+            <li>Check the shared inbox for anything unresolved — <em>Gmail</em></li>
+            <li>Write a 4-paragraph update per client — <em>Google Docs</em></li>
+            <li>Reformat into the client's preferred channel — <em>Gmail, Slack</em></li>
+          </ol>
+        </div>
+
+        <div class="bw-example-row">
+          <p class="bw-eyebrow">Step 3 — Her first draft prompt</p>
+          <p>Auto-built from what she typed above. Honest, but generic — it describes her problem
+          without telling the AI what "good" looks like.</p>
+        </div>
+
+        <div class="bw-example-row">
+          <p class="bw-eyebrow">Step 4 — The refinement conversation</p>
+          <p>The coach pushes on the vague parts: <em>Which step would you hand off first? What does a
+          great update actually look like? What are you not willing to automate?</em> Maya realizes the
+          drafting is the drain, but the "here's what I'd watch next week" line is the part clients
+          actually read — and that line is hers to write.</p>
+        </div>
+
+        <div class="bw-example-row">
+          <p class="bw-eyebrow">Step 5 — Her master prompt</p>
+          <pre>## CONTEXT
+I write weekly status updates for 11 agency clients. The numbers
+come from Asana and Harvest; the writing is the same four
+paragraphs with different names in them.
+
+## WHAT I NEED YOU TO DO
+Take the raw numbers I paste and draft paragraphs 1-3: what
+shipped, what's in flight, what slipped and why. Match the tone
+of the sample updates below.
+
+## WHAT STAYS WITH ME
+Paragraph 4 — the "what I'd watch next week" call. Never write
+that one. Leave it as [MAYA'S CALL] and I'll fill it in.
+
+## OUTPUT I EXPECT
+Plain prose, 4 short paragraphs, no bullets, no headers, under
+200 words. Client-facing tone: direct, no hedging, no filler.
+
+## THINGS YOU NEED TO KNOW
+Never invent a number. If a figure is missing from what I paste,
+write [MISSING: metric name] and keep going.</pre>
+          <p class="bw-small">Two hours became twenty minutes. The judgment stayed with Maya.</p>
+        </div>
+      </div>
+    </details>
+  </header>
+
+  <!-- ================= PROGRESS ================= -->
+  <div class="bw-progress">
+    <div class="bw-progress-track"><div class="bw-progress-fill" id="bw-progress-fill"></div></div>
+    <span class="bw-progress-label" id="bw-progress-label">Step 1 of 5</span>
+  </div>
+
+  <!-- ================= STEPS ================= -->
+  <ol class="bw-steps" id="bw-steps">
+
+    <!-- ---------- STEP 1 ---------- -->
+    <li class="bw-step" data-step="1" data-state="active" data-done="false">
+      <button type="button" class="bw-step-head" id="bw-head-1" aria-expanded="true" aria-controls="bw-panel-1">
+        <span class="bw-step-num"><span>1</span></span>
+        <span class="bw-step-titles">
+          <span class="bw-h2">Identify the problem</span>
+          <span class="bw-step-sub">Name the task that keeps eating your week</span>
+        </span>
+        <span class="bw-chip" data-chip>In progress</span>
+        <span class="bw-step-caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="bw-step-panel" id="bw-panel-1" role="region" aria-labelledby="bw-head-1">
+        <p class="bw-step-intro">
+          Describe the repetitive task in your own words — what it is, how often, and roughly what it
+          costs you. Specific beats polished.
+        </p>
+        <label class="bw-field">
+          <span class="bw-label">The one thing you'd hand off</span>
+          <span class="bw-hint">Include the frequency and the time it takes. That's what makes it real.</span>
+          <textarea id="bw-problem" rows="4" maxlength="1200"
+            placeholder="Example: Every Monday I spend two hours building status updates for eleven clients — same numbers, same sentences, different names."></textarea>
+        </label>
+        <span class="bw-counter" id="bw-problem-count">0 characters</span>
+        <div class="bw-notice bw-notice-warn" id="bw-warn-1" hidden></div>
+        <div class="bw-actions">
+          <span class="bw-spacer"></span>
+          <button type="button" class="bw-btn" data-next="1">Next: map the workflow</button>
+        </div>
+      </div>
+    </li>
+
+    <!-- ---------- STEP 2 ---------- -->
+    <li class="bw-step" data-step="2" data-state="locked" data-done="false">
+      <button type="button" class="bw-step-head" id="bw-head-2" aria-expanded="false" aria-controls="bw-panel-2" disabled>
+        <span class="bw-step-num"><span>2</span></span>
+        <span class="bw-step-titles">
+          <span class="bw-h2">Map the workflow and tools</span>
+          <span class="bw-step-sub">Break the task into the steps you actually perform</span>
+        </span>
+        <span class="bw-chip" data-chip>Locked</span>
+        <span class="bw-step-caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="bw-step-panel" id="bw-panel-2" role="region" aria-labelledby="bw-head-2" hidden>
+        <p class="bw-step-intro">
+          Walk through it the way you'd explain it to a new hire on their first day. One action per
+          card, plus wherever that action happens. Two steps minimum — most tasks have four or five.
+        </p>
+        <div class="bw-cards" id="bw-cards"></div>
+        <div class="bw-actions">
+          <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
+          <span class="bw-spacer"></span>
+          <button type="button" class="bw-btn" data-next="2">Next: see your draft prompt</button>
+        </div>
+        <div class="bw-notice bw-notice-warn" id="bw-warn-2" hidden></div>
+      </div>
+    </li>
+
+    <!-- ---------- STEP 3 ---------- -->
+    <li class="bw-step" data-step="3" data-state="locked" data-done="false">
+      <button type="button" class="bw-step-head" id="bw-head-3" aria-expanded="false" aria-controls="bw-panel-3" disabled>
+        <span class="bw-step-num"><span>3</span></span>
+        <span class="bw-step-titles">
+          <span class="bw-h2">Your draft master prompt</span>
+          <span class="bw-step-sub">Built automatically from what you just wrote</span>
+        </span>
+        <span class="bw-chip" data-chip>Locked</span>
+        <span class="bw-step-caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="bw-step-panel" id="bw-panel-3" role="region" aria-labelledby="bw-head-3" hidden>
+        <p class="bw-step-intro">
+          This is your workflow, restated as something an AI can act on. It's a starting point, not
+          the deliverable — it still doesn't know what "good" looks like for you. That's what Step 4 fixes.
+        </p>
+        <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
+        <div class="bw-actions">
+          <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
+          <span class="bw-spacer"></span>
+          <button type="button" class="bw-btn" data-next="3">Next: sharpen it with the coach</button>
+        </div>
+      </div>
+    </li>
+
+    <!-- ---------- STEP 4 ---------- -->
+    <li class="bw-step" data-step="4" data-state="locked" data-done="false">
+      <button type="button" class="bw-step-head" id="bw-head-4" aria-expanded="false" aria-controls="bw-panel-4" disabled>
+        <span class="bw-step-num"><span>4</span></span>
+        <span class="bw-step-titles">
+          <span class="bw-h2">Sharpen it with the coach</span>
+          <span class="bw-step-sub">Decide what the AI takes and what stays yours</span>
+        </span>
+        <span class="bw-chip" data-chip>Locked</span>
+        <span class="bw-step-caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="bw-step-panel" id="bw-panel-4" role="region" aria-labelledby="bw-head-4" hidden>
+        <p class="bw-step-intro">
+          The coach already has your problem, your steps, and your tools. It will push on the vague
+          parts. Answer in whatever detail you'd give a colleague — this is where a generic prompt
+          becomes yours.
+        </p>
+        <div class="bw-chat-meta">
+          <span class="bw-badge" id="bw-bot-badge">Coach</span>
+          <button type="button" class="bw-btn bw-btn-quiet" id="bw-chat-restart">Restart conversation</button>
+        </div>
+        <div class="bw-chat">
+          <div class="bw-chat-log" id="bw-chat-log" role="log" aria-live="polite" aria-label="Coach conversation"></div>
+          <div class="bw-chat-compose">
+            <label class="bw-sr" for="bw-chat-input">Your reply to the coach</label>
+            <textarea id="bw-chat-input" rows="1" placeholder="Type your answer… (Enter to send, Shift+Enter for a new line)"></textarea>
+            <button type="button" class="bw-btn" id="bw-chat-send">Send</button>
+          </div>
+        </div>
+        <div class="bw-notice bw-notice-error" id="bw-chat-error" hidden></div>
+        <div class="bw-notice bw-notice-warn" id="bw-warn-4" hidden></div>
+        <div class="bw-actions">
+          <span class="bw-spacer"></span>
+          <button type="button" class="bw-btn" data-next="4">Next: your final prompt</button>
+        </div>
+      </div>
+    </li>
+
+    <!-- ---------- STEP 5 ---------- -->
+    <li class="bw-step" data-step="5" data-state="locked" data-done="false">
+      <button type="button" class="bw-step-head" id="bw-head-5" aria-expanded="false" aria-controls="bw-panel-5" disabled>
+        <span class="bw-step-num"><span>5</span></span>
+        <span class="bw-step-titles">
+          <span class="bw-h2">Your master prompt</span>
+          <span class="bw-step-sub">Edit it, copy it, go use it</span>
+        </span>
+        <span class="bw-chip" data-chip>Locked</span>
+        <span class="bw-step-caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="bw-step-panel" id="bw-panel-5" role="region" aria-labelledby="bw-head-5" hidden>
+        <p class="bw-step-intro">
+          Here it is — your workflow, your judgment, your standards, written as a brief. Read it once
+          and change anything that isn't true. It's editable.
+        </p>
+        <div class="bw-notice bw-notice-info" id="bw-v2-source" hidden></div>
+        <div class="bw-final-wrap">
+          <label class="bw-field">
+            <span class="bw-label">Master prompt — yours to edit</span>
+            <textarea id="bw-prompt-v2" class="bw-mono" spellcheck="false"></textarea>
+          </label>
+          <div class="bw-actions">
+            <button type="button" class="bw-btn bw-btn-final" id="bw-copy-final">Copy master prompt</button>
+            <button type="button" class="bw-btn bw-btn-ghost" id="bw-regen-v2">Rebuild from my answers</button>
+            <span class="bw-spacer"></span>
+            <span class="bw-small" id="bw-copy-status" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="bw-outcome">
+          <strong>Now go.</strong> Paste it into Claude, ChatGPT, or whichever assistant you use.
+          Run it on this week's version of the task. The first output won't be perfect — tell the AI
+          what was wrong, and fold the correction back into the prompt. That editing loop is the
+          actual skill.
+        </div>
+      </div>
+    </li>
+  </ol>
+
+  <!-- ================= FOOTER ================= -->
+  <div class="bw-foot">
+    <span class="bw-saved" id="bw-saved" data-idle="true">Your work saves automatically in this browser.</span>
+    <span class="bw-spacer"></span>
+    <button type="button" class="bw-btn bw-btn-quiet" id="bw-reset">Start over</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ==========================================================================
+     1. CONFIGURATION
+     --------------------------------------------------------------------------
+     The only block you need to touch to put a real LLM behind Step 4.
+     Leave botEndpoint as null and the activity runs on the built-in scripted
+     coach — fully usable, no backend, no API key in the page.
+     ========================================================================== */
+
+  var CONFIG = {
+    // Full URL of YOUR proxy / serverless function that talks to the LLM.
+    // null => built-in scripted coach.
+    botEndpoint: null,
+
+    // Extra headers for that request (e.g. { "x-course-key": "elc567" }).
+    // Never put a provider API key here — this file is public to every learner.
+    botHeaders: {},
+
+    // Abandon a bot request after this many ms.
+    botTimeoutMs: 45000,
+
+    // localStorage key. Bump the suffix to invalidate saved data after a
+    // breaking change to the activity.
+    storageKey: "brainstorm_workflow_data",
+
+    // Minimum characters before Step 1 counts as answered.
+    minProblemChars: 40,
+
+    // Minimum filled-in workflow cards before Step 2 counts as answered.
+    minWorkflowSteps: 2,
+
+    // Minimum learner replies in Step 4 before Step 5 unlocks.
+    minChatTurns: 2
+  };
+
+  /* System prompt sent to a live endpoint. The fenced block instruction is what
+     lets Step 5 lift the refined prompt back out of the conversation. */
+  var BOT_SYSTEM_PROMPT = [
+    "You are a workflow coach helping a working professional prepare one repetitive task for AI integration.",
+    "They have already described their problem and mapped their workflow; that context follows this message.",
+    "",
+    "Your job: help them decide which steps an AI should take over, which stay with them, and what a good",
+    "output actually looks like — then turn that into a specific prompt they can paste into Claude or ChatGPT.",
+    "",
+    "How to work:",
+    "- Ask ONE clarifying question at a time. Keep replies under 120 words.",
+    "- Push on vague answers. \"Make it faster\" and \"better emails\" are not specifications.",
+    "- Reference their actual steps and tools by name. Never invent details they did not give you.",
+    "- Cover four things before you finish: (1) which steps the AI takes over, (2) what a great output",
+    "  looks like — format, length, tone, (3) what must stay in their hands, (4) rules and context the",
+    "  AI needs, including what it must never invent.",
+    "",
+    "Once you have all four, reply with a short summary and then the finished prompt inside a fenced",
+    "block tagged master-prompt, exactly like this:",
+    "",
+    "```master-prompt",
+    "## CONTEXT",
+    "...",
+    "## WHAT I NEED YOU TO DO",
+    "...",
+    "## WHAT STAYS WITH ME",
+    "...",
+    "## OUTPUT I EXPECT",
+    "...",
+    "## THINGS YOU NEED TO KNOW",
+    "...",
+    "```",
+    "",
+    "Write that block in the learner's first person voice. If they ask for changes afterwards, reply with",
+    "a corrected master-prompt block the same way."
+  ].join("\n");
+
+  /* ==========================================================================
+     2. STATE + PERSISTENCE
+     ========================================================================== */
+
+  function defaultData() {
+    return {
+      version: 1,
+      problem: "",
+      steps: [{ action: "", tools: "" }, { action: "", tools: "" }],
+      toolsAll: [],
+      masterPromptV1: "",
+      masterPromptV2: "",
+      v2Source: "",          // "bot" | "template" | "user"
+      botConversation: [],   // [{ role: "bot" | "user", text: "" }]
+      botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
+      mockStage: 0,
+      progress: { current: 1, unlocked: 1, done: {} }
+    };
+  }
+
+  var workflowData = defaultData();
+  var storageOK = true;
+  var discarding = false;   // set by "Start over" so the unload flush can't resurrect the data
+
+  function load() {
+    var raw;
+    try { raw = window.localStorage.getItem(CONFIG.storageKey); }
+    catch (e) { storageOK = false; return; }
+    if (!raw) return;
+    try {
+      var saved = JSON.parse(raw);
+      if (!saved || typeof saved !== "object" || saved.version !== 1) return;
+      var fresh = defaultData();
+      Object.keys(fresh).forEach(function (k) {
+        if (saved[k] !== undefined && saved[k] !== null) fresh[k] = saved[k];
+      });
+      if (!Array.isArray(fresh.steps) || !fresh.steps.length) fresh.steps = defaultData().steps;
+      if (!Array.isArray(fresh.botConversation)) fresh.botConversation = [];
+      if (!fresh.botAnswers || typeof fresh.botAnswers !== "object") fresh.botAnswers = defaultData().botAnswers;
+      if (!Array.isArray(fresh.botAnswers.notes)) fresh.botAnswers.notes = [];
+      if (!fresh.progress || typeof fresh.progress !== "object") fresh.progress = defaultData().progress;
+      if (!fresh.progress.done || typeof fresh.progress.done !== "object") fresh.progress.done = {};
+      workflowData = fresh;
+    } catch (e) { /* corrupt payload — start clean */ }
+  }
+
+  var saveTimer = null;
+
+  /* Writes are debounced so typing doesn't hit localStorage on every keystroke. */
+  function save() {
+    if (!storageOK || discarding) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(writeNow, 250);
+  }
+
+  function writeNow() {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    if (!storageOK || discarding) return;
+    try {
+      window.localStorage.setItem(CONFIG.storageKey, JSON.stringify(workflowData));
+      flashSaved();
+    } catch (e) {
+      storageOK = false;
+      var node = document.getElementById("bw-saved");
+      if (node) node.textContent = "Autosave unavailable in this browser — finish in one sitting.";
+    }
+  }
+
+  /* A debounced write is lost if the learner reloads, navigates, or closes the
+     tab in that quarter second. Flush on the way out. */
+  function wireSaveFlush() {
+    window.addEventListener("pagehide", writeNow);
+    window.addEventListener("beforeunload", writeNow);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") writeNow();
+    });
+  }
+
+  var savedTimer = null;
+  function flashSaved() {
+    var el = document.getElementById("bw-saved");
+    if (!el) return;
+    el.textContent = "Saved.";
+    el.setAttribute("data-idle", "false");
+    if (savedTimer) clearTimeout(savedTimer);
+    savedTimer = setTimeout(function () {
+      el.textContent = "Your work saves automatically in this browser.";
+      el.setAttribute("data-idle", "true");
+    }, 1600);
+  }
+
+  /* ==========================================================================
+     3. DERIVED DATA + PROMPT GENERATION
+     ========================================================================== */
+
+  /* Split a free-text tools field ("Gmail, Sheets and Drive") into clean names. */
+  function parseTools(raw) {
+    return String(raw || "")
+      .split(/[,;/|]|\band\b|\+|&/i)
+      .map(function (t) { return t.trim().replace(/^[-•.\s]+|[.\s]+$/g, ""); })
+      .filter(Boolean);
+  }
+
+  function recomputeTools() {
+    var seen = Object.create(null);
+    var out = [];
+    workflowData.steps.forEach(function (s) {
+      parseTools(s.tools).forEach(function (t) {
+        var key = t.toLowerCase();
+        if (!seen[key]) { seen[key] = true; out.push(t); }
+      });
+    });
+    workflowData.toolsAll = out;
+  }
+
+  function filledSteps() {
+    return workflowData.steps.filter(function (s) {
+      return String(s.action).trim() && String(s.tools).trim();
+    });
+  }
+
+  function stepsAsList() {
+    var list = filledSteps();
+    if (!list.length) return "(not mapped yet)";
+    return list.map(function (s, i) {
+      return (i + 1) + ". " + s.action.trim() + " — tools: " + s.tools.trim();
+    }).join("\n");
+  }
+
+  function toolsAsList() {
+    return workflowData.toolsAll.length ? workflowData.toolsAll.join(", ") : "(none listed)";
+  }
+
+  /* ---- V1: auto-generated from Steps 1-2, before the coach conversation ---- */
+  function generateMasterPromptV1(data) {
+    return [
+      "I want to hand part of a repetitive workflow over to you. Here is the whole picture.",
+      "",
+      "## THE PROBLEM",
+      (data.problem || "").trim() || "(not described yet)",
+      "",
+      "## MY CURRENT WORKFLOW",
+      stepsAsList(),
+      "",
+      "## TOOLS I WORK IN",
+      toolsAsList(),
+      "",
+      "## WHAT I NEED FROM YOU",
+      "1. Tell me which of these steps you could take over completely, which we'd share, and which should stay with me.",
+      "2. For anything you take over, tell me exactly what I'd need to give you each time — inputs, context, format.",
+      "3. Draft the reusable prompt I would paste to run this workflow every time.",
+      "",
+      "Ask me anything you need to know before you answer."
+    ].join("\n");
+  }
+
+  /* ---- V2: assembled from the coach conversation ---- */
+  function generateMasterPromptV2(data) {
+    var a = data.botAnswers || {};
+    var notes = (a.notes || []).filter(Boolean);
+    var context = [(a.context || "").trim()].concat(notes).filter(Boolean).join("\n");
+
+    return [
+      "## CONTEXT",
+      ((data.problem || "").trim() || "(describe the task here)"),
+      "",
+      "My current process, end to end:",
+      stepsAsList(),
+      "",
+      "Tools involved: " + toolsAsList() + ".",
+      "",
+      "## WHAT I NEED YOU TO DO",
+      (a.handoff || "").trim() || "[Name the steps above you want me to take over, and what you want back from each one.]",
+      "",
+      "## WHAT STAYS WITH ME",
+      (a.keep || "").trim() || "[Name the steps or judgment calls you are keeping. I will leave those alone.]",
+      "",
+      "## OUTPUT I EXPECT",
+      (a.output || "").trim() || "[Format, length, and tone of a good result. Be specific — \"short and professional\" is not a spec.]",
+      "",
+      "## THINGS YOU NEED TO KNOW",
+      context || "[Facts, constraints, and house rules. Say what I must never invent.]",
+      "",
+      "## HOW TO WORK WITH ME",
+      "If something above is missing for a given run, ask me for it before you produce anything.",
+      "Never invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going."
+    ].join("\n");
+  }
+
+  /* Pull a ```master-prompt fenced block out of coach text. Tagged blocks win;
+     an untagged block is accepted only if it looks like a prompt. */
+  function parseMasterPrompt(text) {
+    var re = /```[ \t]*([A-Za-z-]*)[ \t]*\r?\n([\s\S]*?)```/g;
+    var m, tagged = null, untagged = null;
+    while ((m = re.exec(String(text || "")))) {
+      var tag = (m[1] || "").toLowerCase().replace(/-/g, "");
+      var body = m[2].trim();
+      if (!body) continue;
+      if (tag === "masterprompt" || tag === "prompt") tagged = body;
+      else if (!tag && /^(##|MASTER PROMPT|CONTEXT\b)/im.test(body)) untagged = body;
+    }
+    return tagged || untagged || null;
+  }
+
+  function latestBotPrompt() {
+    for (var i = workflowData.botConversation.length - 1; i >= 0; i--) {
+      var msg = workflowData.botConversation[i];
+      if (msg.role !== "bot") continue;
+      var found = parseMasterPrompt(msg.text);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /* ==========================================================================
+     4. BOT ADAPTERS
+     --------------------------------------------------------------------------
+     Every adapter exposes the same shape:
+       { id, live, label, send({ system, context, messages }) -> Promise<string> }
+     Swap CONFIG.botEndpoint on and the endpoint adapter takes over. Nothing
+     else in the activity changes.
+     ========================================================================== */
+
+  var BotAdapters = {
+
+    /* --- Live: your own proxy / serverless function --------------------------
+       Sends: { system, context, messages: [{ role: "user"|"assistant", content }] }
+       Accepts back any of: { reply } | { message } | { content } | { text }
+                          | Anthropic { content: [{ type:"text", text }] }
+                          | OpenAI  { choices: [{ message: { content } }] }
+       ---------------------------------------------------------------------- */
+    endpoint: function (cfg) {
+      return {
+        id: "endpoint",
+        live: true,
+        label: "Live coach",
+        send: function (payload) {
+          var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+          var timer = controller ? setTimeout(function () { controller.abort(); }, cfg.botTimeoutMs) : null;
+
+          var headers = { "Content-Type": "application/json" };
+          Object.keys(cfg.botHeaders || {}).forEach(function (k) { headers[k] = cfg.botHeaders[k]; });
+
+          return fetch(cfg.botEndpoint, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({
+              system: payload.system,
+              context: payload.context,
+              messages: payload.messages
+            }),
+            signal: controller ? controller.signal : undefined
+          }).then(function (res) {
+            if (!res.ok) {
+              return res.text().catch(function () { return ""; }).then(function (body) {
+                throw new Error("The coach service returned " + res.status +
+                  (body ? " — " + body.slice(0, 160) : "") + ".");
+              });
+            }
+            return res.json();
+          }).then(function (data) {
+            var reply = normalizeReply(data);
+            if (!reply) throw new Error("The coach service replied in a format this activity doesn't recognize.");
+            return reply;
+          }).catch(function (err) {
+            if (err && err.name === "AbortError") {
+              throw new Error("The coach took too long to respond.");
+            }
+            if (err instanceof TypeError) {
+              throw new Error("Couldn't reach the coach service. Check your connection and try again.");
+            }
+            throw err;
+          }).then(function (reply) {
+            if (timer) clearTimeout(timer);
+            return reply;
+          }, function (err) {
+            if (timer) clearTimeout(timer);
+            throw err;
+          });
+        }
+      };
+    },
+
+    /* --- Fallback: built-in scripted coach ---------------------------------
+       Runs the same four-question arc a live model would, using the learner's
+       own words, and emits a real master-prompt block at the end. No network.
+       ---------------------------------------------------------------------- */
+    mock: function () {
+      return {
+        id: "mock",
+        live: false,
+        label: "Guided coach",
+        send: function (payload) {
+          var reply = mockCoachReply(payload.lastUserText);
+          var delay = 500 + Math.min(900, reply.length * 3);
+          return new Promise(function (resolve) {
+            setTimeout(function () { resolve(reply); }, delay);
+          });
+        }
+      };
+    }
+  };
+
+  function normalizeReply(data) {
+    if (typeof data === "string") return data.trim();
+    if (!data || typeof data !== "object") return null;
+    var direct = data.reply || data.message || data.text || data.completion || data.output;
+    if (typeof direct === "string" && direct.trim()) return direct.trim();
+    if (direct && typeof direct === "object" && typeof direct.content === "string") return direct.content.trim();
+    if (Array.isArray(data.content)) {
+      var joined = data.content
+        .filter(function (b) { return b && (b.type === "text" || typeof b.text === "string"); })
+        .map(function (b) { return b.text || ""; }).join("\n").trim();
+      if (joined) return joined;
+    }
+    if (typeof data.content === "string" && data.content.trim()) return data.content.trim();
+    if (Array.isArray(data.choices) && data.choices[0]) {
+      var c = data.choices[0];
+      var msg = (c.message && c.message.content) || c.text;
+      if (typeof msg === "string" && msg.trim()) return msg.trim();
+    }
+    return null;
+  }
+
+  function activeAdapter() {
+    return CONFIG.botEndpoint ? BotAdapters.endpoint(CONFIG) : BotAdapters.mock();
+  }
+  var bot = null;
+
+  /* ==========================================================================
+     5. SCRIPTED COACH
+     ========================================================================== */
+
+  function shortQuote(text, words) {
+    var w = String(text || "").trim().split(/\s+/);
+    if (!w[0]) return "";
+    return w.slice(0, words || 12).join(" ") + (w.length > (words || 12) ? "…" : "");
+  }
+
+  /* Stage 0 is the opening message; it is generated without user input. */
+  function mockOpening() {
+    var list = filledSteps().map(function (s, i) {
+      return "  " + (i + 1) + ". " + s.action.trim() + "  (" + s.tools.trim() + ")";
+    }).join("\n");
+
+    return [
+      "Right — here's what you gave me.",
+      "",
+      "You said: \"" + shortQuote(workflowData.problem, 22) + "\"",
+      "",
+      "And the process looks like this:",
+      list,
+      "",
+      "Before we write anything, I need to know where the weight is.",
+      "",
+      "**Which of those steps would you hand over first, and what makes that one the drain?** " +
+      "Give me the number and a sentence."
+    ].join("\n");
+  }
+
+  var MOCK_STAGES = [
+    // stage 1 — after they answer "which step"
+    {
+      capture: "handoff",
+      reply: function (answer) {
+        return [
+          "Got it: " + shortQuote(answer, 18),
+          "",
+          "That's the right instinct — the steps that repeat with different names in them are exactly " +
+          "what an AI absorbs well.",
+          "",
+          "Now the part most people skip. **Picture the finished output you'd actually be happy to use. " +
+          "What does it look like?** Format, length, tone. \"A good summary\" isn't a spec — " +
+          "\"four short paragraphs, no bullets, under 200 words, direct\" is."
+        ].join("\n");
+      }
+    },
+    // stage 2 — after they describe the output
+    {
+      capture: "output",
+      reply: function (answer) {
+        return [
+          "That I can work with.",
+          "",
+          "Here's the question that separates a useful prompt from a risky one. **What are you NOT " +
+          "handing over?** The judgment call, the relationship, the number you'd want to check yourself, " +
+          "the sentence your reader actually cares about.",
+          "",
+          "Name it plainly. We'll write it into the prompt as off-limits."
+        ].join("\n");
+      }
+    },
+    // stage 3 — after they name what stays theirs
+    {
+      capture: "keep",
+      reply: function (answer) {
+        var toolLine = workflowData.toolsAll.length
+          ? " You mentioned " + toolsAsList() + " — say anything about how those are set up that a newcomer wouldn't guess."
+          : "";
+        return [
+          "Good. That stays yours, and the prompt will say so explicitly.",
+          "",
+          "Last one. **What context would a sharp new hire need on day one that isn't obvious from the " +
+          "steps?** House rules, naming conventions, things that must never be invented, where the real " +
+          "numbers live." + toolLine
+        ].join("\n");
+      }
+    },
+    // stage 4 — after they give context: emit the prompt
+    {
+      capture: "context",
+      reply: function () {
+        return [
+          "That's everything I need. Here's your master prompt — your workflow, your standards, and a " +
+          "clear line around what stays with you.",
+          "",
+          "```master-prompt",
+          generateMasterPromptV2(workflowData),
+          "```",
+          "",
+          "Read it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise " +
+          "move on to Step 5, where you can edit it directly and copy it out."
+        ].join("\n");
+      }
+    }
+  ];
+
+  function mockCoachReply(userText) {
+    var stage = workflowData.mockStage;
+
+    if (stage < MOCK_STAGES.length) {
+      var def = MOCK_STAGES[stage];
+      workflowData.botAnswers[def.capture] = String(userText || "").trim();
+      workflowData.mockStage = stage + 1;
+      return def.reply(userText);
+    }
+
+    // Past the script: treat everything as a revision note and re-issue the prompt.
+    var note = String(userText || "").trim();
+    if (note) workflowData.botAnswers.notes.push(note);
+    return [
+      "Folded that in: " + shortQuote(note, 16),
+      "",
+      "```master-prompt",
+      generateMasterPromptV2(workflowData),
+      "```",
+      "",
+      "Keep going if anything else is off, or take it to Step 5."
+    ].join("\n");
+  }
+
+  /* ==========================================================================
+     6. DOM WIRING
+     ========================================================================== */
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {};
+
+  function cacheDom() {
+    el.root = $("bw");
+    el.steps = Array.prototype.slice.call(document.querySelectorAll(".bw-step"));
+    el.problem = $("bw-problem");
+    el.problemCount = $("bw-problem-count");
+    el.cards = $("bw-cards");
+    el.addStep = $("bw-add-step");
+    el.promptV1 = $("bw-prompt-v1");
+    el.chatLog = $("bw-chat-log");
+    el.chatInput = $("bw-chat-input");
+    el.chatSend = $("bw-chat-send");
+    el.chatError = $("bw-chat-error");
+    el.chatRestart = $("bw-chat-restart");
+    el.botBadge = $("bw-bot-badge");
+    el.promptV2 = $("bw-prompt-v2");
+    el.v2Source = $("bw-v2-source");
+    el.copyFinal = $("bw-copy-final");
+    el.regenV2 = $("bw-regen-v2");
+    el.copyStatus = $("bw-copy-status");
+    el.progressFill = $("bw-progress-fill");
+    el.progressLabel = $("bw-progress-label");
+    el.reset = $("bw-reset");
+  }
+
+  /* ---- validation ---- */
+
+  function userTurns() {
+    return workflowData.botConversation.filter(function (m) { return m.role === "user"; }).length;
+  }
+
+  function stepValid(n) {
+    switch (n) {
+      case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
+      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps;
+      case 3: return true;
+      case 4: return userTurns() >= CONFIG.minChatTurns;
+      default: return true;
+    }
+  }
+
+  function warningFor(n) {
+    switch (n) {
+      case 1:
+        return String(workflowData.problem).trim()
+          ? "Give it a little more — what the task is, how often, and what it costs you. About a sentence and a half."
+          : "Describe the task before moving on. Rough words are fine.";
+      case 2:
+        return "Fill in at least " + CONFIG.minWorkflowSteps +
+          " steps, each with both the action and the tool you do it in.";
+      case 4:
+        return "Answer at least " + CONFIG.minChatTurns +
+          " of the coach's questions first — that conversation is what makes the final prompt yours.";
+      default: return "";
+    }
+  }
+
+  function showWarning(n, msg) {
+    var box = $("bw-warn-" + n);
+    if (!box) return;
+    if (!msg) { box.hidden = true; box.textContent = ""; return; }
+    box.textContent = msg;
+    box.hidden = false;
+  }
+
+  /* ---- accordion ---- */
+
+  function openStep(n, scroll) {
+    if (n > workflowData.progress.unlocked) return;
+    workflowData.progress.current = n;
+    render();
+    if (scroll !== false) {
+      var node = el.steps[n - 1];
+      if (node && node.scrollIntoView) {
+        node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+      }
+    }
+    if (n === 4) startConversation();
+    if (n === 5) refreshV2(false);
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function goNext(n) {
+    if (!stepValid(n)) { showWarning(n, warningFor(n)); return; }
+    showWarning(n, "");
+    workflowData.progress.done[n] = true;
+    workflowData.progress.unlocked = Math.max(workflowData.progress.unlocked, Math.min(5, n + 1));
+    save();
+    openStep(Math.min(5, n + 1));
+  }
+
+  /* ---- render ---- */
+
+  function render() {
+    // Steps 1 and 2 can be edited after the fact — un-tick them if they break.
+    [1, 2].forEach(function (n) {
+      if (workflowData.progress.done[n] && !stepValid(n)) workflowData.progress.done[n] = false;
+    });
+
+    var current = workflowData.progress.current;
+
+    el.steps.forEach(function (node, i) {
+      var n = i + 1;
+      var locked = n > workflowData.progress.unlocked;
+      var state = locked ? "locked" : (n === current ? "active" : "idle");
+      node.setAttribute("data-state", state);
+      node.setAttribute("data-done", workflowData.progress.done[n] ? "true" : "false");
+
+      var head = node.querySelector(".bw-step-head");
+      var panel = node.querySelector(".bw-step-panel");
+      var chip = node.querySelector("[data-chip]");
+      head.disabled = locked;
+      head.setAttribute("aria-expanded", state === "active" ? "true" : "false");
+      panel.hidden = state !== "active";
+      chip.textContent = locked ? "Locked"
+        : workflowData.progress.done[n] ? "Done"
+        : state === "active" ? "In progress" : "Ready";
+    });
+
+    var doneCount = [1, 2, 3, 4, 5].filter(function (n) { return workflowData.progress.done[n]; }).length;
+    el.progressFill.style.width = (doneCount / 5 * 100) + "%";
+    el.progressLabel.textContent = doneCount === 5 ? "Complete" : "Step " + current + " of 5";
+
+    renderPromptV1();
+  }
+
+  function renderPromptV1() {
+    workflowData.masterPromptV1 = generateMasterPromptV1(workflowData);
+    el.promptV1.textContent = workflowData.masterPromptV1;
+  }
+
+  /* ---- step 1 ---- */
+
+  function wireStep1() {
+    el.problem.value = workflowData.problem;
+    updateProblemCount();
+    el.problem.addEventListener("input", function () {
+      workflowData.problem = el.problem.value;
+      updateProblemCount();
+      if (stepValid(1)) showWarning(1, "");
+      renderPromptV1();
+      save();
+    });
+    el.problem.addEventListener("blur", render);
+  }
+
+  function updateProblemCount() {
+    var len = el.problem.value.trim().length;
+    el.problemCount.textContent = len < CONFIG.minProblemChars
+      ? len + " / " + CONFIG.minProblemChars + " characters"
+      : len + " characters";
+  }
+
+  /* ---- step 2 ---- */
+
+  function renderCards() {
+    el.cards.textContent = "";
+    workflowData.steps.forEach(function (step, i) {
+      el.cards.appendChild(buildCard(step, i));
+    });
+  }
+
+  function buildCard(step, index) {
+    var card = document.createElement("div");
+    card.className = "bw-card";
+
+    var num = document.createElement("div");
+    num.className = "bw-card-num";
+    num.textContent = String(index + 1);
+    card.appendChild(num);
+
+    card.appendChild(buildCardField({
+      cls: "bw-card-action",
+      label: "What you do",
+      placeholder: "Pull last week's delivery numbers",
+      value: step.action,
+      onInput: function (v) { step.action = v; onCardsChanged(); }
+    }));
+
+    card.appendChild(buildCardField({
+      cls: "bw-card-tools",
+      label: "Where you do it",
+      placeholder: "Asana, Harvest",
+      value: step.tools,
+      onInput: function (v) { step.tools = v; onCardsChanged(); }
+    }));
+
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "bw-card-remove";
+    remove.setAttribute("aria-label", "Remove step " + (index + 1));
+    remove.title = "Remove this step";
+    remove.textContent = "×";
+    remove.disabled = workflowData.steps.length <= CONFIG.minWorkflowSteps;
+    remove.addEventListener("click", function () {
+      workflowData.steps.splice(index, 1);
+      renderCards();
+      onCardsChanged();
+    });
+    card.appendChild(remove);
+
+    return card;
+  }
+
+  function buildCardField(opts) {
+    var wrap = document.createElement("label");
+    wrap.className = "bw-field " + opts.cls;
+    var lab = document.createElement("span");
+    lab.className = "bw-label";
+    lab.textContent = opts.label;
+    var input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = opts.placeholder;
+    input.value = opts.value || "";
+    input.maxLength = 240;
+    input.addEventListener("input", function () { opts.onInput(input.value); });
+    wrap.appendChild(lab);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function onCardsChanged() {
+    recomputeTools();
+    if (stepValid(2)) showWarning(2, "");
+    renderPromptV1();
+    save();
+  }
+
+  function wireStep2() {
+    renderCards();
+    recomputeTools();
+    el.addStep.addEventListener("click", function () {
+      workflowData.steps.push({ action: "", tools: "" });
+      renderCards();
+      save();
+      var inputs = el.cards.querySelectorAll("input");
+      if (inputs.length) inputs[inputs.length - 2].focus();
+    });
+  }
+
+  /* ---- step 4: the coach conversation ---- */
+
+  var chatPending = false;
+  var lastFailedSend = null;
+
+  function contextInjection() {
+    return [
+      "Here's their workflow.",
+      "",
+      "Problem: " + (String(workflowData.problem).trim() || "(not stated)"),
+      "",
+      "Current workflow:",
+      stepsAsList(),
+      "",
+      "Tools they use: " + toolsAsList(),
+      "",
+      "Now help them think through which steps AI could handle and what specific prompt would work."
+    ].join("\n");
+  }
+
+  /* Wire format includes a hidden priming turn; it is never shown in the log. */
+  function wireMessages() {
+    var msgs = [{
+      role: "user",
+      content: contextInjection() + "\n\nStart by asking me your first question."
+    }];
+    workflowData.botConversation.forEach(function (m) {
+      msgs.push({ role: m.role === "bot" ? "assistant" : "user", content: m.text });
+    });
+    return msgs;
+  }
+
+  function appendMessage(role, text, persist) {
+    if (persist !== false) workflowData.botConversation.push({ role: role, text: text });
+    el.chatLog.appendChild(buildMessage(role, text));
+    scrollChat();
+  }
+
+  function buildMessage(role, text) {
+    var wrap = document.createElement("div");
+    wrap.className = "bw-msg bw-msg-" + role;
+    var who = document.createElement("span");
+    who.className = "bw-msg-who";
+    who.textContent = role === "bot" ? "Coach" : "You";
+    var body = document.createElement("div");
+    body.className = "bw-msg-body";
+    renderRich(body, text);
+    wrap.appendChild(who);
+    wrap.appendChild(body);
+    return wrap;
+  }
+
+  /* Minimal renderer: ```fenced``` blocks become <pre>, **bold** becomes <strong>.
+     Everything goes in via textContent, so bot output can never inject markup. */
+  function renderRich(container, text) {
+    container.textContent = "";
+    var parts = String(text || "").split("```");
+    parts.forEach(function (part, i) {
+      if (i % 2 === 1) {
+        var pre = document.createElement("pre");
+        pre.textContent = part.replace(/^[A-Za-z-]*[ \t]*\r?\n/, "").replace(/\s+$/, "");
+        container.appendChild(pre);
+      } else {
+        var trimmed = i === 0 ? part.replace(/\s+$/, "") : part.replace(/^\r?\n/, "").replace(/\s+$/, "");
+        if (trimmed) appendInline(container, trimmed);
+      }
+    });
+  }
+
+  function appendInline(container, text) {
+    var re = /\*\*([^*]+)\*\*/g, last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) container.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var strong = document.createElement("strong");
+      strong.textContent = m[1];
+      container.appendChild(strong);
+      last = re.lastIndex;
+    }
+    if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function scrollChat() {
+    el.chatLog.scrollTop = el.chatLog.scrollHeight;
+  }
+
+  function showTyping(on) {
+    var existing = el.chatLog.querySelector("[data-typing]");
+    if (existing) existing.remove();
+    if (!on) return;
+    var wrap = document.createElement("div");
+    wrap.className = "bw-msg bw-msg-bot";
+    wrap.setAttribute("data-typing", "true");
+    var who = document.createElement("span");
+    who.className = "bw-msg-who";
+    who.textContent = "Coach";
+    var body = document.createElement("div");
+    body.className = "bw-msg-body bw-typing";
+    body.setAttribute("aria-label", "Coach is typing");
+    for (var i = 0; i < 3; i++) body.appendChild(document.createElement("i"));
+    wrap.appendChild(who);
+    wrap.appendChild(body);
+    el.chatLog.appendChild(wrap);
+    scrollChat();
+  }
+
+  function setChatBusy(busy) {
+    chatPending = busy;
+    el.chatSend.disabled = busy;
+    el.chatInput.disabled = busy;
+    el.chatSend.textContent = busy ? "…" : "Send";
+    showTyping(busy);
+  }
+
+  function showChatError(msg, retryFn) {
+    el.chatError.textContent = "";
+    if (!msg) { el.chatError.hidden = true; lastFailedSend = null; return; }
+    var text = document.createElement("span");
+    text.textContent = msg;
+    el.chatError.appendChild(text);
+    if (retryFn) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bw-btn bw-btn-ghost";
+      btn.textContent = "Try again";
+      btn.addEventListener("click", function () { showChatError(""); retryFn(); });
+      el.chatError.appendChild(btn);
+    }
+    el.chatError.hidden = false;
+  }
+
+  function askBot(lastUserText, onDone) {
+    setChatBusy(true);
+    showChatError("");
+    bot.send({
+      system: BOT_SYSTEM_PROMPT,
+      context: contextInjection(),
+      messages: wireMessages(),
+      lastUserText: lastUserText
+    }).then(function (reply) {
+      setChatBusy(false);
+      appendMessage("bot", reply);
+      if (workflowData.v2Source !== "user") refreshV2(false);
+      if (stepValid(4)) showWarning(4, "");
+      save();
+      if (onDone) onDone();
+    }).catch(function (err) {
+      setChatBusy(false);
+      var msg = (err && err.message) || "Something went wrong reaching the coach.";
+      if (bot.live) {
+        msg += " You can retry, or keep going — Step 5 will build your prompt from what you've said so far.";
+      }
+      showChatError(msg, function () { askBot(lastUserText, onDone); });
+    });
+  }
+
+  function startConversation() {
+    if (workflowData.botConversation.length) return;   // already under way
+    if (chatPending) return;
+    if (!bot.live) {
+      // Scripted coach opens without a round trip, but keep the same beat.
+      setChatBusy(true);
+      setTimeout(function () {
+        setChatBusy(false);
+        appendMessage("bot", mockOpening());
+        save();
+      }, 550);
+      return;
+    }
+    askBot(null);
+  }
+
+  function sendChat() {
+    if (chatPending) return;
+    var text = el.chatInput.value.trim();
+    if (!text) return;
+    el.chatInput.value = "";
+    autosize(el.chatInput);
+    appendMessage("user", text);
+    save();
+    askBot(text);
+  }
+
+  function renderChatLog() {
+    el.chatLog.textContent = "";
+    workflowData.botConversation.forEach(function (m) {
+      el.chatLog.appendChild(buildMessage(m.role, m.text));
+    });
+    scrollChat();
+  }
+
+  function autosize(node) {
+    node.style.height = "auto";
+    node.style.height = Math.min(140, node.scrollHeight) + "px";
+  }
+
+  function wireStep4() {
+    bot = activeAdapter();
+    el.botBadge.textContent = bot.live ? "Live coach" : "Guided coach";
+    el.botBadge.className = "bw-badge " + (bot.live ? "bw-badge-live" : "bw-badge-mock");
+    el.botBadge.title = bot.live
+      ? "Connected to your configured coach endpoint."
+      : "Running the built-in scripted coach — no network required.";
+
+    renderChatLog();
+
+    el.chatSend.addEventListener("click", sendChat);
+    el.chatInput.addEventListener("input", function () { autosize(el.chatInput); });
+    el.chatInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+    });
+    el.chatRestart.addEventListener("click", function () {
+      if (!window.confirm("Clear this conversation and start it over? Your Steps 1–3 answers stay.")) return;
+      workflowData.botConversation = [];
+      workflowData.botAnswers = defaultData().botAnswers;
+      workflowData.mockStage = 0;
+      if (workflowData.v2Source !== "user") { workflowData.masterPromptV2 = ""; workflowData.v2Source = ""; }
+      showChatError("");
+      renderChatLog();
+      save();
+      startConversation();
+    });
+  }
+
+  /* ---- step 5: the deliverable ---- */
+
+  function computeV2() {
+    var fromBot = latestBotPrompt();
+    if (fromBot) return { text: fromBot, source: "bot" };
+    return { text: generateMasterPromptV2(workflowData), source: "template" };
+  }
+
+  function refreshV2(force) {
+    if (!force && workflowData.v2Source === "user") { paintV2(); return; }
+    var result = computeV2();
+    workflowData.masterPromptV2 = result.text;
+    workflowData.v2Source = result.source;
+    paintV2();
+    save();
+  }
+
+  function paintV2() {
+    if (el.promptV2.value !== workflowData.masterPromptV2) {
+      el.promptV2.value = workflowData.masterPromptV2;
+    }
+    var note = "";
+    if (workflowData.v2Source === "bot") {
+      note = "Lifted straight from your conversation with the coach. Change anything that isn't true — you know the job, it doesn't.";
+    } else if (workflowData.v2Source === "template") {
+      note = "The coach didn't hand back a finished version, so this is assembled from your own answers. Fill in anything still in [brackets] before you use it.";
+    }
+    if (note) { el.v2Source.textContent = note; el.v2Source.hidden = false; }
+    else { el.v2Source.hidden = true; }
+  }
+
+  function wireStep5() {
+    el.promptV2.addEventListener("input", function () {
+      workflowData.masterPromptV2 = el.promptV2.value;
+      workflowData.v2Source = "user";
+      el.v2Source.hidden = true;
+      save();
+    });
+    el.regenV2.addEventListener("click", function () {
+      if (workflowData.v2Source === "user" &&
+          !window.confirm("Rebuild the prompt from your coach answers? Your edits here will be replaced.")) return;
+      refreshV2(true);
+    });
+    el.copyFinal.addEventListener("click", function () {
+      copyText(workflowData.masterPromptV2, function (ok) {
+        el.copyStatus.textContent = ok
+          ? "Copied — now paste it into your assistant."
+          : "Couldn't copy automatically. Select the text above and copy it.";
+        setTimeout(function () { el.copyStatus.textContent = ""; }, 4000);
+        if (ok) {
+          workflowData.progress.done[5] = true;
+          save();
+          render();
+        }
+      });
+    });
+  }
+
+  /* ---- clipboard ---- */
+
+  function copyText(text, done) {
+    if (!text) { done(false); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacyCopy(text)); });
+      return;
+    }
+    done(legacyCopy(text));
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  /* ==========================================================================
+     7. INIT
+     ========================================================================== */
+
+  function wireGlobal() {
+    el.steps.forEach(function (node, i) {
+      var n = i + 1;
+      node.querySelector(".bw-step-head").addEventListener("click", function () {
+        openStep(n);
+      });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function (btn) {
+      btn.addEventListener("click", function () { goNext(parseInt(btn.getAttribute("data-next"), 10)); });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function (btn) {
+      var original = btn.textContent;
+      btn.addEventListener("click", function () {
+        var src = $(btn.getAttribute("data-copy"));
+        copyText(src ? (src.value !== undefined ? src.value : src.textContent) : "", function (ok) {
+          btn.textContent = ok ? "Copied" : "Copy failed";
+          setTimeout(function () { btn.textContent = original; }, 2000);
+        });
+      });
+    });
+
+    el.reset.addEventListener("click", function () {
+      if (!window.confirm("Clear everything and start this activity over? This can't be undone.")) return;
+      discarding = true;
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* nothing to clear */ }
+      window.location.reload();
+    });
+  }
+
+  /* Rise sizes custom blocks from content height; this is a courtesy ping for
+     any host that listens for it. Harmless everywhere else. */
+  function reportHeight() {
+    if (window.parent === window) return;
+    var send = function () {
+      var h = Math.ceil(document.documentElement.scrollHeight);
+      try { window.parent.postMessage({ type: "bw:height", height: h }, "*"); } catch (e) { /* cross-origin */ }
+    };
+    send();
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(send).observe(document.body);
+    } else {
+      window.addEventListener("resize", send);
+    }
+  }
+
+  function init() {
+    cacheDom();
+    load();
+    recomputeTools();
+    wireStep1();
+    wireStep2();
+    wireStep4();
+    wireStep5();
+    wireGlobal();
+    wireSaveFlush();
+    if (workflowData.masterPromptV2) paintV2();
+    render();
+    if (workflowData.progress.current === 4) startConversation();
+    if (workflowData.progress.current === 5) refreshV2(false);
+    reportHeight();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
