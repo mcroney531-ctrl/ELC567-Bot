@@ -36,6 +36,41 @@ Notes that matter in Rise specifically:
 
 ---
 
+## Splitting it across several Rise blocks
+
+You can paste the same file into two or three custom blocks in one lesson and let Rise's own text
+blocks carry the framing between them. Set `blockRole` differently in each paste:
+
+| Block | `blockRole` | Renders |
+|---|---|---|
+| 1st | `"capture"` | Steps 1-3 — the problem, the workflow map, the draft prompt (keeps the intro) |
+| 2nd | `"coach"` | Step 4 — the conversation |
+| 3rd | `"artifact"` | Step 5 — the finished master prompt |
+
+Leave it at the default `"all"` to keep the whole activity in a single block.
+
+The blocks talk to each other through `localStorage` and the browser's `storage` event, so a
+downstream block updates **live** — the coach block sits behind a "map your workflow above first"
+notice and opens itself the moment the learner finishes the section above it, no reload, no
+scrolling away and back. Finish the conversation and the artifact block fills in behind you.
+
+Each block writes back only the fields it owns (`capture` owns the problem and steps, `coach` owns
+the transcript, `artifact` owns the final prompt), merged on top of whatever siblings have saved
+since. That is what stops a learner editing their problem statement from wiping out the
+conversation they already had two blocks down.
+
+**Check this works in your account before you build on it.** A Rise lesson is one scrolling page
+and its embed blocks are iframes; whether they share a storage origin is version- and
+plan-dependent. `tools/rise-storage-probe.html` answers it in about a minute — paste it into two
+blocks, press the button in each, read the verdict. If it reports BLOCKED or each block only ever
+sees its own mark, blocks cannot share state and you should stay on the single-block `"all"` setup.
+
+One consequence of how the sharing works: state is keyed to the domain the lesson is served from,
+so preview, a review link, and the published or SCORM copy each keep their own. Progress does not
+follow a learner between them.
+
+---
+
 ## The two coach modes
 
 Step 4 is the part that makes the prompt personal, and it runs one of two ways.
@@ -159,6 +194,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minProblemChars` | `40` | How much Step 1 needs before Step 2 unlocks. |
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
+| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"capture"`, `"coach"`, `"artifact"`. See above. |
 
 `BOT_SYSTEM_PROMPT`, directly below `CONFIG`, is what a live coach is told to do — including the
 instruction to emit its final prompt in a fenced ` ```master-prompt ` block. **Keep that
@@ -202,7 +238,7 @@ validates loses its checkmark until it does.
 
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
-npm test         # both suites, ~79 assertions
+npm test         # all four suites, 129 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -214,5 +250,12 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   response shape, and the failure modes (HTTP error, timeout, unreachable host, unrecognized
   payload) including that a learner can still finish with the coach down.
 
-Both suites fail on any uncaught page error or unexpected console error, so a runtime exception
+- `test/multi-block.test.mjs` — three roles as three iframes on one page, the way Rise renders
+  them: that each block shows only its own slice, that a downstream block unlocks live when the
+  capture block is filled in, that neither direction clobbers the other's saved work, that a
+  reload restores all three, and that Start over in one clears them all.
+- `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
+  iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
+
+Every suite fails on any uncaught page error or unexpected console error, so a runtime exception
 anywhere in the flow shows up as a test failure.

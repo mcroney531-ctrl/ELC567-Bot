@@ -49,6 +49,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .bw *, .bw *::before, .bw *::after { box-sizing: inherit; }
+.bw [hidden] { display: none !important; }   /* role hiding must beat any author display */
 
 @media (prefers-color-scheme: dark) {
   .bw:not([data-theme="light"]) {
@@ -538,6 +539,8 @@ write [MISSING: metric name] and keep going.</pre>
           parts. Answer in whatever detail you'd give a colleague — this is where a generic prompt
           becomes yours.
         </p>
+        <div class="bw-notice bw-notice-info" id="bw-prereq-4" hidden></div>
+        <div id="bw-chat-wrap">
         <div class="bw-chat-meta">
           <span class="bw-badge" id="bw-bot-badge">Coach</span>
           <button type="button" class="bw-btn bw-btn-quiet" id="bw-chat-restart">Restart conversation</button>
@@ -549,6 +552,7 @@ write [MISSING: metric name] and keep going.</pre>
             <textarea id="bw-chat-input" rows="1" placeholder="Type your answer… (Enter to send, Shift+Enter for a new line)"></textarea>
             <button type="button" class="bw-btn" id="bw-chat-send">Send</button>
           </div>
+        </div>
         </div>
         <div class="bw-notice bw-notice-error" id="bw-chat-error" hidden></div>
         <div class="bw-notice bw-notice-warn" id="bw-warn-4" hidden></div>
@@ -575,8 +579,9 @@ write [MISSING: metric name] and keep going.</pre>
           Here it is — your workflow, your judgment, your standards, written as a brief. Read it once
           and change anything that isn't true. It's editable.
         </p>
+        <div class="bw-notice bw-notice-info" id="bw-prereq-5" hidden></div>
         <div class="bw-notice bw-notice-info" id="bw-v2-source" hidden></div>
-        <div class="bw-final-wrap">
+        <div class="bw-final-wrap" id="bw-final-wrap">
           <label class="bw-field">
             <span class="bw-label">Master prompt — yours to edit</span>
             <textarea id="bw-prompt-v2" class="bw-mono" spellcheck="false"></textarea>
@@ -597,6 +602,8 @@ write [MISSING: metric name] and keep going.</pre>
       </div>
     </li>
   </ol>
+
+  <div class="bw-notice bw-notice-info" id="bw-handoff" hidden></div>
 
   <!-- ================= FOOTER ================= -->
   <div class="bw-foot">
@@ -641,8 +648,39 @@ write [MISSING: metric name] and keep going.</pre>
     minWorkflowSteps: 2,
 
     // Minimum learner replies in Step 4 before Step 5 unlocks.
-    minChatTurns: 2
+    minChatTurns: 2,
+
+    // Which slice of the activity THIS block renders. Paste the same file into
+    // several Rise custom blocks in one lesson and give each a different role;
+    // they share state through localStorage and update each other live.
+    //   "all"      - the whole five-step activity in one block (default)
+    //   "capture"  - steps 1-3: the problem, the workflow map, the draft prompt
+    //   "coach"    - step 4: the refinement conversation
+    //   "artifact" - step 5: the finished master prompt
+    // Splitting only works where the blocks share an origin. Verify with
+    // tools/rise-storage-probe.html before relying on it.
+    blockRole: "all"
   };
+
+  /* What each role renders, and which fields it is allowed to write. Ownership
+     is what keeps blocks from trampling each other: a block writes back only
+     its own fields, on top of whatever siblings have saved since. */
+  var ROLES = {
+    all:      { steps: [1, 2, 3, 4, 5], intro: true,  label: "" },
+    capture:  { steps: [1, 2, 3],       intro: true,  label: "Part 1 of 3" },
+    coach:    { steps: [4],             intro: false, label: "Part 2 of 3" },
+    artifact: { steps: [5],             intro: false, label: "Part 3 of 3" }
+  };
+  var OWNED_FIELDS = {
+    all:      ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2",
+               "v2Source", "botConversation", "botAnswers", "mockStage"],
+    capture:  ["problem", "steps", "toolsAll", "masterPromptV1"],
+    coach:    ["botConversation", "botAnswers", "mockStage"],
+    artifact: ["masterPromptV2", "v2Source"]
+  };
+  var ROLE  = ROLES[CONFIG.blockRole] || ROLES.all;
+  var OWNED = OWNED_FIELDS[CONFIG.blockRole] || OWNED_FIELDS.all;
+  var ownsStep = function (n) { return ROLE.steps.indexOf(n) !== -1; };
 
   /* System prompt sent to a live endpoint. The fenced block instruction is what
      lets Step 5 lift the refined prompt back out of the conversation. */
@@ -705,14 +743,14 @@ write [MISSING: metric name] and keep going.</pre>
   var storageOK = true;
   var discarding = false;   // set by "Start over" so the unload flush can't resurrect the data
 
-  function load() {
+  function readStored() {
     var raw;
     try { raw = window.localStorage.getItem(CONFIG.storageKey); }
-    catch (e) { storageOK = false; return; }
-    if (!raw) return;
+    catch (e) { storageOK = false; return null; }
+    if (!raw) return null;
     try {
       var saved = JSON.parse(raw);
-      if (!saved || typeof saved !== "object" || saved.version !== 1) return;
+      if (!saved || typeof saved !== "object" || saved.version !== 1) return null;
       var fresh = defaultData();
       Object.keys(fresh).forEach(function (k) {
         if (saved[k] !== undefined && saved[k] !== null) fresh[k] = saved[k];
@@ -723,8 +761,13 @@ write [MISSING: metric name] and keep going.</pre>
       if (!Array.isArray(fresh.botAnswers.notes)) fresh.botAnswers.notes = [];
       if (!fresh.progress || typeof fresh.progress !== "object") fresh.progress = defaultData().progress;
       if (!fresh.progress.done || typeof fresh.progress.done !== "object") fresh.progress.done = {};
-      workflowData = fresh;
-    } catch (e) { /* corrupt payload — start clean */ }
+      return fresh;
+    } catch (e) { return null; }   /* corrupt payload - start clean */
+  }
+
+  function load() {
+    var stored = readStored();
+    if (stored) workflowData = stored;
   }
 
   var saveTimer = null;
@@ -740,13 +783,62 @@ write [MISSING: metric name] and keep going.</pre>
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
     if (!storageOK || discarding) return;
     try {
-      window.localStorage.setItem(CONFIG.storageKey, JSON.stringify(workflowData));
+      window.localStorage.setItem(CONFIG.storageKey, JSON.stringify(mergedForWrite()));
       flashSaved();
     } catch (e) {
       storageOK = false;
       var node = document.getElementById("bw-saved");
       if (node) node.textContent = "Autosave unavailable in this browser — finish in one sitting.";
     }
+  }
+
+  /* Write this block's own fields on top of whatever is in storage RIGHT NOW.
+     A sibling block may have saved since we loaded, and a whole-object write
+     would erase its work without a trace. */
+  function mergedForWrite() {
+    if (CONFIG.blockRole === "all") return workflowData;
+
+    var base = readStored() || defaultData();
+    OWNED.forEach(function (k) { base[k] = workflowData[k]; });
+    base.progress = base.progress || defaultData().progress;
+    base.progress.done = base.progress.done || {};
+    ROLE.steps.forEach(function (n) {
+      if (workflowData.progress.done[n]) base.progress.done[n] = true;
+      else delete base.progress.done[n];
+    });
+    return base;
+  }
+
+  /* Another block on this Rise page wrote. Adopt everything we do NOT own, so
+     a sibling can never overwrite what the learner is typing here. */
+  function wireCrossBlockSync() {
+    window.addEventListener("storage", function (e) {
+      if (e.key !== CONFIG.storageKey && e.key !== null) return;
+      var stored = readStored();
+      if (!stored) { resetInPlace(); return; }
+
+      Object.keys(defaultData()).forEach(function (k) {
+        if (k === "version" || k === "progress") return;
+        if (OWNED.indexOf(k) === -1) workflowData[k] = stored[k];
+      });
+      var mine = workflowData.progress.done;
+      var theirs = stored.progress.done || {};
+      [1, 2, 3, 4, 5].forEach(function (n) {
+        if (ownsStep(n)) return;
+        if (theirs[n]) mine[n] = true; else delete mine[n];
+      });
+
+      recomputeTools();
+      adoptExternal();
+    });
+  }
+
+  function adoptExternal() {
+    if (ownsStep(2)) renderCards();
+    if (ownsStep(4)) renderChatLog();
+    render();
+    maybeStartConversation();
+    if (ownsStep(5)) refreshV2(false);
   }
 
   /* A debounced write is lost if the learner reloads, navigates, or closes the
@@ -1161,6 +1253,75 @@ write [MISSING: metric name] and keep going.</pre>
     el.progressFill = $("bw-progress-fill");
     el.progressLabel = $("bw-progress-label");
     el.reset = $("bw-reset");
+    el.prereq4 = $("bw-prereq-4");
+    el.prereq5 = $("bw-prereq-5");
+    el.chatWrap = $("bw-chat-wrap");
+    el.finalWrap = $("bw-final-wrap");
+    el.handoff = $("bw-handoff");
+  }
+
+  /* ---- block role ---- */
+
+  /* Hide the steps this block doesn't own and set a sane starting position.
+     A no-op in the default single-block "all" role. */
+  function applyRole() {
+    if (CONFIG.blockRole === "all") return;
+
+    var hero = document.querySelector(".bw-hero");
+    if (hero && !ROLE.intro) hero.hidden = true;
+    el.steps.forEach(function (node, i) {
+      if (!ownsStep(i + 1)) node.hidden = true;
+    });
+
+    if (CONFIG.blockRole === "capture") {
+      // Return a coming-back learner to the first step they haven't finished.
+      var u = 1;
+      while (u < 3 && workflowData.progress.done[u]) u++;
+      workflowData.progress.unlocked = u;
+      workflowData.progress.current = u;
+    } else {
+      // Single-step blocks are never "locked"; they gate on the capture block
+      // being filled in instead, which applyPrereqState handles.
+      workflowData.progress.unlocked = 5;
+      workflowData.progress.current = ROLE.steps[0];
+    }
+  }
+
+  /* A coach or artifact block has nothing to work with until the capture block
+     above it is filled in. This re-runs on every storage event, so the block
+     unlocks itself the moment the learner finishes the section above. */
+  function prereqMet() {
+    if (CONFIG.blockRole !== "coach" && CONFIG.blockRole !== "artifact") return true;
+    return stepValid(1) && stepValid(2);
+  }
+
+  function applyPrereqState() {
+    var ready = prereqMet();
+
+    // A gated block must not claim things it doesn't have yet: drop the
+    // step's own intro copy and stop the chip reading "In progress".
+    if (CONFIG.blockRole === "coach" || CONFIG.blockRole === "artifact") {
+      var own = ROLE.steps[0];
+      var intro = document.querySelector("#bw-panel-" + own + " .bw-step-intro");
+      if (intro) intro.hidden = !ready;
+      var chip = document.querySelector('.bw-step[data-step="' + own + '"] [data-chip]');
+      if (chip && !ready) chip.textContent = "Waiting";
+    }
+
+    if (CONFIG.blockRole === "coach") {
+      el.prereq4.textContent = ready ? "" :
+        "Map your workflow in the section above first — the coach needs your problem and your " +
+        "steps before it can ask anything useful. This opens on its own once you've done that.";
+      el.prereq4.hidden = ready;
+      el.chatWrap.hidden = !ready;
+      var next4 = document.querySelector('[data-next="4"]');
+      if (next4) next4.disabled = !ready;
+    } else if (CONFIG.blockRole === "artifact") {
+      el.prereq5.textContent = ready ? "" :
+        "Your master prompt builds itself from the sections above. Finish those and it appears here.";
+      el.prereq5.hidden = ready;
+      el.finalWrap.hidden = !ready;
+    }
   }
 
   /* ---- validation ---- */
@@ -1215,7 +1376,7 @@ write [MISSING: metric name] and keep going.</pre>
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
     }
-    if (n === 4) startConversation();
+    if (n === 4) maybeStartConversation();
     if (n === 5) refreshV2(false);
   }
 
@@ -1229,7 +1390,14 @@ write [MISSING: metric name] and keep going.</pre>
     workflowData.progress.done[n] = true;
     workflowData.progress.unlocked = Math.max(workflowData.progress.unlocked, Math.min(5, n + 1));
     save();
-    openStep(Math.min(5, n + 1));
+    var next = Math.min(5, n + 1);
+    if (!ownsStep(next)) {   // the next step lives in a different Rise block
+      el.handoff.textContent = "Saved. Keep going in the next section of this lesson.";
+      el.handoff.hidden = false;
+      render();
+      return;
+    }
+    openStep(next);
   }
 
   /* ---- render ---- */
@@ -1262,7 +1430,10 @@ write [MISSING: metric name] and keep going.</pre>
 
     var doneCount = [1, 2, 3, 4, 5].filter(function (n) { return workflowData.progress.done[n]; }).length;
     el.progressFill.style.width = (doneCount / 5 * 100) + "%";
-    el.progressLabel.textContent = doneCount === 5 ? "Complete" : "Step " + current + " of 5";
+    el.progressLabel.textContent = doneCount === 5 ? "Complete"
+      : (ROLE.label || "Step " + current + " of 5");
+
+    applyPrereqState();
 
     renderPromptV1();
   }
@@ -1536,6 +1707,16 @@ write [MISSING: metric name] and keep going.</pre>
     });
   }
 
+  /* Only the block that owns step 4 opens a conversation, only once the
+     capture block has given it something to work with, and in single-block
+     mode only when the learner has actually reached step 4. */
+  function maybeStartConversation() {
+    if (!ownsStep(4)) return;
+    if (CONFIG.blockRole === "all" && workflowData.progress.current !== 4) return;
+    if (!prereqMet()) return;
+    startConversation();
+  }
+
   function startConversation() {
     if (workflowData.botConversation.length) return;   // already under way
     if (chatPending) return;
@@ -1719,8 +1900,28 @@ write [MISSING: metric name] and keep going.</pre>
       discarding = true;
       if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
       try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* nothing to clear */ }
-      window.location.reload();
+      discarding = false;
+      resetInPlace();   // not a reload: sibling blocks clear via the storage event
     });
+  }
+
+  /* Back to a blank activity without reloading the frame — a reload would only
+     reset this block, and would not tell the others. */
+  function resetInPlace() {
+    workflowData = defaultData();
+    applyRole();
+    recomputeTools();
+    el.problem.value = "";
+    updateProblemCount();
+    renderCards();
+    showChatError("");
+    renderChatLog();
+    el.promptV2.value = "";
+    el.v2Source.hidden = true;
+    el.handoff.hidden = true;
+    [1, 2, 4].forEach(function (n) { showWarning(n, ""); });
+    render();
+    maybeStartConversation();
   }
 
   /* Rise sizes custom blocks from content height; this is a courtesy ping for
@@ -1742,6 +1943,7 @@ write [MISSING: metric name] and keep going.</pre>
   function init() {
     cacheDom();
     load();
+    applyRole();
     recomputeTools();
     wireStep1();
     wireStep2();
@@ -1749,10 +1951,13 @@ write [MISSING: metric name] and keep going.</pre>
     wireStep5();
     wireGlobal();
     wireSaveFlush();
+    wireCrossBlockSync();
     if (workflowData.masterPromptV2) paintV2();
     render();
-    if (workflowData.progress.current === 4) startConversation();
-    if (workflowData.progress.current === 5) refreshV2(false);
+    maybeStartConversation();
+    if (ownsStep(5) && (CONFIG.blockRole !== "all" || workflowData.progress.current === 5)) {
+      refreshV2(false);
+    }
     reportHeight();
   }
 
