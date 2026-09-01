@@ -54,12 +54,22 @@ coach block sits behind a "map your workflow above first" notice and opens itsel
 learner finishes the section above it, no reload, no scrolling away and back. Finish the
 conversation and the artifact block fills in behind you.
 
-It stays in step two ways: the browser's `storage` event, and a poll every `syncPollMs`. **The poll
-is the part that makes this correct.** On a published Review 360 lesson the lower of two blocks
-recorded zero storage events while the upper recorded three — whether that's load ordering or the
-platform, a downstream block can't be allowed to sit holding stale state. The event just makes it
-feel instant. The test suite proves the split still works with the event path removed entirely,
-and includes a negative control showing it genuinely breaks without the poll.
+It stays in step three ways, and **the `storage` event is the least of them.** Two separate runs on
+a published Review 360 lesson showed the same asymmetry: the upper block recorded events (3, then
+2) while the lower block recorded zero both times. Upward propagation works; downward is in doubt —
+and downward is exactly how this activity's data flows. So the event is treated as a bonus, and two
+mechanisms do the real work:
+
+- **A poll every `syncPollMs`** (1.2s), which is what makes the split correct rather than lucky.
+- **A sync the moment the block scrolls into view.** Below the fold is where browsers throttle
+  timers, and it's also where the learner is heading next. `IntersectionObserver` with an implicit
+  root is clipped by the parent frame — verified, not assumed — so a block genuinely knows when it
+  has come on screen.
+
+The suite proves each of these carries the sync on its own: the whole three-block flow runs with
+`storage` events swallowed, a below-the-fold block catches up on scroll with both the event and the
+poll disabled, and a negative control with all of it switched off confirms the sync really does
+break, so none of those tests can be passing for some unrelated reason.
 
 Each block writes back only the fields it owns (`capture` owns the problem and steps, `coach` owns
 the transcript, `artifact` owns the final prompt), merged on top of whatever siblings have saved
@@ -255,8 +265,9 @@ and pipeline from preview:
 
 1. **Re-run `tools/rise-storage-probe.html` there** if you're using the multi-block layout. The
    split depends on blocks sharing a storage origin, and that verdict doesn't automatically carry
-   over from preview. Read the *marks*, not the event counter — a `storage events` reading of 0 is
-   expected and harmless, because the activity polls as well as listening.
+   over from preview. Read the *marks*, not the event counter — a `storage events` reading of 0 on
+   the lower block is expected (it has been seen on every run so far) and harmless, because the
+   activity does not depend on events.
 2. **Check the block height.** Rise decides how tall an embed is. The chat scrolls internally, but
    the capture block grows with each workflow card - make sure a learner with five steps isn't
    clipped.
@@ -304,7 +315,7 @@ validates loses its checkmark until it does.
 
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
-npm test         # all five suites, 149 assertions
+npm test         # all five suites, 152 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -320,8 +331,9 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   them: that each block shows only its own slice, that a downstream block unlocks live when the
   capture block is filled in, that neither direction clobbers the other's saved work, that a
   reload restores all three, and that Start over in one clears them all. Also runs the whole flow
-  with `storage` events swallowed, proving the poll alone keeps the blocks in step, plus a
-  negative control confirming it really does break when the poll is switched off too.
+  with `storage` events swallowed, proving the poll alone keeps the blocks in step; a
+  below-the-fold block that syncs only when scrolled into view; and a negative control confirming
+  the sync really does break with every mechanism switched off.
 - `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
   iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and

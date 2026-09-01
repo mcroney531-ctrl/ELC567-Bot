@@ -860,12 +860,16 @@ write [MISSING: metric name] and keep going.</pre>
 
   /* Keeping a split lesson in step.
 
-     The storage event is the fast path, but it cannot be relied on here: on a
-     published Review 360 lesson a block below the fold recorded zero events
-     while a block above it recorded three. Whether that is load ordering or
-     the platform, a downstream block must not be able to sit holding stale
-     state, so it also polls. The poll is what makes the split correct; the
-     event just makes it feel instant. */
+     The storage event is the fast path, but it cannot be relied on here. Two
+     separate runs on a published Review 360 lesson showed the same thing: the
+     upper block recorded events (3, then 2) while the lower block recorded
+     zero both times. Upward propagation works; downward is the direction in
+     doubt, and downward is exactly how this activity's data flows.
+
+     So the event is treated as a bonus. What actually keeps a split lesson in
+     step is the poll, plus a sync the moment the block scrolls into view -
+     which is both when the learner arrives at it and when a timer that may
+     have been throttled offscreen comes back to life. */
   function wireCrossBlockSync() {
     if (CONFIG.blockRole === "all") return;   // single block: no siblings to track
     lastSeenRaw = currentRaw();
@@ -881,6 +885,17 @@ write [MISSING: metric name] and keep going.</pre>
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") syncFromStorage();
     });
+
+    // Catch up the instant the learner scrolls this block into view. Timers in
+    // an offscreen frame can be throttled, and a block below the fold is both
+    // where that happens and where the learner is heading next.
+    if (typeof IntersectionObserver !== "undefined") {
+      new IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].isIntersecting) { syncFromStorage(); return; }
+        }
+      }).observe(el.root);
+    }
   }
 
   function adoptExternal() {

@@ -273,6 +273,60 @@ try {
   await stuckCtx.close();
   stuckServer.close();
 
+
+  // ---- a block below the fold catches up when scrolled to ----
+  // Both probe runs on the published lesson showed the lower block receiving
+  // zero storage events. Below the fold is also where browsers throttle timers.
+  // With events swallowed AND the poll switched off, only the scroll-into-view
+  // sync can carry this - which is the mechanism a learner actually triggers.
+  const foldDoc = r => withConfig({ blockRole: `"${r}"`, syncPollMs: '99999999' })
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const foldPage = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
+<iframe id="capture" style="width:900px;height:760px;border:0" srcdoc="${foldDoc('capture')}"></iframe>
+<div style="height:2400px">a lot of Rise content in between</div>
+<iframe id="coach" style="width:900px;height:760px;border:0" srcdoc="${foldDoc('coach')}"></iframe>
+</body></html>`;
+  const foldServer = await new Promise(r => {
+    const sv = http.createServer((rq, rs) => {
+      rs.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      rs.end(foldPage);
+    });
+    sv.listen(8132, () => r(sv));
+  });
+  const foldCtx = await browser.newContext({ viewport: { width: 1000, height: 700 } });
+  await foldCtx.addInitScript(() => {
+    const original = window.addEventListener.bind(window);
+    window.addEventListener = function (type, fn, opts) {
+      if (type === 'storage') return;
+      return original(type, fn, opts);
+    };
+  });
+  const fold = await foldCtx.newPage();
+  report.watch(fold);
+  await fold.goto('http://127.0.0.1:8132/');
+  await fold.waitForTimeout(800);
+  const F2 = id => fold.frameLocator('#' + id);
+
+  await F2('capture').locator('#bw-problem').fill(
+    'Every Monday I rebuild eleven client status updates by hand and it costs me two hours.');
+  await F2('capture').locator('[data-next="1"]').click();
+  const fcards = F2('capture').locator('#bw-cards .bw-card');
+  await fcards.nth(0).locator('input').nth(0).fill('Pull the delivery numbers');
+  await fcards.nth(0).locator('input').nth(1).fill('Asana');
+  await fcards.nth(1).locator('input').nth(0).fill('Draft each update');
+  await fcards.nth(1).locator('input').nth(1).fill('Google Docs');
+  await F2('capture').locator('[data-next="2"]').click();
+  await fold.waitForTimeout(1200);
+
+  check('offscreen block has not synced yet', await F2('coach').locator('#bw-prereq-4').isVisible());
+  await fold.locator('#coach').scrollIntoViewIfNeeded();
+  await fold.waitForTimeout(1800);
+  check('scrolling to the block syncs it', !(await F2('coach').locator('#bw-prereq-4').isVisible()));
+  check('and it opens with the real problem',
+    (await F2('coach').locator('.bw-msg-bot').first().textContent()).includes('costs me two hours'));
+  await foldCtx.close();
+  foldServer.close();
+
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);
 }
