@@ -38,53 +38,60 @@ Notes that matter in Rise specifically:
 
 ## Splitting it across several Rise blocks
 
-You can paste the same file into two or three custom blocks in one lesson and let Rise's own text
-blocks carry the framing between them. Set `blockRole` differently in each paste:
+The activity is built to be pasted into several Rise custom blocks in one lesson, with your own
+teaching content between them. Each paste is the same file with one line changed:
 
-| Block | `blockRole` | Renders |
+| Block | `blockRole` | What it is |
 |---|---|---|
-| 1st | `"capture"` | Steps 1-3 — the problem, the workflow map, the draft prompt (keeps the intro) |
-| 2nd | `"coach"` | Step 4 — the conversation |
-| 3rd | `"artifact"` | Step 5 — the finished master prompt |
+| 1 | `"capture"` | The problem + workflow-map form, and the draft prompt (keeps the intro) |
+| 2 | `"coach-handoff"` | Chat: which step should the AI take over? |
+| 3 | `"coach-standards"` | Chat: what does a good result look like, and what stays yours? |
+| 4 | `"coach-guardrails"` | Chat: context and house rules — closes by handing back the prompt |
+| 5 | `"artifact"` | The finished master prompt, editable and copyable |
 
-Leave it at the default `"all"` to keep the whole activity in a single block.
+Use any of the three chats, in that order — you don't need all three. Leave `blockRole` at its
+default `"all"` to keep the whole activity in one block.
 
-The blocks talk to each other through `localStorage`, so a downstream block updates **live** — the
-coach block sits behind a "map your workflow above first" notice and opens itself the moment the
-learner finishes the section above it, no reload, no scrolling away and back. Finish the
-conversation and the artifact block fills in behind you.
+**The three chats are separate conversations that build one shared master prompt.** Each has its own
+transcript, its own heading, and its own one or two questions; each writes its own slice of the
+answers. Chat 2 opens by quoting what chat 1 captured, chat 3 by quoting chat 2, so it reads as one
+coach picking up a new thread rather than three strangers asking overlapping questions. All of them
+stay live and editable — a learner can scroll back and revise, and the change flows forward.
 
-It stays in step three ways, and **the `storage` event is the least of them.** Two separate runs on
-a published Review 360 lesson showed the same asymmetry: the upper block recorded events (3, then
-2) while the lower block recorded zero both times. Upward propagation works; downward is in doubt —
-and downward is exactly how this activity's data flows. So the event is treated as a bonus, and two
-mechanisms do the real work:
+Because every chat unlocks at once, a later one can write its opening before the learner has
+answered the earlier one. While a chat is still untouched its greeting stays current: the moment the
+upstream answer lands, it rewrites to reference it. Once the learner has replied, the transcript is
+history and stays put.
+
+Ownership is per answer key, not per field, which is what stops the blocks trampling each other.
+Editing the problem statement in block 1 can't wipe the conversation in block 3, and restarting one
+chat clears only its own answers.
+
+### Keeping the blocks in step
+
+State lives in `localStorage`, and three mechanisms keep it current — **the `storage` event is the
+least of them.** Two separate runs on a published Review 360 lesson showed the same asymmetry: the
+upper block recorded events (3, then 2) while the lower block recorded zero both times. Upward
+propagation works; downward is in doubt, and downward is how this activity's data flows. So:
 
 - **A poll every `syncPollMs`** (1.2s), which is what makes the split correct rather than lucky.
-- **A sync the moment the block scrolls into view.** Below the fold is where browsers throttle
-  timers, and it's also where the learner is heading next. `IntersectionObserver` with an implicit
-  root is clipped by the parent frame — verified, not assumed — so a block genuinely knows when it
-  has come on screen.
+- **A sync the moment a block scrolls into view.** Below the fold is where browsers throttle timers
+  and where the learner is heading next. `IntersectionObserver` with an implicit root is clipped by
+  the parent frame — verified, not assumed.
+- **The `storage` event**, when it happens to arrive.
 
-The suite proves each of these carries the sync on its own: the whole three-block flow runs with
-`storage` events swallowed, a below-the-fold block catches up on scroll with both the event and the
-poll disabled, and a negative control with all of it switched off confirms the sync really does
-break, so none of those tests can be passing for some unrelated reason.
+The suite proves each of these carries the flow on its own, and a negative control with all three
+disabled confirms the sync genuinely breaks — so none of those tests can be passing for an
+unrelated reason.
 
-Each block writes back only the fields it owns (`capture` owns the problem and steps, `coach` owns
-the transcript, `artifact` owns the final prompt), merged on top of whatever siblings have saved
-since. That is what stops a learner editing their problem statement from wiping out the
-conversation they already had two blocks down.
-
-**Check this works in your account before you build on it.** A Rise lesson is one scrolling page
+**Check the split works in your account before building on it.** A Rise lesson is one scrolling page
 and its embed blocks are iframes; whether they share a storage origin is version- and
-plan-dependent. `tools/rise-storage-probe.html` answers it in about a minute — paste it into two
-blocks, press the button in each, read the verdict. If it reports BLOCKED or each block only ever
-sees its own mark, blocks cannot share state and you should stay on the single-block `"all"` setup.
+plan-dependent. `tools/rise-storage-probe.html` answers it in about a minute. Read the *marks*, not
+the event counter. If it reports BLOCKED or each block only ever sees its own mark, stay on the
+single-block `"all"` setup.
 
-One consequence of how the sharing works: state is keyed to the domain the lesson is served from,
-so preview, a review link, and the published or SCORM copy each keep their own. Progress does not
-follow a learner between them.
+One consequence: state is keyed to the domain the lesson is served from, so preview, a review link,
+and the published or SCORM copy each keep their own. Progress does not follow a learner between them.
 
 ---
 
@@ -234,7 +241,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minProblemChars` | `40` | How much Step 1 needs before Step 2 unlocks. |
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
-| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"capture"`, `"coach"`, `"artifact"`. See above. |
+| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"capture"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`, `"artifact"`. See above. |
 | `syncPollMs` | `1200` | How often a split block re-checks storage for a sibling's work. Only used when `blockRole` isn't `"all"`. |
 | `followSystemDarkMode` | `false` | Off on purpose: a Rise lesson is light, and following the learner's OS dark mode drops a dark panel into a white page. Turn on only if your host is dark. |
 
@@ -315,7 +322,7 @@ validates loses its checkmark until it does.
 
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
-npm test         # all five suites, 152 assertions
+npm test         # all five suites, 157 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -327,13 +334,13 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   response shape, and the failure modes (HTTP error, timeout, unreachable host, unrecognized
   payload) including that a learner can still finish with the coach down.
 
-- `test/multi-block.test.mjs` — three roles as three iframes on one page, the way Rise renders
-  them: that each block shows only its own slice, that a downstream block unlocks live when the
-  capture block is filled in, that neither direction clobbers the other's saved work, that a
-  reload restores all three, and that Start over in one clears them all. Also runs the whole flow
-  with `storage` events swallowed, proving the poll alone keeps the blocks in step; a
-  below-the-fold block that syncs only when scrolled into view; and a negative control confirming
-  the sync really does break with every mechanism switched off.
+- `test/multi-block.test.mjs` — the full five-block lesson as five iframes on one page: that each
+  block shows only its own slice and topic, that the three chats are genuinely separate transcripts
+  that pool their answers into one prompt, that a later chat quotes what an earlier one captured,
+  that no block clobbers another in either direction, that restarting one chat leaves the others
+  intact, and that reload and Start over behave across all five. Also runs the whole flow with
+  `storage` events swallowed; a below-the-fold block that syncs only when scrolled into view; and a
+  negative control confirming the sync really does break with every mechanism switched off.
 - `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
   iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and

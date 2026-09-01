@@ -655,10 +655,14 @@ write [MISSING: metric name] and keep going.</pre>
     // Which slice of the activity THIS block renders. Paste the same file into
     // several Rise custom blocks in one lesson and give each a different role;
     // they share state through localStorage and update each other live.
-    //   "all"      - the whole five-step activity in one block (default)
-    //   "capture"  - steps 1-3: the problem, the workflow map, the draft prompt
-    //   "coach"    - step 4: the refinement conversation
-    //   "artifact" - step 5: the finished master prompt
+    //   "all"               - the whole five-step activity in one block (default)
+    //   "capture"           - steps 1-3: the problem, the workflow map, the draft prompt
+    //   "coach-handoff"     - chat 1: which step the AI takes over
+    //   "coach-standards"   - chat 2: what good looks like, and what stays yours
+    //   "coach-guardrails"  - chat 3: context and rules, then the finished prompt
+    //   "artifact"          - step 5: the master prompt, editable and copyable
+    // The three chat roles are separate conversations that build one shared
+    // master prompt. Use any of them, in that order; you don't need all three.
     // Splitting only works where the blocks share an origin. Verify with
     // tools/rise-storage-probe.html before relying on it.
     blockRole: "all",
@@ -678,21 +682,43 @@ write [MISSING: metric name] and keep going.</pre>
      is what keeps blocks from trampling each other: a block writes back only
      its own fields, on top of whatever siblings have saved since. */
   var ROLES = {
-    all:      { steps: [1, 2, 3, 4, 5], intro: true,  label: "" },
-    capture:  { steps: [1, 2, 3],       intro: true,  label: "Part 1 of 3" },
-    coach:    { steps: [4],             intro: false, label: "Part 2 of 3" },
-    artifact: { steps: [5],             intro: false, label: "Part 3 of 3" }
+    all:                { steps: [1, 2, 3, 4, 5], intro: true,  label: "",                  stage: "all" },
+    capture:            { steps: [1, 2, 3],       intro: true,  label: "Map it",            stage: null },
+    "coach-handoff":    { steps: [4],             intro: false, label: "Hand it over",      stage: "handoff" },
+    "coach-standards":  { steps: [4],             intro: false, label: "Set the bar",       stage: "standards" },
+    "coach-guardrails": { steps: [4],             intro: false, label: "Set the guardrails", stage: "guardrails" },
+    artifact:           { steps: [5],             intro: false, label: "Your prompt",       stage: null }
   };
+
+  /* Each conversation stage owns a slice of the answers that build the master
+     prompt. Several chat blocks in one lesson are separate conversations
+     writing into the same artifact - which is why ownership is per answer key,
+     not per field. */
+  var STAGES = {
+    all:        { answers: ["handoff", "output", "keep", "context", "notes"], minTurns: 2 },
+    handoff:    { answers: ["handoff"],                                       minTurns: 1 },
+    standards:  { answers: ["output", "keep"],                                minTurns: 2 },
+    guardrails: { answers: ["context", "notes"],                              minTurns: 1 }
+  };
+
   var OWNED_FIELDS = {
-    all:      ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2",
-               "v2Source", "botConversation", "botAnswers", "mockStage"],
+    all:      ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2", "v2Source"],
     capture:  ["problem", "steps", "toolsAll", "masterPromptV1"],
-    coach:    ["botConversation", "botAnswers", "mockStage"],
     artifact: ["masterPromptV2", "v2Source"]
   };
   var ROLE  = ROLES[CONFIG.blockRole] || ROLES.all;
-  var OWNED = OWNED_FIELDS[CONFIG.blockRole] || OWNED_FIELDS.all;
+  var OWNED = OWNED_FIELDS[CONFIG.blockRole] || [];   // chat blocks own no top-level fields
+  var STAGE = ROLE.stage;                             // null for capture / artifact
   var ownsStep = function (n) { return ROLE.steps.indexOf(n) !== -1; };
+  var ownsAnswer = function (k) {
+    return STAGE ? STAGES[STAGE].answers.indexOf(k) !== -1 : false;
+  };
+  /* This block's own transcript. */
+  var convo = function () {
+    if (!STAGE) return [];
+    if (!workflowData.conversations[STAGE]) workflowData.conversations[STAGE] = [];
+    return workflowData.conversations[STAGE];
+  };
 
   /* System prompt sent to a live endpoint. The fenced block instruction is what
      lets Step 5 lift the refined prompt back out of the conversation. */
@@ -737,16 +763,18 @@ write [MISSING: metric name] and keep going.</pre>
 
   function defaultData() {
     return {
-      version: 1,
+      version: 2,
       problem: "",
       steps: [{ action: "", tools: "" }, { action: "", tools: "" }],
       toolsAll: [],
       masterPromptV1: "",
       masterPromptV2: "",
       v2Source: "",          // "bot" | "template" | "user"
-      botConversation: [],   // [{ role: "bot" | "user", text: "" }]
+      // One transcript per stage, so several chat blocks are separate
+      // conversations that still build one shared master prompt.
+      conversations: { all: [], handoff: [], standards: [], guardrails: [] },
+      mockProgress:  { all: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
-      mockStage: 0,
       progress: { current: 1, unlocked: 1, done: {} }
     };
   }
@@ -762,14 +790,20 @@ write [MISSING: metric name] and keep going.</pre>
     if (!raw) return null;
     try {
       var saved = JSON.parse(raw);
-      if (!saved || typeof saved !== "object" || saved.version !== 1) return null;
+      if (!saved || typeof saved !== "object" || saved.version !== 2) return null;
       var fresh = defaultData();
       Object.keys(fresh).forEach(function (k) {
         if (saved[k] !== undefined && saved[k] !== null) fresh[k] = saved[k];
       });
       if (!Array.isArray(fresh.steps) || !fresh.steps.length) fresh.steps = defaultData().steps;
-      if (!Array.isArray(fresh.botConversation)) fresh.botConversation = [];
-      if (!fresh.botAnswers || typeof fresh.botAnswers !== "object") fresh.botAnswers = defaultData().botAnswers;
+      var blank = defaultData();
+      if (!fresh.conversations || typeof fresh.conversations !== "object") fresh.conversations = blank.conversations;
+      if (!fresh.mockProgress || typeof fresh.mockProgress !== "object") fresh.mockProgress = blank.mockProgress;
+      Object.keys(blank.conversations).forEach(function (k) {
+        if (!Array.isArray(fresh.conversations[k])) fresh.conversations[k] = [];
+        if (typeof fresh.mockProgress[k] !== "number") fresh.mockProgress[k] = 0;
+      });
+      if (!fresh.botAnswers || typeof fresh.botAnswers !== "object") fresh.botAnswers = blank.botAnswers;
       if (!Array.isArray(fresh.botAnswers.notes)) fresh.botAnswers.notes = [];
       if (!fresh.progress || typeof fresh.progress !== "object") fresh.progress = defaultData().progress;
       if (!fresh.progress.done || typeof fresh.progress.done !== "object") fresh.progress.done = {};
@@ -814,6 +848,18 @@ write [MISSING: metric name] and keep going.</pre>
 
     var base = readStored() || defaultData();
     OWNED.forEach(function (k) { base[k] = workflowData[k]; });
+
+    if (STAGE) {   // a chat block writes back its own transcript and its own answers
+      base.conversations = base.conversations || defaultData().conversations;
+      base.mockProgress = base.mockProgress || defaultData().mockProgress;
+      base.botAnswers = base.botAnswers || defaultData().botAnswers;
+      base.conversations[STAGE] = workflowData.conversations[STAGE];
+      base.mockProgress[STAGE] = workflowData.mockProgress[STAGE];
+      STAGES[STAGE].answers.forEach(function (k) {
+        base.botAnswers[k] = workflowData.botAnswers[k];
+      });
+    }
+
     base.progress = base.progress || defaultData().progress;
     base.progress.done = base.progress.done || {};
     ROLE.steps.forEach(function (n) {
@@ -833,9 +879,21 @@ write [MISSING: metric name] and keep going.</pre>
   /* Adopt everything this block does NOT own, so a sibling can never overwrite
      what the learner is typing here. */
   function adoptForeignFields(stored) {
-    Object.keys(defaultData()).forEach(function (k) {
-      if (k === "version" || k === "progress") return;
+    var blank = defaultData();
+    Object.keys(blank).forEach(function (k) {
+      if (k === "version" || k === "progress" ||
+          k === "conversations" || k === "mockProgress" || k === "botAnswers") return;
       if (OWNED.indexOf(k) === -1) workflowData[k] = stored[k];
+    });
+
+    // Other blocks' transcripts, and any answer key this block doesn't fill.
+    Object.keys(blank.conversations).forEach(function (sk) {
+      if (sk === STAGE) return;
+      workflowData.conversations[sk] = stored.conversations[sk] || [];
+      workflowData.mockProgress[sk] = stored.mockProgress[sk] || 0;
+    });
+    Object.keys(blank.botAnswers).forEach(function (ak) {
+      if (!ownsAnswer(ak)) workflowData.botAnswers[ak] = stored.botAnswers[ak];
     });
     var mine = workflowData.progress.done;
     var theirs = stored.progress.done || {};
@@ -898,9 +956,25 @@ write [MISSING: metric name] and keep going.</pre>
     }
   }
 
+  /* Every chat unlocks at once, so a later one can write its opening before the
+     learner has answered the earlier one - and that opening would then quote
+     nothing. While a chat is still untouched, keep its opening current: the
+     moment the upstream answer lands, the greeting rewrites to reference it.
+     Once the learner has replied, the transcript is history and stays put. */
+  function refreshOpening() {
+    if (!isSplitCoach) return;
+    var list = convo();
+    if (list.length !== 1 || list[0].role !== "bot") return;
+    var fresh = activeScript().opening();
+    if (fresh === list[0].text) return;
+    list[0].text = fresh;
+    renderChatLog();
+    save();
+  }
+
   function adoptExternal() {
     if (ownsStep(2)) renderCards();
-    if (ownsStep(4)) renderChatLog();
+    if (ownsStep(4)) { refreshOpening(); renderChatLog(); }
     render();
     maybeStartConversation();
     if (ownsStep(5)) refreshV2(false);
@@ -1042,12 +1116,18 @@ write [MISSING: metric name] and keep going.</pre>
     return tagged || untagged || null;
   }
 
+  /* Whichever stage produced a finished block most recently wins; guardrails
+     is the stage that closes with one, so it leads. */
+  var PROMPT_STAGE_ORDER = ["guardrails", "all", "standards", "handoff"];
+
   function latestBotPrompt() {
-    for (var i = workflowData.botConversation.length - 1; i >= 0; i--) {
-      var msg = workflowData.botConversation[i];
-      if (msg.role !== "bot") continue;
-      var found = parseMasterPrompt(msg.text);
-      if (found) return found;
+    for (var s = 0; s < PROMPT_STAGE_ORDER.length; s++) {
+      var list = workflowData.conversations[PROMPT_STAGE_ORDER[s]] || [];
+      for (var i = list.length - 1; i >= 0; i--) {
+        if (list[i].role !== "bot") continue;
+        var found = parseMasterPrompt(list[i].text);
+        if (found) return found;
+      }
     }
     return null;
   }
@@ -1265,18 +1345,17 @@ write [MISSING: metric name] and keep going.</pre>
     }
   ];
 
-  function mockCoachReply(userText) {
-    var stage = workflowData.mockStage;
+  /* Splitting the coach across blocks means several short conversations rather
+     than one long one. Each stage opens on its own topic, captures its own
+     answers, and hands off downward. Later stages quote what earlier ones
+     captured, so it reads as one coach picking up a new thread rather than
+     three strangers asking overlapping questions. */
 
-    if (stage < MOCK_STAGES.length) {
-      var def = MOCK_STAGES[stage];
-      workflowData.botAnswers[def.capture] = String(userText || "").trim();
-      workflowData.mockStage = stage + 1;
-      return def.reply(userText);
-    }
+  function heard(key) {
+    return String((workflowData.botAnswers || {})[key] || "").trim();
+  }
 
-    // Past the script: treat everything as a revision note and re-issue the prompt.
-    var note = String(userText || "").trim();
+  function foldNote(note, tail) {
     if (note) workflowData.botAnswers.notes.push(note);
     return [
       "Folded that in: " + shortQuote(note, 16),
@@ -1285,8 +1364,140 @@ write [MISSING: metric name] and keep going.</pre>
       generateMasterPromptV2(workflowData),
       "```",
       "",
-      "Keep going if anything else is off, or take it to Step 5."
+      tail
     ].join("\n");
+  }
+
+  var SCRIPTS = {
+    // The single-block layout: one conversation covering all four questions.
+    all: { opening: mockOpening, turns: MOCK_STAGES,
+           extra: function (note) { return foldNote(note, "Keep going if anything else is off, or take it to Step 5."); } },
+
+    handoff: {
+      opening: mockOpening,   // same framing: their problem, their steps, one question
+      turns: [{
+        capture: "handoff",
+        reply: function (answer) {
+          return [
+            "Got it: " + shortQuote(answer, 18),
+            "",
+            "That's the right instinct \u2014 the steps that repeat with different names in them are " +
+            "exactly what an AI absorbs well. That goes into your prompt as the job.",
+            "",
+            "This piece is done. Keep reading below: next we pin down what a good result actually " +
+            "looks like, because \"do it well\" isn't something you can hand to anyone."
+          ].join("\n");
+        }
+      }],
+      extra: function (note) {
+        if (note) workflowData.botAnswers.handoff = note;
+        return "Updated \u2014 I've got: " + shortQuote(note, 18) +
+          "\n\nCarry on below when you're ready.";
+      }
+    },
+
+    standards: {
+      opening: function () {
+        var prior = heard("handoff");
+        return [
+          "Picking up where we left off.",
+          "",
+          prior
+            ? "You told me you'd hand over: \"" + shortQuote(prior, 18) + "\""
+            : "You haven't picked a step to hand over yet \u2014 do that in the section above when you " +
+              "get a chance, or just tell me here as we go.",
+          "",
+          "Here's the part most people skip. **Picture the finished result you'd actually be happy " +
+          "to use. What does it look like?** Format, length, tone. \"A good summary\" isn't a spec " +
+          "\u2014 \"four short paragraphs, no bullets, under 200 words, direct\" is."
+        ].join("\n");
+      },
+      turns: [
+        {
+          capture: "output",
+          reply: function () {
+            return [
+              "That I can work with.",
+              "",
+              "Now the question that separates a useful prompt from a risky one. **What are you NOT " +
+              "handing over?** The judgment call, the relationship, the number you'd want to check " +
+              "yourself, the sentence your reader actually cares about.",
+              "",
+              "Name it plainly. We'll write it in as off-limits."
+            ].join("\n");
+          }
+        },
+        {
+          capture: "keep",
+          reply: function () {
+            return [
+              "Good \u2014 that stays yours, and the prompt will say so outright.",
+              "",
+              "Two pieces left in place now. One more below: what this thing needs to know before " +
+              "it can be trusted with the job."
+            ].join("\n");
+          }
+        }
+      ],
+      extra: function (note) {
+        if (note) workflowData.botAnswers.notes.push(note);
+        return "Noted. Keep going below whenever you're ready.";
+      }
+    },
+
+    guardrails: {
+      opening: function () {
+        var keep = heard("keep");
+        var tools = workflowData.toolsAll.length
+          ? " You work in " + toolsAsList() + " \u2014 say anything about how those are set up that " +
+            "a newcomer wouldn't guess."
+          : "";
+        return [
+          "Last piece.",
+          "",
+          keep
+            ? "You're keeping " + shortQuote(keep, 14) + ", so the prompt already knows where your " +
+              "hands stay on the wheel."
+            : "We haven't settled what stays yours yet \u2014 worth doing in the section above.",
+          "",
+          "**What would a sharp new hire need to know on day one that isn't obvious from the steps?** " +
+          "House rules, naming conventions, where the real numbers live, and above all what this " +
+          "thing must never invent." + tools
+        ].join("\n");
+      },
+      turns: [{
+        capture: "context",
+        reply: function () {
+          return [
+            "That's everything. Here's your master prompt \u2014 your workflow, your standards, and a " +
+            "clear line around what stays with you.",
+            "",
+            "```master-prompt",
+            generateMasterPromptV2(workflowData),
+            "```",
+            "",
+            "Read it once. If a line isn't true, tell me what to change and I'll rewrite it \u2014 " +
+            "otherwise take it to the final section below and copy it out."
+          ].join("\n");
+        }
+      }],
+      extra: function (note) { return foldNote(note, "Anything else off? Otherwise it's yours, below."); }
+    }
+  };
+
+  function activeScript() { return SCRIPTS[STAGE] || SCRIPTS.all; }
+
+  function mockCoachReply(userText) {
+    var script = activeScript();
+    var i = workflowData.mockProgress[STAGE] || 0;
+
+    if (i < script.turns.length) {
+      var def = script.turns[i];
+      workflowData.botAnswers[def.capture] = String(userText || "").trim();
+      workflowData.mockProgress[STAGE] = i + 1;
+      return def.reply(userText);
+    }
+    return script.extra(String(userText || "").trim());
   }
 
   /* ==========================================================================
@@ -1329,8 +1540,49 @@ write [MISSING: metric name] and keep going.</pre>
 
   /* Hide the steps this block doesn't own and set a sane starting position.
      A no-op in the default single-block "all" role. */
+  /* Each chat block is its own topic, so it gets its own heading and framing
+     rather than three identical "Sharpen it with the coach" panels. */
+  var COACH_COPY = {
+    handoff: {
+      title: "What should the AI take over?",
+      sub: "Pick the step that costs you most",
+      intro: "The coach has your problem and your workflow from the section above. One question " +
+             "here: which part of this are you actually trying to hand off.",
+      next: "Done \u2014 keep reading below"
+    },
+    standards: {
+      title: "What does a good result look like?",
+      sub: "Set the bar, and say what stays yours",
+      intro: "This is where a generic prompt becomes yours. The coach picks up what you decided " +
+             "above and pushes on the two things people leave vague: what \"good\" means, and what " +
+             "you are not willing to hand over.",
+      next: "Done \u2014 keep reading below"
+    },
+    guardrails: {
+      title: "What must it never get wrong?",
+      sub: "House rules, and what it can't invent",
+      intro: "Last conversation. Everything you've told the coach so far comes together here, and " +
+             "it hands back the finished prompt at the end.",
+      next: "Next: your final prompt"
+    }
+  };
+
   function applyRole() {
     if (CONFIG.blockRole === "all") return;
+
+    var copy = COACH_COPY[STAGE];
+    if (copy) {
+      var head = document.getElementById("bw-head-4");
+      var titleNode = head.querySelector(".bw-h2");
+      var subNode = head.querySelector(".bw-step-sub");
+      var introNode = document.querySelector("#bw-panel-4 .bw-step-intro");
+      if (titleNode) titleNode.textContent = copy.title;
+      if (subNode) subNode.textContent = copy.sub;
+      if (introNode) introNode.textContent = copy.intro;
+      // The middle chats hand off to the next chat, not to the final prompt.
+      var nextBtn = document.querySelector('[data-next="4"]');
+      if (nextBtn && copy.next) nextBtn.textContent = copy.next;
+    }
 
     var hero = document.querySelector(".bw-hero");
     if (hero && !ROLE.intro) hero.hidden = true;
@@ -1355,8 +1607,11 @@ write [MISSING: metric name] and keep going.</pre>
   /* A coach or artifact block has nothing to work with until the capture block
      above it is filled in. This re-runs on every storage event, so the block
      unlocks itself the moment the learner finishes the section above. */
+  var isSplitCoach = !!STAGE && STAGE !== "all";
+  var isGated = isSplitCoach || CONFIG.blockRole === "artifact";
+
   function prereqMet() {
-    if (CONFIG.blockRole !== "coach" && CONFIG.blockRole !== "artifact") return true;
+    if (!isGated) return true;
     return stepValid(1) && stepValid(2);
   }
 
@@ -1365,7 +1620,7 @@ write [MISSING: metric name] and keep going.</pre>
 
     // A gated block must not claim things it doesn't have yet: drop the
     // step's own intro copy and stop the chip reading "In progress".
-    if (CONFIG.blockRole === "coach" || CONFIG.blockRole === "artifact") {
+    if (isGated) {
       var own = ROLE.steps[0];
       var intro = document.querySelector("#bw-panel-" + own + " .bw-step-intro");
       if (intro) intro.hidden = !ready;
@@ -1373,7 +1628,7 @@ write [MISSING: metric name] and keep going.</pre>
       if (chip && !ready) chip.textContent = "Waiting";
     }
 
-    if (CONFIG.blockRole === "coach") {
+    if (isSplitCoach) {
       el.prereq4.textContent = ready ? "" :
         "Map your workflow in the section above first \u2014 the coach needs your problem and your " +
         "steps before it can ask anything useful. This opens on its own once you've done that.";
@@ -1392,7 +1647,12 @@ write [MISSING: metric name] and keep going.</pre>
   /* ---- validation ---- */
 
   function userTurns() {
-    return workflowData.botConversation.filter(function (m) { return m.role === "user"; }).length;
+    return convo().filter(function (m) { return m.role === "user"; }).length;
+  }
+
+  function turnsNeeded() {
+    if (!STAGE || STAGE === "all") return CONFIG.minChatTurns;
+    return STAGES[STAGE].minTurns;
   }
 
   function stepValid(n) {
@@ -1400,7 +1660,7 @@ write [MISSING: metric name] and keep going.</pre>
       case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
       case 2: return filledSteps().length >= CONFIG.minWorkflowSteps;
       case 3: return true;
-      case 4: return userTurns() >= CONFIG.minChatTurns;
+      case 4: return userTurns() >= turnsNeeded();
       default: return true;
     }
   }
@@ -1415,8 +1675,10 @@ write [MISSING: metric name] and keep going.</pre>
         return "Fill in at least " + CONFIG.minWorkflowSteps +
           " steps, each with both the action and the tool you do it in.";
       case 4:
-        return "Answer at least " + CONFIG.minChatTurns +
-          " of the coach's questions first \u2014 that conversation is what makes the final prompt yours.";
+        return turnsNeeded() === 1
+          ? "Answer the coach's question first \u2014 that answer is what makes the final prompt yours."
+          : "Answer at least " + turnsNeeded() + " of the coach's questions first \u2014 that " +
+            "conversation is what makes the final prompt yours.";
       default: return "";
     }
   }
@@ -1643,14 +1905,14 @@ write [MISSING: metric name] and keep going.</pre>
       role: "user",
       content: contextInjection() + "\n\nStart by asking me your first question."
     }];
-    workflowData.botConversation.forEach(function (m) {
+    convo().forEach(function (m) {
       msgs.push({ role: m.role === "bot" ? "assistant" : "user", content: m.text });
     });
     return msgs;
   }
 
   function appendMessage(role, text, persist) {
-    if (persist !== false) workflowData.botConversation.push({ role: role, text: text });
+    if (persist !== false) convo().push({ role: role, text: text });
     el.chatLog.appendChild(buildMessage(role, text));
     scrollChat();
   }
@@ -1783,14 +2045,14 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   function startConversation() {
-    if (workflowData.botConversation.length) return;   // already under way
+    if (convo().length) return;   // already under way
     if (chatPending) return;
     if (!bot.live) {
       // Scripted coach opens without a round trip, but keep the same beat.
       setChatBusy(true);
       setTimeout(function () {
         setChatBusy(false);
-        appendMessage("bot", mockOpening());
+        appendMessage("bot", activeScript().opening());
         save();
       }, 550);
       return;
@@ -1811,7 +2073,7 @@ write [MISSING: metric name] and keep going.</pre>
 
   function renderChatLog() {
     el.chatLog.textContent = "";
-    workflowData.botConversation.forEach(function (m) {
+    convo().forEach(function (m) {
       el.chatLog.appendChild(buildMessage(m.role, m.text));
     });
     scrollChat();
@@ -1838,9 +2100,13 @@ write [MISSING: metric name] and keep going.</pre>
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
     wireConfirm(el.chatRestart, "Press again to clear it", function () {
-      workflowData.botConversation = [];
-      workflowData.botAnswers = defaultData().botAnswers;
-      workflowData.mockStage = 0;
+      workflowData.conversations[STAGE] = [];
+      workflowData.mockProgress[STAGE] = 0;
+      // Only the answers this block is responsible for; a sibling's stay put.
+      var blankAnswers = defaultData().botAnswers;
+      STAGES[STAGE].answers.forEach(function (k) {
+        workflowData.botAnswers[k] = blankAnswers[k];
+      });
       if (workflowData.v2Source !== "user") { workflowData.masterPromptV2 = ""; workflowData.v2Source = ""; }
       showChatError("");
       renderChatLog();

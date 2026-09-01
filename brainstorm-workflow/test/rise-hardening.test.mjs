@@ -13,13 +13,15 @@ const check = report.check;
 
 // A finished activity, so step 5 is reachable without walking the whole flow.
 const SEED = {
-  version: 1,
+  version: 2,
   problem: 'Every Monday I spend two hours building status updates for eleven clients by hand.',
   steps: [{ action: 'Pull delivery numbers', tools: 'Asana' }, { action: 'Draft the update', tools: 'Google Docs' }],
   toolsAll: ['Asana', 'Google Docs'],
   masterPromptV1: '', masterPromptV2: '## CONTEXT\nThe finished master prompt.', v2Source: 'bot',
-  botConversation: [], botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
-  mockStage: 0, progress: { current: 5, unlocked: 5, done: { 1: true, 2: true } }
+  conversations: { all: [], handoff: [], standards: [], guardrails: [] },
+  mockProgress: { all: 0, handoff: 0, standards: 0, guardrails: 0 },
+  botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
+  progress: { current: 5, unlocked: 5, done: { 1: true, 2: true } }
 };
 
 let server, browser;
