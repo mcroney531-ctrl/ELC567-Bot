@@ -18,6 +18,24 @@ no external requests unless you connect a coach endpoint.
 
 ## Putting it in Rise
 
+Run `npm run build` and paste the files from `dist/` — one per block, no editing inside Rise:
+
+| Paste this file | Into the block that should be |
+|---|---|
+| `dist/1-capture.html` | The problem + workflow form |
+| `dist/2-coach-handoff.html` | Chat: which step should the AI take over |
+| `dist/3-coach-standards.html` | Chat: what good looks like, what stays yours |
+| `dist/4-coach-guardrails.html` | Chat: house rules, then hands back the prompt |
+| `dist/5-artifact.html` | The finished master prompt |
+| `dist/single-block.html` | *Or* all five steps in one block, instead of the above |
+
+Each file is the whole activity with its `blockRole` already set, so you never hunt for a config
+line in Rise's code editor. Put your own Rise text blocks between them. Edit `index.html` and re-run
+the build to regenerate all six; `npm test` runs the built files through the full lesson so a broken
+build can't ship quietly.
+
+### The manual route
+
 1. Add a **Multimedia → Embed** block (or any custom-code block your Rise plan exposes).
 2. Paste the entire contents of `index.html`.
 3. Save and preview.
@@ -322,7 +340,8 @@ validates loses its checkmark until it does.
 
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
-npm test         # all five suites, 157 assertions
+npm run build    # regenerate dist/ after editing index.html
+npm test         # all six suites, 173 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -343,6 +362,8 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   negative control confirming the sync really does break with every mechanism switched off.
 - `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
   iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
+- `test/dist.test.mjs` — rebuilds `dist/` and runs the real five-block lesson using those files
+  verbatim, so the artifacts that actually go into Rise are the ones under test.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and
   modal-free, that dark mode stays off by default and still works when opted in, that copying
   survives a missing clipboard API and leaves the text selected when it can't copy at all, and
