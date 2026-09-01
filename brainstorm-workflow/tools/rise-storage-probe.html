@@ -1,0 +1,148 @@
+<!-- ==========================================================================
+     Rise storage probe
+     --------------------------------------------------------------------------
+     Answers one question: can two custom code blocks in the same Rise lesson
+     share state through localStorage?
+
+     HOW TO USE
+     1. Paste this whole file into a custom code / embed block in a Rise lesson.
+     2. Paste it again into a SECOND block further down the same lesson.
+     3. Preview the lesson. Scroll so both are on screen.
+     4. Press "Write my mark" in the top block, then read the verdict in both.
+
+     Delete both blocks when you're done.
+     ========================================================================== -->
+<style>
+  .probe {
+    box-sizing: border-box; max-width: 640px; margin: 0 auto; padding: 16px;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1c2333; background: #fff; border: 1px solid #dfe3ea; border-radius: 10px;
+  }
+  .probe *, .probe *::before { box-sizing: inherit; }
+  .probe h2 { margin: 0 0 4px; font-size: 15px; }
+  .probe .id { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; }
+  .probe .verdict {
+    margin: 12px 0; padding: 12px; border-radius: 8px; border: 2px solid;
+    font-weight: 600; font-size: 14px;
+  }
+  .probe .v-good { background: #e2f4ed; border-color: #12805c; color: #0c5f45; }
+  .probe .v-bad  { background: #fdeceb; border-color: #b3261e; color: #8c1d18; }
+  .probe .v-wait { background: #fdf0dc; border-color: #9a5b00; color: #7a4700; }
+  .probe dl { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+  .probe dt { color: #5b6478; }
+  .probe dd { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
+  .probe button {
+    font: inherit; font-weight: 600; font-size: 13px; padding: 8px 14px; margin: 4px 6px 0 0;
+    border-radius: 7px; border: 1px solid #c3c9d4; background: #fff; cursor: pointer;
+  }
+  .probe button.primary { background: #2f5bd7; border-color: #2f5bd7; color: #fff; }
+  .probe ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+  .probe li { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .probe .note { margin-top: 10px; font-size: 12px; color: #5b6478; }
+</style>
+
+<div class="probe">
+  <h2>Rise storage probe  -  block <span class="id" id="p-id">...</span></h2>
+  <div class="verdict v-wait" id="p-verdict">Checking...</div>
+
+  <button type="button" class="primary" id="p-write">Write my mark</button>
+  <button type="button" id="p-refresh">Re-read storage</button>
+  <button type="button" id="p-clear">Clear all marks</button>
+
+  <ul id="p-marks"></ul>
+
+  <dl>
+    <dt>localStorage</dt><dd id="p-ls">...</dd>
+    <dt>storage events</dt><dd id="p-events">0</dd>
+    <dt>origin</dt><dd id="p-origin">...</dd>
+    <dt>in an iframe</dt><dd id="p-frame">...</dd>
+  </dl>
+
+  <p class="note">
+    Two blocks that can share state will each list <em>both</em> marks. A block that lists only
+    its own  -  or reports localStorage blocked  -  cannot receive state from the other one.
+  </p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "rise_probe_marks";
+  var ME = Math.random().toString(36).slice(2, 6).toUpperCase();
+  var events = 0;
+  var $ = function (id) { return document.getElementById(id); };
+
+  $("p-id").textContent = ME;
+  $("p-origin").textContent = location.origin || "(opaque  -  sandboxed)";
+  $("p-frame").textContent = window.parent === window ? "no (top level)" : "yes";
+
+  function storageState() {
+    try {
+      window.localStorage.setItem("__probe__", "1");
+      window.localStorage.removeItem("__probe__");
+      return "works";
+    } catch (e) {
+      return "BLOCKED (" + e.name + ")";
+    }
+  }
+
+  var lsState = storageState();
+  $("p-ls").textContent = lsState;
+
+  function readMarks() {
+    try { return JSON.parse(window.localStorage.getItem(KEY) || "[]"); }
+    catch (e) { return []; }
+  }
+
+  function writeMark() {
+    if (lsState !== "works") return;
+    var marks = readMarks().filter(function (m) { return m.id !== ME; });
+    marks.push({ id: ME, at: new Date().toLocaleTimeString() });
+    try { window.localStorage.setItem(KEY, JSON.stringify(marks)); } catch (e) { /* full or blocked */ }
+    render();
+  }
+
+  function render() {
+    var marks = readMarks();
+    var list = $("p-marks");
+    list.textContent = "";
+    marks.forEach(function (m) {
+      var li = document.createElement("li");
+      li.textContent = m.id + (m.id === ME ? "  <- this block" : "  <- the other block") + "   " + m.at;
+      list.appendChild(li);
+    });
+    $("p-events").textContent = String(events);
+
+    var box = $("p-verdict");
+    var others = marks.filter(function (m) { return m.id !== ME; }).length;
+    if (lsState !== "works") {
+      box.className = "verdict v-bad";
+      box.textContent = "BLOCKED  -  this block has no localStorage, so blocks cannot share state at all.";
+    } else if (others > 0) {
+      box.className = "verdict v-good";
+      box.textContent = "SHARED  -  this block can see another block's data. Splitting the activity across blocks will work.";
+    } else {
+      box.className = "verdict v-wait";
+      box.textContent = "Storage works, but no other block's mark seen yet. Press \"Write my mark\" in BOTH blocks, then \"Re-read storage\" here.";
+    }
+  }
+
+  // Fires when a DIFFERENT frame on the same origin writes. This is what makes
+  // live cross-block sync possible rather than read-once-at-load.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== KEY && e.key !== null) return;
+    events++;
+    render();
+  });
+
+  $("p-write").addEventListener("click", writeMark);
+  $("p-refresh").addEventListener("click", render);
+  $("p-clear").addEventListener("click", function () {
+    try { window.localStorage.removeItem(KEY); } catch (e) { /* nothing to clear */ }
+    render();
+  });
+
+  writeMark();
+  render();
+})();
+</script>
