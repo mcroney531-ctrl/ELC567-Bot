@@ -51,10 +51,27 @@ for (const p of PERSONAS) {
   const waitBots = (id, n) => page.waitForFunction(
     ([fid, k]) => document.querySelector('#' + fid).contentDocument
       .querySelectorAll('.bw-msg-bot:not([data-typing])').length >= k, [id, n], { timeout: 15000 });
-  const say = async (id, text, n) => {
+  // Drive off the stored stage progress: if it didn't advance, the coach pushed
+  // back rather than accepting, and the persona answers again.
+  const progress = stage => page.evaluate(st => {
+    const d = JSON.parse(localStorage.getItem('brainstorm_workflow_data') || '{}');
+    return (d.mockProgress || {})[st] || 0;
+  }, stage);
+  const pushbacks = [];
+  const say = async (id, stage, field, text) => {
+    const before = await progress(stage);
     await F(id).locator('#bw-chat-input').fill(text);
     await F(id).locator('#bw-chat-send').click();
-    await waitBots(id, n);
+    await page.waitForTimeout(1700);
+    if (await progress(stage) === before) {
+      pushbacks.push({ field, saidFirst: text });
+      const follow = (p.retry || {})[field];
+      if (follow) {
+        await F(id).locator('#bw-chat-input').fill(follow);
+        await F(id).locator('#bw-chat-send').click();
+        await page.waitForTimeout(1700);
+      }
+    }
   };
   const transcript = async id => page.evaluate(fid => {
     const d = document.querySelector('#' + fid).contentDocument;
@@ -79,15 +96,15 @@ for (const p of PERSONAS) {
 
   // three chats
   await waitBots('c1', 1);
-  await say('c1', p.handoff, 2);
+  await say('c1', 'handoff', 'handoff', p.handoff);
   await waitBots('c2', 1);
-  await page.waitForTimeout(1400);          // let the opening pick up chat 1
-  await say('c2', p.output, 2);
-  await say('c2', p.keep, 3);
+  await page.waitForTimeout(1500);          // let the opening pick up chat 1
+  await say('c2', 'standards', 'output', p.output);
+  await say('c2', 'standards', 'keep', p.keep);
   await waitBots('c3', 1);
-  await page.waitForTimeout(1400);
-  await say('c3', p.context, 2);
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(1500);
+  await say('c3', 'guardrails', 'context', p.context);
+  await page.waitForTimeout(1600);
 
   const master = await F('artifact').locator('#bw-prompt-v2').inputValue();
   results.push({
@@ -97,9 +114,10 @@ for (const p of PERSONAS) {
     draftPrompt: draft,
     chats: { handoff: await transcript('c1'), standards: await transcript('c2'), guardrails: await transcript('c3') },
     masterPrompt: master,
+    pushbacks: pushbacks,
     pageErrors: errors
   });
-  console.log(`${p.name}: master prompt ${master.length} chars, ${errors.length} page errors`);
+  console.log(`${p.name}: ${master.length} chars, ${pushbacks.length} pushback(s), ${errors.length} errors`);
   await ctx.close();
 }
 

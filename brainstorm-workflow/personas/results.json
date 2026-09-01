@@ -80,11 +80,12 @@
         },
         {
           "who": "coach",
-          "text": "That's everything. Here's your master prompt — your workflow, your standards, and a clear line around what stays with you.\n## CONTEXT\nEvery Thursday I spend about three hours pulling numbers for the Friday pipeline review - same twelve accounts, same slides, and half of it is retyping what Salesforce already knows.\n\nMy current process, end to end:\n1. Export current-quarter opportunities — tools: Salesforce\n2. Clean and pivot the numbers — tools: Excel\n3. Rebuild the twelve account slides — tools: PowerPoint\n4. Write the summary email to my director — tools: Outlook\n\nTools involved: Salesforce, Excel, PowerPoint, Outlook.\n\n## WHAT I NEED YOU TO DO\nStep 3, rebuilding the slides. Same twelve layouts every week with new numbers dropped in, and it eats an hour and a half on its own.\n\n## WHAT STAYS WITH ME\nThe risk line. That is my read on the account from calls I have had, and it is the only part my director actually reads closely.\n\n## OUTPUT I EXPECT\nOne slide per account: account name, quarter-to-date number against target, the two deals most likely to close, and one line on risk. Same order every week, no more than 40 words per slide.\n\n## THINGS YOU NEED TO KNOW\nNever estimate a number - if a field is blank in the export, write MISSING and leave it. Account names must match Salesforce exactly including the Inc and LLC suffixes. Anything above 250k needs a legal review flag.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nRead it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise take it to the final section below and copy it out."
+          "text": "That's everything. Here's your master prompt — your workflow, your standards, and a clear line around what stays with you.\n## CONTEXT\nEvery Thursday I spend about three hours pulling numbers for the Friday pipeline review - same twelve accounts, same slides, and half of it is retyping what Salesforce already knows.\n\nMy current process, end to end:\n1. Export current-quarter opportunities — tools: Salesforce\n2. Clean and pivot the numbers — tools: Excel\n3. Rebuild the twelve account slides — tools: PowerPoint\n4. Write the summary email to my director — tools: Outlook\n\nTools involved: Salesforce, Excel, PowerPoint, Outlook.\n\n## WHAT I NEED YOU TO DO\nTake over this step of my workflow: Rebuild the twelve account slides (PowerPoint).\n\n## WHAT STAYS WITH ME\nThe risk line. That is my read on the account from calls I have had, and it is the only part my director actually reads closely.\n\n## OUTPUT I EXPECT\nOne slide per account: account name, quarter-to-date number against target, the two deals most likely to close, and one line on risk. Same order every week, no more than 40 words per slide.\n\n## THINGS YOU NEED TO KNOW\nNever estimate a number - if a field is blank in the export, write MISSING and leave it. Account names must match Salesforce exactly including the Inc and LLC suffixes. Anything above 250k needs a legal review flag.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nRead it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise take it to the final section below and copy it out."
         }
       ]
     },
-    "masterPrompt": "## CONTEXT\nEvery Thursday I spend about three hours pulling numbers for the Friday pipeline review - same twelve accounts, same slides, and half of it is retyping what Salesforce already knows.\n\nMy current process, end to end:\n1. Export current-quarter opportunities — tools: Salesforce\n2. Clean and pivot the numbers — tools: Excel\n3. Rebuild the twelve account slides — tools: PowerPoint\n4. Write the summary email to my director — tools: Outlook\n\nTools involved: Salesforce, Excel, PowerPoint, Outlook.\n\n## WHAT I NEED YOU TO DO\nStep 3, rebuilding the slides. Same twelve layouts every week with new numbers dropped in, and it eats an hour and a half on its own.\n\n## WHAT STAYS WITH ME\nThe risk line. That is my read on the account from calls I have had, and it is the only part my director actually reads closely.\n\n## OUTPUT I EXPECT\nOne slide per account: account name, quarter-to-date number against target, the two deals most likely to close, and one line on risk. Same order every week, no more than 40 words per slide.\n\n## THINGS YOU NEED TO KNOW\nNever estimate a number - if a field is blank in the export, write MISSING and leave it. Account names must match Salesforce exactly including the Inc and LLC suffixes. Anything above 250k needs a legal review flag.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.",
+    "masterPrompt": "## CONTEXT\nEvery Thursday I spend about three hours pulling numbers for the Friday pipeline review - same twelve accounts, same slides, and half of it is retyping what Salesforce already knows.\n\nMy current process, end to end:\n1. Export current-quarter opportunities — tools: Salesforce\n2. Clean and pivot the numbers — tools: Excel\n3. Rebuild the twelve account slides — tools: PowerPoint\n4. Write the summary email to my director — tools: Outlook\n\nTools involved: Salesforce, Excel, PowerPoint, Outlook.\n\n## WHAT I NEED YOU TO DO\nTake over this step of my workflow: Rebuild the twelve account slides (PowerPoint).\n\n## WHAT STAYS WITH ME\nThe risk line. That is my read on the account from calls I have had, and it is the only part my director actually reads closely.\n\n## OUTPUT I EXPECT\nOne slide per account: account name, quarter-to-date number against target, the two deals most likely to close, and one line on risk. Same order every week, no more than 40 words per slide.\n\n## THINGS YOU NEED TO KNOW\nNever estimate a number - if a field is blank in the export, write MISSING and leave it. Account names must match Salesforce exactly including the Inc and LLC suffixes. Anything above 250k needs a legal review flag.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.",
+    "pushbacks": [],
     "pageErrors": []
   },
   {
@@ -120,7 +121,7 @@
       "handoff": [
         {
           "who": "coach",
-          "text": "Right — here's what you gave me.\n\nYou said: \"I spend way too long every month writing up our grant reports and it is basically the same thing each time.\"\n\nAnd the process looks like this:\n  1. Gather program numbers from the team  (Email, Google Sheets)\n  2. Write the narrative section  (Google Docs)\n  3. Format to each funder's template  (Word)\n\nBefore we write anything, I need to know where the weight is.\n\nWhich of those steps would you hand over first, and what makes that one the drain? Give me the number and a sentence."
+          "text": "Right — here's what you gave me.\n\nYou said: \"I spend way too long every month writing up our grant reports and it is basically the same thing each time\"\n\nAnd the process looks like this:\n  1. Gather program numbers from the team  (Email, Google Sheets)\n  2. Write the narrative section  (Google Docs)\n  3. Format to each funder's template  (Word)\n\nBefore we write anything, I need to know where the weight is.\n\nWhich of those steps would you hand over first, and what makes that one the drain? Give me the number and a sentence."
         },
         {
           "who": "learner",
@@ -128,13 +129,21 @@
         },
         {
           "who": "coach",
-          "text": "Got it: Probably the writing part. It just takes forever.\n\nThat's the right instinct — the steps that repeat with different names in them are exactly what an AI absorbs well. That goes into your prompt as the job.\n\nThis piece is done. Keep reading below: next we pin down what a good result actually looks like, because \"do it well\" isn't something you can hand to anyone."
+          "text": "That's the feeling, not the task — and I can't write a prompt from a feeling.\n\nWhich numbered step is it, and what do you want handed back? A finished draft? A list? A filled-in file you tidy up?"
+        },
+        {
+          "who": "learner",
+          "text": "The narrative section, step 2. I want a first draft I can edit."
+        },
+        {
+          "who": "coach",
+          "text": "Got it: The narrative section, step 2. I want a first draft I can edit\n\nThat's the right instinct — the steps that repeat with different names in them are exactly what an AI absorbs well. That goes into your prompt as the job.\n\nThis piece is done. Keep reading below: next we pin down what a good result actually looks like, because \"do it well\" isn't something you can hand to anyone."
         }
       ],
       "standards": [
         {
           "who": "coach",
-          "text": "Picking up where we left off.\n\nYou told me you'd hand over: \"Probably the writing part. It just takes forever.\"\n\nHere's the part most people skip. Picture the finished result you'd actually be happy to use. What does it look like? Format, length, tone. \"A good summary\" isn't a spec — \"four short paragraphs, no bullets, under 200 words, direct\" is."
+          "text": "Picking up where we left off.\n\nYou told me you'd hand over: \"The narrative section, step 2. I want a first draft I can edit\"\n\nHere's the part most people skip. Picture the finished result you'd actually be happy to use. What does it look like? Format, length, tone. \"A good summary\" isn't a spec — \"four short paragraphs, no bullets, under 200 words, direct\" is."
         },
         {
           "who": "learner",
@@ -142,11 +151,27 @@
         },
         {
           "who": "coach",
-          "text": "That I can work with.\n\nNow the question that separates a useful prompt from a risky one. What are you NOT handing over? The judgment call, the relationship, the number you'd want to check yourself, the sentence your reader actually cares about.\n\nName it plainly. We'll write it in as off-limits."
+          "text": "That's a vibe rather than a spec, and \"professional\" means something different to every reader.\n\nGive me three things: roughly how long, what shape it takes (paragraphs? bullets? a table?), and one thing it must never sound like."
+        },
+        {
+          "who": "learner",
+          "text": "I do not know really, just better than what I write now."
+        },
+        {
+          "who": "coach",
+          "text": "Noted — I'll write that down as it is. I'm going to mark it as needing detail though, so the finished prompt doesn't look more settled than it really is.\n\nNow the question that separates a useful prompt from a risky one. What are you NOT handing over? The judgment call, the relationship, the number you'd want to check yourself, the sentence your reader actually cares about.\n\nName it plainly. We'll write it in as off-limits."
         },
         {
           "who": "learner",
           "text": "I do not know, I guess the parts about impact?"
+        },
+        {
+          "who": "coach",
+          "text": "Let's come at it from the other side.\n\nIf the AI got one part of this wrong and nobody caught it before it went out, which part would keep you up at night? That's the part you keep."
+        },
+        {
+          "who": "learner",
+          "text": "The impact stories. Those come from site visits and I write those myself."
         },
         {
           "who": "coach",
@@ -156,7 +181,7 @@
       "guardrails": [
         {
           "who": "coach",
-          "text": "Last piece.\n\nYou're keeping I do not know, I guess the parts about impact?, so the prompt already knows where your hands stay on the wheel.\n\nWhat would a sharp new hire need to know on day one that isn't obvious from the steps? House rules, naming conventions, where the real numbers live, and above all what this thing must never invent. You work in Email, Google Sheets, Google Docs, Word — say anything about how those are set up that a newcomer wouldn't guess."
+          "text": "Last piece.\n\nYou're keeping The impact stories. Those come from site visits and I write those myself, so the prompt already knows where your hands stay on the wheel.\n\nWhat would a sharp new hire need to know on day one that isn't obvious from the steps? House rules, naming conventions, where the real numbers live, and above all what this thing must never invent. You work in Email, Google Sheets, Google Docs, Word — say anything about how those are set up that a newcomer wouldn't guess."
         },
         {
           "who": "learner",
@@ -164,11 +189,37 @@
         },
         {
           "who": "coach",
-          "text": "That's everything. Here's your master prompt — your workflow, your standards, and a clear line around what stays with you.\n## CONTEXT\nI spend way too long every month writing up our grant reports and it is basically the same thing each time.\n\nMy current process, end to end:\n1. Gather program numbers from the team — tools: Email, Google Sheets\n2. Write the narrative section — tools: Google Docs\n3. Format to each funder's template — tools: Word\n\nTools involved: Email, Google Sheets, Google Docs, Word.\n\n## WHAT I NEED YOU TO DO\nProbably the writing part. It just takes forever.\n\n## WHAT STAYS WITH ME\nI do not know, I guess the parts about impact?\n\n## OUTPUT I EXPECT\nJust something that sounds professional and is not so dry.\n\n## THINGS YOU NEED TO KNOW\nNot really anything, just make it good.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nRead it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise take it to the final section below and copy it out."
+          "text": "Try this instead. Think about someone brand new doing this in their first week. What did you have to correct them on?\n\nThat correction is the rule I need written down."
+        },
+        {
+          "who": "learner",
+          "text": "Nothing comes to mind."
+        },
+        {
+          "who": "coach",
+          "text": "Noted — I'll write that down as it is. I'm going to mark it as needing detail though, so the finished prompt doesn't look more settled than it really is.\n## CONTEXT\nI spend way too long every month writing up our grant reports and it is basically the same thing each time.\n\nMy current process, end to end:\n1. Gather program numbers from the team — tools: Email, Google Sheets\n2. Write the narrative section — tools: Google Docs\n3. Format to each funder's template — tools: Word\n\nTools involved: Email, Google Sheets, Google Docs, Word.\n\n## WHAT I NEED YOU TO DO\nTake over this step of my workflow: Write the narrative section (Google Docs).\nIn my words: I want a first draft I can edit.\n\n## WHAT STAYS WITH ME\nThe impact stories. Those come from site visits and I write those myself.\n\n## OUTPUT I EXPECT\n[NEEDS DETAIL - too vague to act on yet]\nI do not know really, just better than what I write now.\n\n## THINGS YOU NEED TO KNOW\n[NEEDS DETAIL - too vague to act on yet]\nNothing comes to mind.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nBefore you start, note that I left OUTPUT I EXPECT and THINGS YOU NEED TO KNOW too vague to act on. Ask me the questions that would pin those sections down, and wait for my answers before producing anything.\n\nRead it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise take it to the final section below and copy it out."
         }
       ]
     },
-    "masterPrompt": "## CONTEXT\nI spend way too long every month writing up our grant reports and it is basically the same thing each time.\n\nMy current process, end to end:\n1. Gather program numbers from the team — tools: Email, Google Sheets\n2. Write the narrative section — tools: Google Docs\n3. Format to each funder's template — tools: Word\n\nTools involved: Email, Google Sheets, Google Docs, Word.\n\n## WHAT I NEED YOU TO DO\nProbably the writing part. It just takes forever.\n\n## WHAT STAYS WITH ME\nI do not know, I guess the parts about impact?\n\n## OUTPUT I EXPECT\nJust something that sounds professional and is not so dry.\n\n## THINGS YOU NEED TO KNOW\nNot really anything, just make it good.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.",
+    "masterPrompt": "## CONTEXT\nI spend way too long every month writing up our grant reports and it is basically the same thing each time.\n\nMy current process, end to end:\n1. Gather program numbers from the team — tools: Email, Google Sheets\n2. Write the narrative section — tools: Google Docs\n3. Format to each funder's template — tools: Word\n\nTools involved: Email, Google Sheets, Google Docs, Word.\n\n## WHAT I NEED YOU TO DO\nTake over this step of my workflow: Write the narrative section (Google Docs).\nIn my words: I want a first draft I can edit.\n\n## WHAT STAYS WITH ME\nThe impact stories. Those come from site visits and I write those myself.\n\n## OUTPUT I EXPECT\n[NEEDS DETAIL - too vague to act on yet]\nI do not know really, just better than what I write now.\n\n## THINGS YOU NEED TO KNOW\n[NEEDS DETAIL - too vague to act on yet]\nNothing comes to mind.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nBefore you start, note that I left OUTPUT I EXPECT and THINGS YOU NEED TO KNOW too vague to act on. Ask me the questions that would pin those sections down, and wait for my answers before producing anything.",
+    "pushbacks": [
+      {
+        "field": "handoff",
+        "saidFirst": "Probably the writing part. It just takes forever."
+      },
+      {
+        "field": "output",
+        "saidFirst": "Just something that sounds professional and is not so dry."
+      },
+      {
+        "field": "keep",
+        "saidFirst": "I do not know, I guess the parts about impact?"
+      },
+      {
+        "field": "context",
+        "saidFirst": "Not really anything, just make it good."
+      }
+    ],
     "pageErrors": []
   },
   {
@@ -216,13 +267,13 @@
         },
         {
           "who": "coach",
-          "text": "Got it: Honestly all of it. Step 2 especially - checking criteria is just matching a list.\n\nThat's the right instinct — the steps that repeat with different names in them are exactly what an AI absorbs well. That goes into your prompt as the job.\n\nThis piece is done. Keep reading below: next we pin down what a good result actually looks like, because \"do it well\" isn't something you can hand to anyone."
+          "text": "Got it: Honestly all of it. Step 2 especially - checking criteria is just matching a list\n\nThat's the right instinct — the steps that repeat with different names in them are exactly what an AI absorbs well. That goes into your prompt as the job.\n\nThis piece is done. Keep reading below: next we pin down what a good result actually looks like, because \"do it well\" isn't something you can hand to anyone."
         }
       ],
       "standards": [
         {
           "who": "coach",
-          "text": "Picking up where we left off.\n\nYou told me you'd hand over: \"Honestly all of it. Step 2 especially - checking criteria is just matching a list.\"\n\nHere's the part most people skip. Picture the finished result you'd actually be happy to use. What does it look like? Format, length, tone. \"A good summary\" isn't a spec — \"four short paragraphs, no bullets, under 200 words, direct\" is."
+          "text": "Picking up where we left off.\n\nYou told me you'd hand over: \"Honestly all of it. Step 2 especially - checking criteria is just matching a list\"\n\nHere's the part most people skip. Picture the finished result you'd actually be happy to use. What does it look like? Format, length, tone. \"A good summary\" isn't a spec — \"four short paragraphs, no bullets, under 200 words, direct\" is."
         },
         {
           "who": "learner",
@@ -252,11 +303,12 @@
         },
         {
           "who": "coach",
-          "text": "That's everything. Here's your master prompt — your workflow, your standards, and a clear line around what stays with you.\n## CONTEXT\nEvery week I write screening summaries for people who contacted us about the diabetes trial - about fifteen a week, and I am copying the same eligibility language over and over.\n\nMy current process, end to end:\n1. Pull the intake questionnaire responses — tools: REDCap\n2. Check each against inclusion and exclusion criteria — tools: Protocol PDF\n3. Write a one-paragraph screening summary — tools: Word\n4. Log the outcome — tools: REDCap\n\nTools involved: REDCap, Protocol PDF, Word.\n\n## WHAT I NEED YOU TO DO\nHonestly all of it. Step 2 especially - checking criteria is just matching a list.\n\n## WHAT STAYS WITH ME\nThe final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it.\n\n## OUTPUT I EXPECT\nOne paragraph per candidate, plain language, stating which criteria they meet and which they do not. No more than 150 words.\n\n## THINGS YOU NEED TO KNOW\nNever infer a value that was not in the questionnaire - if something is missing, say MISSING. Never use the participant name, only the study ID. And it must never state that someone is eligible, only whether the criteria are met.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nRead it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise take it to the final section below and copy it out."
+          "text": "That's everything. Here's your master prompt — your workflow, your standards, and a clear line around what stays with you.\n## CONTEXT\nEvery week I write screening summaries for people who contacted us about the diabetes trial - about fifteen a week, and I am copying the same eligibility language over and over.\n\nMy current process, end to end:\n1. Pull the intake questionnaire responses — tools: REDCap\n2. Check each against inclusion and exclusion criteria — tools: Protocol PDF\n3. Write a one-paragraph screening summary — tools: Word\n4. Log the outcome — tools: REDCap\n\nTools involved: REDCap, Protocol PDF, Word.\n\n## WHAT I NEED YOU TO DO\nTake over this step of my workflow: Check each against inclusion and exclusion criteria (Protocol PDF).\n\nOne explicit exception to that: The final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it. Do not produce that part at all, and do not guess at it - leave it to me.\n\n## WHAT STAYS WITH ME\nThe final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it.\n\n## OUTPUT I EXPECT\nOne paragraph per candidate, plain language, stating which criteria they meet and which they do not. No more than 150 words.\n\n## THINGS YOU NEED TO KNOW\nNever infer a value that was not in the questionnaire - if something is missing, say MISSING. Never use the participant name, only the study ID. And it must never state that someone is eligible, only whether the criteria are met.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.\n\nRead it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise take it to the final section below and copy it out."
         }
       ]
     },
-    "masterPrompt": "## CONTEXT\nEvery week I write screening summaries for people who contacted us about the diabetes trial - about fifteen a week, and I am copying the same eligibility language over and over.\n\nMy current process, end to end:\n1. Pull the intake questionnaire responses — tools: REDCap\n2. Check each against inclusion and exclusion criteria — tools: Protocol PDF\n3. Write a one-paragraph screening summary — tools: Word\n4. Log the outcome — tools: REDCap\n\nTools involved: REDCap, Protocol PDF, Word.\n\n## WHAT I NEED YOU TO DO\nHonestly all of it. Step 2 especially - checking criteria is just matching a list.\n\n## WHAT STAYS WITH ME\nThe final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it.\n\n## OUTPUT I EXPECT\nOne paragraph per candidate, plain language, stating which criteria they meet and which they do not. No more than 150 words.\n\n## THINGS YOU NEED TO KNOW\nNever infer a value that was not in the questionnaire - if something is missing, say MISSING. Never use the participant name, only the study ID. And it must never state that someone is eligible, only whether the criteria are met.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.",
+    "masterPrompt": "## CONTEXT\nEvery week I write screening summaries for people who contacted us about the diabetes trial - about fifteen a week, and I am copying the same eligibility language over and over.\n\nMy current process, end to end:\n1. Pull the intake questionnaire responses — tools: REDCap\n2. Check each against inclusion and exclusion criteria — tools: Protocol PDF\n3. Write a one-paragraph screening summary — tools: Word\n4. Log the outcome — tools: REDCap\n\nTools involved: REDCap, Protocol PDF, Word.\n\n## WHAT I NEED YOU TO DO\nTake over this step of my workflow: Check each against inclusion and exclusion criteria (Protocol PDF).\n\nOne explicit exception to that: The final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it. Do not produce that part at all, and do not guess at it - leave it to me.\n\n## WHAT STAYS WITH ME\nThe final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it.\n\n## OUTPUT I EXPECT\nOne paragraph per candidate, plain language, stating which criteria they meet and which they do not. No more than 150 words.\n\n## THINGS YOU NEED TO KNOW\nNever infer a value that was not in the questionnaire - if something is missing, say MISSING. Never use the participant name, only the study ID. And it must never state that someone is eligible, only whether the criteria are met.\n\n## HOW TO WORK WITH ME\nIf something above is missing for a given run, ask me for it before you produce anything.\nNever invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.",
+    "pushbacks": [],
     "pageErrors": []
   }
 ]

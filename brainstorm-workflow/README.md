@@ -304,6 +304,33 @@ preview, the review link, and any later LMS copy.
 
 ---
 
+## Answer quality
+
+Persona testing found the activity would hand a learner who answered "just make it good" a prompt
+that looked exactly as finished as one built from real answers. Three things now prevent that, and
+all three work in the scripted fallback as well as behind a live endpoint:
+
+- **One pushback per question.** A thin answer gets re-asked once, with a concrete question rather
+  than "be more specific" &mdash; *"Which numbered step is it, and what do you want handed back?"*
+  Never more than once, so nobody gets stuck.
+- **What stays thin gets marked.** A section still vague after that is labelled
+  `[NEEDS DETAIL - too vague to act on yet]` in the prompt, flagged in amber above it, and named in
+  a closing instruction telling the assistant to ask about it before starting. The coach also stops
+  praising answers it is about to flag.
+- **Contradictions are reconciled.** A sweeping handoff ("all of it") next to a carve-out produces
+  an explicit exception clause in the task section, so a model never sees two conflicting
+  instructions on the highest-stakes part of the job.
+
+The task section is also built in instruction voice: it names the workflow step the learner pointed
+at, and drops sentences that only describe how much the task costs them.
+
+Thinness is judged by length, hedging phrases, and whether anything concrete appears &mdash;
+heuristics tuned against the three personas in `personas/`. They will occasionally push back on a
+short but good answer, and occasionally let a fluent but empty one through. A live coach judges it
+properly; the heuristics are the floor that holds when the endpoint is down.
+
+---
+
 ## How the data flows
 
 One object holds everything, saved to `localStorage` after every change (debounced 250ms, and
@@ -341,7 +368,7 @@ validates loses its checkmark until it does.
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
 npm run build    # regenerate dist/ after editing index.html
-npm test         # all six suites, 173 assertions
+npm test         # all seven suites, 194 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -362,6 +389,11 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   negative control confirming the sync really does break with every mechanism switched off.
 - `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
   iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
+- `test/answer-quality.test.mjs` — the four defects persona testing found and their fixes: that a
+  vague answer is pushed back on exactly once and then accepted, that a specific one never is, that
+  thin sections are marked and the block warns about them, that good answers produce neither, that a
+  sweeping handoff plus a carve-out is reconciled explicitly, and that the task section names the
+  step in instruction voice with the complaint dropped.
 - `test/dist.test.mjs` — rebuilds `dist/` and runs the real five-block lesson using those files
   verbatim, so the artifacts that actually go into Rise are the ones under test.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and

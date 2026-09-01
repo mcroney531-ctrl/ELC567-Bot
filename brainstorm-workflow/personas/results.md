@@ -31,7 +31,7 @@ My current process, end to end:
 Tools involved: Salesforce, Excel, PowerPoint, Outlook.
 
 ## WHAT I NEED YOU TO DO
-Step 3, rebuilding the slides. Same twelve layouts every week with new numbers dropped in, and it eats an hour and a half on its own.
+Take over this step of my workflow: Rebuild the twelve account slides (PowerPoint).
 
 ## WHAT STAYS WITH ME
 The risk line. That is my read on the account from calls I have had, and it is the only part my director actually reads closely.
@@ -80,20 +80,25 @@ My current process, end to end:
 Tools involved: Email, Google Sheets, Google Docs, Word.
 
 ## WHAT I NEED YOU TO DO
-Probably the writing part. It just takes forever.
+Take over this step of my workflow: Write the narrative section (Google Docs).
+In my words: I want a first draft I can edit.
 
 ## WHAT STAYS WITH ME
-I do not know, I guess the parts about impact?
+The impact stories. Those come from site visits and I write those myself.
 
 ## OUTPUT I EXPECT
-Just something that sounds professional and is not so dry.
+[NEEDS DETAIL - too vague to act on yet]
+I do not know really, just better than what I write now.
 
 ## THINGS YOU NEED TO KNOW
-Not really anything, just make it good.
+[NEEDS DETAIL - too vague to act on yet]
+Nothing comes to mind.
 
 ## HOW TO WORK WITH ME
 If something above is missing for a given run, ask me for it before you produce anything.
 Never invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going.
+
+Before you start, note that I left OUTPUT I EXPECT and THINGS YOU NEED TO KNOW too vague to act on. Ask me the questions that would pin those sections down, and wait for my answers before producing anything.
 ```
 
 ---
@@ -131,7 +136,9 @@ My current process, end to end:
 Tools involved: REDCap, Protocol PDF, Word.
 
 ## WHAT I NEED YOU TO DO
-Honestly all of it. Step 2 especially - checking criteria is just matching a list.
+Take over this step of my workflow: Check each against inclusion and exclusion criteria (Protocol PDF).
+
+One explicit exception to that: The final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it. Do not produce that part at all, and do not guess at it - leave it to me.
 
 ## WHAT STAYS WITH ME
 The final eligible or not eligible call. That has to be me - it goes in the regulatory file with my name on it.

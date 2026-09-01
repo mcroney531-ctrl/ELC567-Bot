@@ -52,7 +52,16 @@ export const PERSONAS = [
     handoff: 'Probably the writing part. It just takes forever.',
     output: 'Just something that sounds professional and is not so dry.',
     keep: 'I do not know, I guess the parts about impact?',
-    context: 'Not really anything, just make it good.'
+    context: 'Not really anything, just make it good.',
+
+    // What she says when the coach pushes back. She can answer two of them and
+    // still can't answer the other two - the realistic mixed result.
+    retry: {
+      handoff: 'The narrative section, step 2. I want a first draft I can edit.',
+      output: 'I do not know really, just better than what I write now.',
+      keep: 'The impact stories. Those come from site visits and I write those myself.',
+      context: 'Nothing comes to mind.'
+    }
   },
 
   {
