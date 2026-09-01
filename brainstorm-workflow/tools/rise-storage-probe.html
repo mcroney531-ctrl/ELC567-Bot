@@ -42,7 +42,7 @@
 </style>
 
 <div class="probe">
-  <h2>Rise storage probe  -  block <span class="id" id="p-id">...</span></h2>
+  <h2>Rise storage probe - block <span class="id" id="p-id">...</span></h2>
   <div class="verdict v-wait" id="p-verdict">Checking...</div>
 
   <button type="button" class="primary" id="p-write">Write my mark</button>
@@ -60,7 +60,14 @@
 
   <p class="note">
     Two blocks that can share state will each list <em>both</em> marks. A block that lists only
-    its own  -  or reports localStorage blocked  -  cannot receive state from the other one.
+    its own - or reports localStorage blocked - cannot receive state from the other one.
+  </p>
+  <p class="note">
+    <strong>"storage events" of 0 is not a failure.</strong> Only the marks decide the verdict.
+    A block that loaded after its sibling wrote has nothing to have heard, and on a published
+    lesson a lower block has been seen recording none at all - which is why the activity polls
+    storage as well as listening for events. Events make a split lesson feel instant; the poll
+    is what makes it correct.
   </p>
 </div>
 
@@ -73,7 +80,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   $("p-id").textContent = ME;
-  $("p-origin").textContent = location.origin || "(opaque  -  sandboxed)";
+  $("p-origin").textContent = location.origin || "(opaque - sandboxed)";
   $("p-frame").textContent = window.parent === window ? "no (top level)" : "yes";
 
   function storageState() {
@@ -117,10 +124,10 @@
     var others = marks.filter(function (m) { return m.id !== ME; }).length;
     if (lsState !== "works") {
       box.className = "verdict v-bad";
-      box.textContent = "BLOCKED  -  this block has no localStorage, so blocks cannot share state at all.";
+      box.textContent = "BLOCKED - this block has no localStorage, so blocks cannot share state at all.";
     } else if (others > 0) {
       box.className = "verdict v-good";
-      box.textContent = "SHARED  -  this block can see another block's data. Splitting the activity across blocks will work.";
+      box.textContent = "SHARED - this block can see another block's data. Splitting the activity across blocks will work.";
     } else {
       box.className = "verdict v-wait";
       box.textContent = "Storage works, but no other block's mark seen yet. Press \"Write my mark\" in BOTH blocks, then \"Re-read storage\" here.";

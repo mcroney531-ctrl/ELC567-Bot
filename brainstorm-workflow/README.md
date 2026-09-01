@@ -49,10 +49,17 @@ blocks carry the framing between them. Set `blockRole` differently in each paste
 
 Leave it at the default `"all"` to keep the whole activity in a single block.
 
-The blocks talk to each other through `localStorage` and the browser's `storage` event, so a
-downstream block updates **live** — the coach block sits behind a "map your workflow above first"
-notice and opens itself the moment the learner finishes the section above it, no reload, no
-scrolling away and back. Finish the conversation and the artifact block fills in behind you.
+The blocks talk to each other through `localStorage`, so a downstream block updates **live** — the
+coach block sits behind a "map your workflow above first" notice and opens itself the moment the
+learner finishes the section above it, no reload, no scrolling away and back. Finish the
+conversation and the artifact block fills in behind you.
+
+It stays in step two ways: the browser's `storage` event, and a poll every `syncPollMs`. **The poll
+is the part that makes this correct.** On a published Review 360 lesson the lower of two blocks
+recorded zero storage events while the upper recorded three — whether that's load ordering or the
+platform, a downstream block can't be allowed to sit holding stale state. The event just makes it
+feel instant. The test suite proves the split still works with the event path removed entirely,
+and includes a negative control showing it genuinely breaks without the poll.
 
 Each block writes back only the fields it owns (`capture` owns the problem and steps, `coach` owns
 the transcript, `artifact` owns the final prompt), merged on top of whatever siblings have saved
@@ -218,6 +225,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
 | `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"capture"`, `"coach"`, `"artifact"`. See above. |
+| `syncPollMs` | `1200` | How often a split block re-checks storage for a sibling's work. Only used when `blockRole` isn't `"all"`. |
 | `followSystemDarkMode` | `false` | Off on purpose: a Rise lesson is light, and following the learner's OS dark mode drops a dark panel into a white page. Turn on only if your host is dark. |
 
 `BOT_SYSTEM_PROMPT`, directly below `CONFIG`, is what a live coach is told to do — including the
@@ -247,7 +255,8 @@ and pipeline from preview:
 
 1. **Re-run `tools/rise-storage-probe.html` there** if you're using the multi-block layout. The
    split depends on blocks sharing a storage origin, and that verdict doesn't automatically carry
-   over from preview.
+   over from preview. Read the *marks*, not the event counter — a `storage events` reading of 0 is
+   expected and harmless, because the activity polls as well as listening.
 2. **Check the block height.** Rise decides how tall an embed is. The chat scrolls internally, but
    the capture block grows with each workflow card - make sure a learner with five steps isn't
    clipped.
@@ -295,7 +304,7 @@ validates loses its checkmark until it does.
 
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
-npm test         # all five suites, 142 assertions
+npm test         # all five suites, 149 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -310,7 +319,9 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
 - `test/multi-block.test.mjs` — three roles as three iframes on one page, the way Rise renders
   them: that each block shows only its own slice, that a downstream block unlocks live when the
   capture block is filled in, that neither direction clobbers the other's saved work, that a
-  reload restores all three, and that Start over in one clears them all.
+  reload restores all three, and that Start over in one clears them all. Also runs the whole flow
+  with `storage` events swallowed, proving the poll alone keeps the blocks in step, plus a
+  negative control confirming it really does break when the poll is switched off too.
 - `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
   iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and

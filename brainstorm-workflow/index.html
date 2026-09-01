@@ -633,7 +633,7 @@ write [MISSING: metric name] and keep going.</pre>
     botEndpoint: null,
 
     // Extra headers for that request (e.g. { "x-course-key": "elc567" }).
-    // Never put a provider API key here  -  this file is public to every learner.
+    // Never put a provider API key here - this file is public to every learner.
     botHeaders: {},
 
     // Abandon a bot request after this many ms.
@@ -662,6 +662,12 @@ write [MISSING: metric name] and keep going.</pre>
     // Splitting only works where the blocks share an origin. Verify with
     // tools/rise-storage-probe.html before relying on it.
     blockRole: "all",
+
+    // How often a split block re-checks storage for a sibling's work. The
+    // storage event is the fast path, but a block below the fold is not
+    // guaranteed to receive one, so this poll is the thing that actually
+    // makes the split reliable. Cheap: one getItem and a string compare.
+    syncPollMs: 1200,
 
     // A Rise lesson is light. Following the learner's OS dark mode would drop a
     // dark panel into a white lesson, so it stays light unless you turn this on.
@@ -789,7 +795,9 @@ write [MISSING: metric name] and keep going.</pre>
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
     if (!storageOK || discarding) return;
     try {
-      window.localStorage.setItem(CONFIG.storageKey, JSON.stringify(mergedForWrite()));
+      var payload = JSON.stringify(mergedForWrite());
+      window.localStorage.setItem(CONFIG.storageKey, payload);
+      lastSeenRaw = payload;   // don't read our own write back as a sibling's
       flashSaved();
     } catch (e) {
       storageOK = false;
@@ -815,27 +823,63 @@ write [MISSING: metric name] and keep going.</pre>
     return base;
   }
 
-  /* Another block on this Rise page wrote. Adopt everything we do NOT own, so
-     a sibling can never overwrite what the learner is typing here. */
+  var lastSeenRaw = null;
+
+  function currentRaw() {
+    try { return window.localStorage.getItem(CONFIG.storageKey); }
+    catch (e) { return null; }
+  }
+
+  /* Adopt everything this block does NOT own, so a sibling can never overwrite
+     what the learner is typing here. */
+  function adoptForeignFields(stored) {
+    Object.keys(defaultData()).forEach(function (k) {
+      if (k === "version" || k === "progress") return;
+      if (OWNED.indexOf(k) === -1) workflowData[k] = stored[k];
+    });
+    var mine = workflowData.progress.done;
+    var theirs = stored.progress.done || {};
+    [1, 2, 3, 4, 5].forEach(function (n) {
+      if (ownsStep(n)) return;
+      if (theirs[n]) mine[n] = true; else delete mine[n];
+    });
+  }
+
+  function syncFromStorage() {
+    if (discarding) return;
+    var raw = currentRaw();
+    if (raw === lastSeenRaw) return;      // nothing changed since we last looked
+    lastSeenRaw = raw;
+    if (!raw) { resetInPlace(); return; } // a sibling pressed Start over
+    var stored = readStored();
+    if (!stored) return;
+    adoptForeignFields(stored);
+    recomputeTools();
+    adoptExternal();
+  }
+
+  /* Keeping a split lesson in step.
+
+     The storage event is the fast path, but it cannot be relied on here: on a
+     published Review 360 lesson a block below the fold recorded zero events
+     while a block above it recorded three. Whether that is load ordering or
+     the platform, a downstream block must not be able to sit holding stale
+     state, so it also polls. The poll is what makes the split correct; the
+     event just makes it feel instant. */
   function wireCrossBlockSync() {
+    if (CONFIG.blockRole === "all") return;   // single block: no siblings to track
+    lastSeenRaw = currentRaw();
+
     window.addEventListener("storage", function (e) {
       if (e.key !== CONFIG.storageKey && e.key !== null) return;
-      var stored = readStored();
-      if (!stored) { resetInPlace(); return; }
+      syncFromStorage();
+    });
 
-      Object.keys(defaultData()).forEach(function (k) {
-        if (k === "version" || k === "progress") return;
-        if (OWNED.indexOf(k) === -1) workflowData[k] = stored[k];
-      });
-      var mine = workflowData.progress.done;
-      var theirs = stored.progress.done || {};
-      [1, 2, 3, 4, 5].forEach(function (n) {
-        if (ownsStep(n)) return;
-        if (theirs[n]) mine[n] = true; else delete mine[n];
-      });
-
-      recomputeTools();
-      adoptExternal();
+    setInterval(syncFromStorage, CONFIG.syncPollMs);
+    window.addEventListener("focus", syncFromStorage);
+    window.addEventListener("pageshow", syncFromStorage);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") syncFromStorage();
     });
   }
 
@@ -1140,7 +1184,7 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   var MOCK_STAGES = [
-    // stage 1  -  after they answer "which step"
+    // stage 1 - after they answer "which step"
     {
       capture: "handoff",
       reply: function (answer) {
@@ -1156,7 +1200,7 @@ write [MISSING: metric name] and keep going.</pre>
         ].join("\n");
       }
     },
-    // stage 2  -  after they describe the output
+    // stage 2 - after they describe the output
     {
       capture: "output",
       reply: function (answer) {
@@ -1171,7 +1215,7 @@ write [MISSING: metric name] and keep going.</pre>
         ].join("\n");
       }
     },
-    // stage 3  -  after they name what stays theirs
+    // stage 3 - after they name what stays theirs
     {
       capture: "keep",
       reply: function (answer) {
@@ -1187,7 +1231,7 @@ write [MISSING: metric name] and keep going.</pre>
         ].join("\n");
       }
     },
-    // stage 4  -  after they give context: emit the prompt
+    // stage 4 - after they give context: emit the prompt
     {
       capture: "context",
       reply: function () {
@@ -1409,7 +1453,7 @@ write [MISSING: metric name] and keep going.</pre>
   /* ---- render ---- */
 
   function render() {
-    // Steps 1 and 2 can be edited after the fact  -  un-tick them if they break.
+    // Steps 1 and 2 can be edited after the fact - un-tick them if they break.
     [1, 2].forEach(function (n) {
       if (workflowData.progress.done[n] && !stepValid(n)) workflowData.progress.done[n] = false;
     });
@@ -1935,12 +1979,13 @@ write [MISSING: metric name] and keep going.</pre>
       discarding = true;
       if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
       try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* nothing to clear */ }
+      lastSeenRaw = null;
       discarding = false;
       resetInPlace();   // not a reload: sibling blocks clear via the storage event
     });
   }
 
-  /* Back to a blank activity without reloading the frame  -  a reload would only
+  /* Back to a blank activity without reloading the frame - a reload would only
      reset this block, and would not tell the others. */
   function resetInPlace() {
     workflowData = defaultData();

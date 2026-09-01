@@ -174,6 +174,105 @@ try {
   check('reset re-gated the coach', await F('coach').locator('#bw-prereq-4').isVisible());
   check('reset re-gated the artifact', await F('artifact').locator('#bw-prereq-5').isVisible());
   check('reset emptied storage', (await stored()) === null);
+
+  // ---- the split must survive a block that never receives storage events ----
+  // On the published Review 360 lesson, the lower block recorded zero storage
+  // events while the upper one recorded three. Whatever the cause, a downstream
+  // block cannot be allowed to sit on stale state, so prove the poll carries it
+  // with the event path removed entirely.
+  const deafCtx = await browser.newContext({ viewport: { width: 1000, height: 900 } });
+  await deafCtx.addInitScript(() => {
+    const original = window.addEventListener.bind(window);
+    window.__storageListeners = 0;
+    window.addEventListener = function (type, fn, opts) {
+      if (type === 'storage') { window.__storageListeners++; return; }  // swallowed
+      return original(type, fn, opts);
+    };
+  });
+  const deaf = await deafCtx.newPage();
+  report.watch(deaf);
+  await deaf.goto('http://127.0.0.1:8124/');
+  await deaf.waitForTimeout(900);
+  const D = id => deaf.frameLocator('#' + id);
+
+  const blockFrames = deaf.frames().filter(f => f !== deaf.mainFrame());
+  const swallowed = await Promise.all(
+    blockFrames.map(f => f.evaluate(() => window.__storageListeners).catch(() => 0)));
+  check('every block really had its storage listener swallowed',
+    blockFrames.length === 3 && swallowed.every(c => c > 0), JSON.stringify(swallowed));
+  check('deaf run starts gated', await D('coach').locator('#bw-prereq-4').isVisible());
+
+  await D('capture').locator('#bw-problem').fill(
+    'Every Monday I rebuild eleven client status updates by hand and it costs me two full hours.');
+  await D('capture').locator('[data-next="1"]').click();
+  const dcards = D('capture').locator('#bw-cards .bw-card');
+  await dcards.nth(0).locator('input').nth(0).fill('Pull the delivery numbers');
+  await dcards.nth(0).locator('input').nth(1).fill('Asana');
+  await dcards.nth(1).locator('input').nth(0).fill('Draft each update');
+  await dcards.nth(1).locator('input').nth(1).fill('Google Docs');
+  await D('capture').locator('[data-next="2"]').click();
+
+  // no event will arrive; only the poll can carry this
+  await deaf.waitForFunction(
+    () => !document.querySelector('#coach').contentDocument
+      .querySelector('#bw-prereq-4').offsetParent === false, null, { timeout: 6000 }
+  ).catch(() => {});
+  await deaf.waitForTimeout(2500);
+
+  check('coach unlocks with no storage events at all',
+    !(await D('coach').locator('#bw-prereq-4').isVisible()));
+  check('coach opened its conversation from polled state',
+    await D('coach').locator('.bw-msg-bot').count() >= 1);
+  const deafOpening = await D('coach').locator('.bw-msg-bot').first().textContent();
+  check('polled coach greeted with the real problem',
+    deafOpening.includes('costs me two full hours'), deafOpening.slice(0, 110));
+  check('artifact also caught up by polling',
+    (await D('artifact').locator('#bw-prompt-v2').inputValue()).includes('costs me two full hours'));
+  await deafCtx.close();
+
+  // Negative control. Same deaf setup with the poll switched off too: the coach
+  // must stay gated. Without this, the test above could be passing for some
+  // other reason and we would not know the poll is what carries the sync.
+  const stuckDoc = r => withConfig({ blockRole: `"${r}"`, syncPollMs: '99999999' })
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const stuckPage = `<!doctype html><html><head><meta charset="utf-8"></head><body>
+<iframe id="capture" style="width:900px;height:800px" srcdoc="${stuckDoc('capture')}"></iframe>
+<iframe id="coach" style="width:900px;height:800px" srcdoc="${stuckDoc('coach')}"></iframe>
+</body></html>`;
+  const stuckServer = await new Promise(r => {
+    const sv = http.createServer((rq, rs) => {
+      rs.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      rs.end(stuckPage);
+    });
+    sv.listen(8130, () => r(sv));
+  });
+  const stuckCtx = await browser.newContext();
+  await stuckCtx.addInitScript(() => {
+    const original = window.addEventListener.bind(window);
+    window.addEventListener = function (type, fn, opts) {
+      if (type === 'storage') return;
+      return original(type, fn, opts);
+    };
+  });
+  const stuck = await stuckCtx.newPage();
+  await stuck.goto('http://127.0.0.1:8130/');
+  await stuck.waitForTimeout(700);
+  const S = id => stuck.frameLocator('#' + id);
+  await S('capture').locator('#bw-problem').fill(
+    'Every Monday I rebuild eleven client status updates by hand and it costs me two hours.');
+  await S('capture').locator('[data-next="1"]').click();
+  const scards = S('capture').locator('#bw-cards .bw-card');
+  await scards.nth(0).locator('input').nth(0).fill('Pull numbers');
+  await scards.nth(0).locator('input').nth(1).fill('Asana');
+  await scards.nth(1).locator('input').nth(0).fill('Draft update');
+  await scards.nth(1).locator('input').nth(1).fill('Google Docs');
+  await S('capture').locator('[data-next="2"]').click();
+  await stuck.waitForTimeout(3200);
+  check('negative control: no events AND no poll leaves it gated',
+    await S('coach').locator('#bw-prereq-4').isVisible());
+  await stuckCtx.close();
+  stuckServer.close();
+
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);
 }
