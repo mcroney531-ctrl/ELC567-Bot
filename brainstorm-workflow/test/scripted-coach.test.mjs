@@ -131,8 +131,8 @@ try {
   await page.waitForTimeout(400);
   check('user edit survives reload', (await page.locator('#bw-prompt-v2').inputValue()) === 'MY OWN EDIT');
   check('source note hidden after user edit', await page.locator('#bw-v2-source').isHidden());
-  page.once('dialog', d => d.accept());
   await page.click('#bw-regen-v2');
+  await page.click('#bw-regen-v2');   // inline confirm: second press commits
   await page.waitForTimeout(300);
   check('rebuild restores generated prompt', (await page.locator('#bw-prompt-v2').inputValue()).includes('under 200 words'));
 
@@ -156,15 +156,15 @@ try {
 
   // restart conversation
   await page.click('#bw-head-4');
-  page.once('dialog', d => d.accept());
   await page.click('#bw-chat-restart');
+  await page.click('#bw-chat-restart');   // inline confirm: second press commits
   await waitBots(1);
   check('restart clears to one opening message', await page.locator('.bw-msg').count() === 1,
     'msgs=' + await page.locator('.bw-msg').count());
 
   // reset
-  page.once('dialog', d => d.accept());
   await page.click('#bw-reset');
+  await page.click('#bw-reset');   // inline confirm: second press commits
   await page.waitForTimeout(700);
   check('reset clears problem', (await page.locator('#bw-problem').inputValue()) === '');
   check('reset relocks step 2', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');

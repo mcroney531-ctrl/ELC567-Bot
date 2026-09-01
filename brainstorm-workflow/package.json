@@ -6,7 +6,7 @@
   "description": "Guided AI-integration brainstorm activity for Articulate Rise custom blocks.",
   "scripts": {
     "serve": "node test/serve.mjs",
-    "test": "node test/scripted-coach.test.mjs && node test/live-endpoint.test.mjs && node test/probe.test.mjs && node test/multi-block.test.mjs"
+    "test": "node test/scripted-coach.test.mjs && node test/live-endpoint.test.mjs && node test/probe.test.mjs && node test/multi-block.test.mjs && node test/rise-hardening.test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

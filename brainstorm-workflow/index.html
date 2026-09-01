@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Workflow Brainstorm — Build Your Master Prompt</title>
+<title>Workflow Brainstorm &mdash; Build Your Master Prompt</title>
 <style>
 /* ==========================================================================
    Brainstorm Workflow Activity
@@ -120,7 +120,7 @@
   background: var(--bw-bg); border: 1px solid var(--bw-border-strong);
 }
 .bw-example > summary::-webkit-details-marker { display: none; }
-.bw-example > summary::after { content: "▾"; font-size: .7em; transition: transform .15s ease; }
+.bw-example > summary::after { content: "\25BE"; font-size: .7em; transition: transform .15s ease; }
 .bw-example[open] > summary::after { transform: rotate(180deg); }
 .bw-example > summary:hover { border-color: var(--bw-accent); }
 .bw-example-body {
@@ -169,7 +169,7 @@
 }
 .bw-step[data-state="active"] .bw-step-num { background: var(--bw-accent); color: #fff; }
 .bw-step[data-done="true"] .bw-step-num { background: var(--bw-good-soft); color: var(--bw-good); }
-.bw-step[data-done="true"] .bw-step-num::after { content: "✓"; }
+.bw-step[data-done="true"] .bw-step-num::after { content: "\2713"; }
 .bw-step[data-done="true"] .bw-step-num span { display: none; }
 .bw-step-titles { flex: 1 1 auto; min-width: 0; }
 .bw-step-sub { display: block; font-size: .8125rem; color: var(--bw-text-muted); margin-top: 1px; }
@@ -246,6 +246,8 @@
 .bw-btn-ghost:hover:not(:disabled) { background: var(--bw-surface); border-color: var(--bw-accent); color: var(--bw-accent); }
 .bw-btn-quiet { background: none; color: var(--bw-text-muted); border-color: transparent; padding: 6px 8px; font-size: .8125rem; }
 .bw-btn-quiet:hover:not(:disabled) { background: var(--bw-surface); color: var(--bw-text); }
+.bw-btn-danger { background: var(--bw-danger); border-color: var(--bw-danger); color: #fff; }
+.bw-btn-danger:hover:not(:disabled) { background: var(--bw-danger); filter: brightness(.92); }
 .bw-btn-final { background: var(--bw-final); }
 .bw-btn-final:hover:not(:disabled) { background: var(--bw-final); filter: brightness(.92); }
 .bw-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -362,7 +364,7 @@
       You do have someone. You just haven't briefed them properly.
     </p>
     <div class="bw-outcome">
-      <strong>What you'll walk out with:</strong> a master prompt — a specific, reusable brief you can
+      <strong>What you'll walk out with:</strong> a master prompt &mdash; a specific, reusable brief you can
       paste into Claude, ChatGPT, or Copilot and put to work on that task immediately. Five steps,
       about fifteen minutes.
     </div>
@@ -373,37 +375,37 @@
         <p><strong>Maya</strong> manages client success for a mid-size agency. Here's her run through all five steps.</p>
 
         <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 1 — The problem</p>
+          <p class="bw-eyebrow">Step 1 &mdash; The problem</p>
           <p>"Every Monday I spend two hours building status updates for eleven clients. I'm pulling
           the same numbers from the same places and rewriting the same sentences with different names in them."</p>
         </div>
 
         <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 2 — The workflow</p>
+          <p class="bw-eyebrow">Step 2 &mdash; The workflow</p>
           <ol>
-            <li>Pull last week's delivery numbers — <em>Asana, Harvest</em></li>
-            <li>Check the shared inbox for anything unresolved — <em>Gmail</em></li>
-            <li>Write a 4-paragraph update per client — <em>Google Docs</em></li>
-            <li>Reformat into the client's preferred channel — <em>Gmail, Slack</em></li>
+            <li>Pull last week's delivery numbers &mdash; <em>Asana, Harvest</em></li>
+            <li>Check the shared inbox for anything unresolved &mdash; <em>Gmail</em></li>
+            <li>Write a 4-paragraph update per client &mdash; <em>Google Docs</em></li>
+            <li>Reformat into the client's preferred channel &mdash; <em>Gmail, Slack</em></li>
           </ol>
         </div>
 
         <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 3 — Her first draft prompt</p>
-          <p>Auto-built from what she typed above. Honest, but generic — it describes her problem
+          <p class="bw-eyebrow">Step 3 &mdash; Her first draft prompt</p>
+          <p>Auto-built from what she typed above. Honest, but generic &mdash; it describes her problem
           without telling the AI what "good" looks like.</p>
         </div>
 
         <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 4 — The refinement conversation</p>
+          <p class="bw-eyebrow">Step 4 &mdash; The refinement conversation</p>
           <p>The coach pushes on the vague parts: <em>Which step would you hand off first? What does a
           great update actually look like? What are you not willing to automate?</em> Maya realizes the
           drafting is the drain, but the "here's what I'd watch next week" line is the part clients
-          actually read — and that line is hers to write.</p>
+          actually read &mdash; and that line is hers to write.</p>
         </div>
 
         <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 5 — Her master prompt</p>
+          <p class="bw-eyebrow">Step 5 &mdash; Her master prompt</p>
           <pre>## CONTEXT
 I write weekly status updates for 11 agency clients. The numbers
 come from Asana and Harvest; the writing is the same four
@@ -415,7 +417,7 @@ shipped, what's in flight, what slipped and why. Match the tone
 of the sample updates below.
 
 ## WHAT STAYS WITH ME
-Paragraph 4 — the "what I'd watch next week" call. Never write
+Paragraph 4 &mdash; the "what I'd watch next week" call. Never write
 that one. Leave it as [MAYA'S CALL] and I'll fill it in.
 
 ## OUTPUT I EXPECT
@@ -449,18 +451,18 @@ write [MISSING: metric name] and keep going.</pre>
           <span class="bw-step-sub">Name the task that keeps eating your week</span>
         </span>
         <span class="bw-chip" data-chip>In progress</span>
-        <span class="bw-step-caret" aria-hidden="true">▾</span>
+        <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-1" role="region" aria-labelledby="bw-head-1">
         <p class="bw-step-intro">
-          Describe the repetitive task in your own words — what it is, how often, and roughly what it
+          Describe the repetitive task in your own words &mdash; what it is, how often, and roughly what it
           costs you. Specific beats polished.
         </p>
         <label class="bw-field">
           <span class="bw-label">The one thing you'd hand off</span>
           <span class="bw-hint">Include the frequency and the time it takes. That's what makes it real.</span>
           <textarea id="bw-problem" rows="4" maxlength="1200"
-            placeholder="Example: Every Monday I spend two hours building status updates for eleven clients — same numbers, same sentences, different names."></textarea>
+            placeholder="Example: Every Monday I spend two hours building status updates for eleven clients &mdash; same numbers, same sentences, different names."></textarea>
         </label>
         <span class="bw-counter" id="bw-problem-count">0 characters</span>
         <div class="bw-notice bw-notice-warn" id="bw-warn-1" hidden></div>
@@ -480,12 +482,12 @@ write [MISSING: metric name] and keep going.</pre>
           <span class="bw-step-sub">Break the task into the steps you actually perform</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
-        <span class="bw-step-caret" aria-hidden="true">▾</span>
+        <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-2" role="region" aria-labelledby="bw-head-2" hidden>
         <p class="bw-step-intro">
           Walk through it the way you'd explain it to a new hire on their first day. One action per
-          card, plus wherever that action happens. Two steps minimum — most tasks have four or five.
+          card, plus wherever that action happens. Two steps minimum &mdash; most tasks have four or five.
         </p>
         <div class="bw-cards" id="bw-cards"></div>
         <div class="bw-actions">
@@ -506,12 +508,12 @@ write [MISSING: metric name] and keep going.</pre>
           <span class="bw-step-sub">Built automatically from what you just wrote</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
-        <span class="bw-step-caret" aria-hidden="true">▾</span>
+        <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-3" role="region" aria-labelledby="bw-head-3" hidden>
         <p class="bw-step-intro">
           This is your workflow, restated as something an AI can act on. It's a starting point, not
-          the deliverable — it still doesn't know what "good" looks like for you. That's what Step 4 fixes.
+          the deliverable &mdash; it still doesn't know what "good" looks like for you. That's what Step 4 fixes.
         </p>
         <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
         <div class="bw-actions">
@@ -531,12 +533,12 @@ write [MISSING: metric name] and keep going.</pre>
           <span class="bw-step-sub">Decide what the AI takes and what stays yours</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
-        <span class="bw-step-caret" aria-hidden="true">▾</span>
+        <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-4" role="region" aria-labelledby="bw-head-4" hidden>
         <p class="bw-step-intro">
           The coach already has your problem, your steps, and your tools. It will push on the vague
-          parts. Answer in whatever detail you'd give a colleague — this is where a generic prompt
+          parts. Answer in whatever detail you'd give a colleague &mdash; this is where a generic prompt
           becomes yours.
         </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-4" hidden></div>
@@ -549,7 +551,7 @@ write [MISSING: metric name] and keep going.</pre>
           <div class="bw-chat-log" id="bw-chat-log" role="log" aria-live="polite" aria-label="Coach conversation"></div>
           <div class="bw-chat-compose">
             <label class="bw-sr" for="bw-chat-input">Your reply to the coach</label>
-            <textarea id="bw-chat-input" rows="1" placeholder="Type your answer… (Enter to send, Shift+Enter for a new line)"></textarea>
+            <textarea id="bw-chat-input" rows="1" placeholder="Type your answer&hellip; (Enter to send, Shift+Enter for a new line)"></textarea>
             <button type="button" class="bw-btn" id="bw-chat-send">Send</button>
           </div>
         </div>
@@ -572,18 +574,18 @@ write [MISSING: metric name] and keep going.</pre>
           <span class="bw-step-sub">Edit it, copy it, go use it</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
-        <span class="bw-step-caret" aria-hidden="true">▾</span>
+        <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-5" role="region" aria-labelledby="bw-head-5" hidden>
         <p class="bw-step-intro">
-          Here it is — your workflow, your judgment, your standards, written as a brief. Read it once
+          Here it is &mdash; your workflow, your judgment, your standards, written as a brief. Read it once
           and change anything that isn't true. It's editable.
         </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-5" hidden></div>
         <div class="bw-notice bw-notice-info" id="bw-v2-source" hidden></div>
         <div class="bw-final-wrap" id="bw-final-wrap">
           <label class="bw-field">
-            <span class="bw-label">Master prompt — yours to edit</span>
+            <span class="bw-label">Master prompt &mdash; yours to edit</span>
             <textarea id="bw-prompt-v2" class="bw-mono" spellcheck="false"></textarea>
           </label>
           <div class="bw-actions">
@@ -595,7 +597,7 @@ write [MISSING: metric name] and keep going.</pre>
         </div>
         <div class="bw-outcome">
           <strong>Now go.</strong> Paste it into Claude, ChatGPT, or whichever assistant you use.
-          Run it on this week's version of the task. The first output won't be perfect — tell the AI
+          Run it on this week's version of the task. The first output won't be perfect &mdash; tell the AI
           what was wrong, and fold the correction back into the prompt. That editing loop is the
           actual skill.
         </div>
@@ -622,7 +624,7 @@ write [MISSING: metric name] and keep going.</pre>
      --------------------------------------------------------------------------
      The only block you need to touch to put a real LLM behind Step 4.
      Leave botEndpoint as null and the activity runs on the built-in scripted
-     coach — fully usable, no backend, no API key in the page.
+     coach \u2014 fully usable, no backend, no API key in the page.
      ========================================================================== */
 
   var CONFIG = {
@@ -631,7 +633,7 @@ write [MISSING: metric name] and keep going.</pre>
     botEndpoint: null,
 
     // Extra headers for that request (e.g. { "x-course-key": "elc567" }).
-    // Never put a provider API key here — this file is public to every learner.
+    // Never put a provider API key here  -  this file is public to every learner.
     botHeaders: {},
 
     // Abandon a bot request after this many ms.
@@ -659,7 +661,11 @@ write [MISSING: metric name] and keep going.</pre>
     //   "artifact" - step 5: the finished master prompt
     // Splitting only works where the blocks share an origin. Verify with
     // tools/rise-storage-probe.html before relying on it.
-    blockRole: "all"
+    blockRole: "all",
+
+    // A Rise lesson is light. Following the learner's OS dark mode would drop a
+    // dark panel into a white lesson, so it stays light unless you turn this on.
+    followSystemDarkMode: false
   };
 
   /* What each role renders, and which fields it is allowed to write. Ownership
@@ -689,14 +695,14 @@ write [MISSING: metric name] and keep going.</pre>
     "They have already described their problem and mapped their workflow; that context follows this message.",
     "",
     "Your job: help them decide which steps an AI should take over, which stay with them, and what a good",
-    "output actually looks like — then turn that into a specific prompt they can paste into Claude or ChatGPT.",
+    "output actually looks like \u2014 then turn that into a specific prompt they can paste into Claude or ChatGPT.",
     "",
     "How to work:",
     "- Ask ONE clarifying question at a time. Keep replies under 120 words.",
     "- Push on vague answers. \"Make it faster\" and \"better emails\" are not specifications.",
     "- Reference their actual steps and tools by name. Never invent details they did not give you.",
     "- Cover four things before you finish: (1) which steps the AI takes over, (2) what a great output",
-    "  looks like — format, length, tone, (3) what must stay in their hands, (4) rules and context the",
+    "  looks like \u2014 format, length, tone, (3) what must stay in their hands, (4) rules and context the",
     "  AI needs, including what it must never invent.",
     "",
     "Once you have all four, reply with a short summary and then the finished prompt inside a fenced",
@@ -788,7 +794,7 @@ write [MISSING: metric name] and keep going.</pre>
     } catch (e) {
       storageOK = false;
       var node = document.getElementById("bw-saved");
-      if (node) node.textContent = "Autosave unavailable in this browser — finish in one sitting.";
+      if (node) node.textContent = "Autosave unavailable in this browser \u2014 finish in one sitting.";
     }
   }
 
@@ -872,7 +878,7 @@ write [MISSING: metric name] and keep going.</pre>
   function parseTools(raw) {
     return String(raw || "")
       .split(/[,;/|]|\band\b|\+|&/i)
-      .map(function (t) { return t.trim().replace(/^[-•.\s]+|[.\s]+$/g, ""); })
+      .map(function (t) { return t.trim().replace(/^[-\u2022.\s]+|[.\s]+$/g, ""); })
       .filter(Boolean);
   }
 
@@ -898,7 +904,7 @@ write [MISSING: metric name] and keep going.</pre>
     var list = filledSteps();
     if (!list.length) return "(not mapped yet)";
     return list.map(function (s, i) {
-      return (i + 1) + ". " + s.action.trim() + " — tools: " + s.tools.trim();
+      return (i + 1) + ". " + s.action.trim() + " \u2014 tools: " + s.tools.trim();
     }).join("\n");
   }
 
@@ -922,7 +928,7 @@ write [MISSING: metric name] and keep going.</pre>
       "",
       "## WHAT I NEED FROM YOU",
       "1. Tell me which of these steps you could take over completely, which we'd share, and which should stay with me.",
-      "2. For anything you take over, tell me exactly what I'd need to give you each time — inputs, context, format.",
+      "2. For anything you take over, tell me exactly what I'd need to give you each time \u2014 inputs, context, format.",
       "3. Draft the reusable prompt I would paste to run this workflow every time.",
       "",
       "Ask me anything you need to know before you answer."
@@ -951,14 +957,14 @@ write [MISSING: metric name] and keep going.</pre>
       (a.keep || "").trim() || "[Name the steps or judgment calls you are keeping. I will leave those alone.]",
       "",
       "## OUTPUT I EXPECT",
-      (a.output || "").trim() || "[Format, length, and tone of a good result. Be specific — \"short and professional\" is not a spec.]",
+      (a.output || "").trim() || "[Format, length, and tone of a good result. Be specific \u2014 \"short and professional\" is not a spec.]",
       "",
       "## THINGS YOU NEED TO KNOW",
       context || "[Facts, constraints, and house rules. Say what I must never invent.]",
       "",
       "## HOW TO WORK WITH ME",
       "If something above is missing for a given run, ask me for it before you produce anything.",
-      "Never invent facts, names, numbers, or quotes — mark a gap as [MISSING: what you need] and keep going."
+      "Never invent facts, names, numbers, or quotes \u2014 mark a gap as [MISSING: what you need] and keep going."
     ].join("\n");
   }
 
@@ -1029,7 +1035,7 @@ write [MISSING: metric name] and keep going.</pre>
             if (!res.ok) {
               return res.text().catch(function () { return ""; }).then(function (body) {
                 throw new Error("The coach service returned " + res.status +
-                  (body ? " — " + body.slice(0, 160) : "") + ".");
+                  (body ? " \u2014 " + body.slice(0, 160) : "") + ".");
               });
             }
             return res.json();
@@ -1109,7 +1115,7 @@ write [MISSING: metric name] and keep going.</pre>
   function shortQuote(text, words) {
     var w = String(text || "").trim().split(/\s+/);
     if (!w[0]) return "";
-    return w.slice(0, words || 12).join(" ") + (w.length > (words || 12) ? "…" : "");
+    return w.slice(0, words || 12).join(" ") + (w.length > (words || 12) ? "\u2026" : "");
   }
 
   /* Stage 0 is the opening message; it is generated without user input. */
@@ -1119,7 +1125,7 @@ write [MISSING: metric name] and keep going.</pre>
     }).join("\n");
 
     return [
-      "Right — here's what you gave me.",
+      "Right \u2014 here's what you gave me.",
       "",
       "You said: \"" + shortQuote(workflowData.problem, 22) + "\"",
       "",
@@ -1134,23 +1140,23 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   var MOCK_STAGES = [
-    // stage 1 — after they answer "which step"
+    // stage 1  -  after they answer "which step"
     {
       capture: "handoff",
       reply: function (answer) {
         return [
           "Got it: " + shortQuote(answer, 18),
           "",
-          "That's the right instinct — the steps that repeat with different names in them are exactly " +
+          "That's the right instinct \u2014 the steps that repeat with different names in them are exactly " +
           "what an AI absorbs well.",
           "",
           "Now the part most people skip. **Picture the finished output you'd actually be happy to use. " +
-          "What does it look like?** Format, length, tone. \"A good summary\" isn't a spec — " +
+          "What does it look like?** Format, length, tone. \"A good summary\" isn't a spec \u2014 " +
           "\"four short paragraphs, no bullets, under 200 words, direct\" is."
         ].join("\n");
       }
     },
-    // stage 2 — after they describe the output
+    // stage 2  -  after they describe the output
     {
       capture: "output",
       reply: function (answer) {
@@ -1165,12 +1171,12 @@ write [MISSING: metric name] and keep going.</pre>
         ].join("\n");
       }
     },
-    // stage 3 — after they name what stays theirs
+    // stage 3  -  after they name what stays theirs
     {
       capture: "keep",
       reply: function (answer) {
         var toolLine = workflowData.toolsAll.length
-          ? " You mentioned " + toolsAsList() + " — say anything about how those are set up that a newcomer wouldn't guess."
+          ? " You mentioned " + toolsAsList() + " \u2014 say anything about how those are set up that a newcomer wouldn't guess."
           : "";
         return [
           "Good. That stays yours, and the prompt will say so explicitly.",
@@ -1181,19 +1187,19 @@ write [MISSING: metric name] and keep going.</pre>
         ].join("\n");
       }
     },
-    // stage 4 — after they give context: emit the prompt
+    // stage 4  -  after they give context: emit the prompt
     {
       capture: "context",
       reply: function () {
         return [
-          "That's everything I need. Here's your master prompt — your workflow, your standards, and a " +
+          "That's everything I need. Here's your master prompt \u2014 your workflow, your standards, and a " +
           "clear line around what stays with you.",
           "",
           "```master-prompt",
           generateMasterPromptV2(workflowData),
           "```",
           "",
-          "Read it once. If a line isn't true, tell me what to change and I'll rewrite it — otherwise " +
+          "Read it once. If a line isn't true, tell me what to change and I'll rewrite it \u2014 otherwise " +
           "move on to Step 5, where you can edit it directly and copy it out."
         ].join("\n");
       }
@@ -1310,7 +1316,7 @@ write [MISSING: metric name] and keep going.</pre>
 
     if (CONFIG.blockRole === "coach") {
       el.prereq4.textContent = ready ? "" :
-        "Map your workflow in the section above first — the coach needs your problem and your " +
+        "Map your workflow in the section above first \u2014 the coach needs your problem and your " +
         "steps before it can ask anything useful. This opens on its own once you've done that.";
       el.prereq4.hidden = ready;
       el.chatWrap.hidden = !ready;
@@ -1344,14 +1350,14 @@ write [MISSING: metric name] and keep going.</pre>
     switch (n) {
       case 1:
         return String(workflowData.problem).trim()
-          ? "Give it a little more — what the task is, how often, and what it costs you. About a sentence and a half."
+          ? "Give it a little more \u2014 what the task is, how often, and what it costs you. About a sentence and a half."
           : "Describe the task before moving on. Rough words are fine.";
       case 2:
         return "Fill in at least " + CONFIG.minWorkflowSteps +
           " steps, each with both the action and the tool you do it in.";
       case 4:
         return "Answer at least " + CONFIG.minChatTurns +
-          " of the coach's questions first — that conversation is what makes the final prompt yours.";
+          " of the coach's questions first \u2014 that conversation is what makes the final prompt yours.";
       default: return "";
     }
   }
@@ -1403,7 +1409,7 @@ write [MISSING: metric name] and keep going.</pre>
   /* ---- render ---- */
 
   function render() {
-    // Steps 1 and 2 can be edited after the fact — un-tick them if they break.
+    // Steps 1 and 2 can be edited after the fact  -  un-tick them if they break.
     [1, 2].forEach(function (n) {
       if (workflowData.progress.done[n] && !stepValid(n)) workflowData.progress.done[n] = false;
     });
@@ -1504,7 +1510,7 @@ write [MISSING: metric name] and keep going.</pre>
     remove.className = "bw-card-remove";
     remove.setAttribute("aria-label", "Remove step " + (index + 1));
     remove.title = "Remove this step";
-    remove.textContent = "×";
+    remove.textContent = "\u00d7";
     remove.disabled = workflowData.steps.length <= CONFIG.minWorkflowSteps;
     remove.addEventListener("click", function () {
       workflowData.steps.splice(index, 1);
@@ -1661,7 +1667,7 @@ write [MISSING: metric name] and keep going.</pre>
     chatPending = busy;
     el.chatSend.disabled = busy;
     el.chatInput.disabled = busy;
-    el.chatSend.textContent = busy ? "…" : "Send";
+    el.chatSend.textContent = busy ? "\u2026" : "Send";
     showTyping(busy);
   }
 
@@ -1701,7 +1707,7 @@ write [MISSING: metric name] and keep going.</pre>
       setChatBusy(false);
       var msg = (err && err.message) || "Something went wrong reaching the coach.";
       if (bot.live) {
-        msg += " You can retry, or keep going — Step 5 will build your prompt from what you've said so far.";
+        msg += " You can retry, or keep going \u2014 Step 5 will build your prompt from what you've said so far.";
       }
       showChatError(msg, function () { askBot(lastUserText, onDone); });
     });
@@ -1763,7 +1769,7 @@ write [MISSING: metric name] and keep going.</pre>
     el.botBadge.className = "bw-badge " + (bot.live ? "bw-badge-live" : "bw-badge-mock");
     el.botBadge.title = bot.live
       ? "Connected to your configured coach endpoint."
-      : "Running the built-in scripted coach — no network required.";
+      : "Running the built-in scripted coach \u2014 no network required.";
 
     renderChatLog();
 
@@ -1772,8 +1778,7 @@ write [MISSING: metric name] and keep going.</pre>
     el.chatInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
-    el.chatRestart.addEventListener("click", function () {
-      if (!window.confirm("Clear this conversation and start it over? Your Steps 1–3 answers stay.")) return;
+    wireConfirm(el.chatRestart, "Press again to clear it", function () {
       workflowData.botConversation = [];
       workflowData.botAnswers = defaultData().botAnswers;
       workflowData.mockStage = 0;
@@ -1808,7 +1813,7 @@ write [MISSING: metric name] and keep going.</pre>
     }
     var note = "";
     if (workflowData.v2Source === "bot") {
-      note = "Lifted straight from your conversation with the coach. Change anything that isn't true — you know the job, it doesn't.";
+      note = "Lifted straight from your conversation with the coach. Change anything that isn't true \u2014 you know the job, it doesn't.";
     } else if (workflowData.v2Source === "template") {
       note = "The coach didn't hand back a finished version, so this is assembled from your own answers. Fill in anything still in [brackets] before you use it.";
     }
@@ -1823,16 +1828,16 @@ write [MISSING: metric name] and keep going.</pre>
       el.v2Source.hidden = true;
       save();
     });
-    el.regenV2.addEventListener("click", function () {
-      if (workflowData.v2Source === "user" &&
-          !window.confirm("Rebuild the prompt from your coach answers? Your edits here will be replaced.")) return;
+    // Only worth confirming when there are edits of their own to lose.
+    wireConfirm(el.regenV2, "Press again to replace your edits", function () {
       refreshV2(true);
-    });
+    }, function () { return workflowData.v2Source === "user"; });
     el.copyFinal.addEventListener("click", function () {
       copyText(workflowData.masterPromptV2, function (ok) {
+        if (!ok) { el.promptV2.focus(); el.promptV2.select(); }   // leave it ready for Ctrl+C
         el.copyStatus.textContent = ok
-          ? "Copied — now paste it into your assistant."
-          : "Couldn't copy automatically. Select the text above and copy it.";
+          ? "Copied \u2014 now paste it into your assistant."
+          : "Couldn't copy automatically \u2014 the text is selected, press Ctrl+C (Cmd+C on a Mac).";
         setTimeout(function () { el.copyStatus.textContent = ""; }, 4000);
         if (ok) {
           workflowData.progress.done[5] = true;
@@ -1843,15 +1848,46 @@ write [MISSING: metric name] and keep going.</pre>
     });
   }
 
+  /* ---- confirmation without modals ---- */
+
+  /* A sandboxed iframe can have window.confirm disabled, and a silently ignored
+     "Start over" just reads as a broken button. Confirm on the button instead:
+     a second press within six seconds commits, anything else reverts. */
+  function wireConfirm(btn, prompt, onYes, needed) {
+    var original = btn.textContent;
+    var timer = null;
+
+    function revert() {
+      btn.textContent = original;
+      btn.classList.remove("bw-btn-danger");
+      btn.removeAttribute("data-confirming");
+      if (timer) { clearTimeout(timer); timer = null; }
+    }
+
+    btn.addEventListener("click", function () {
+      if (needed && !needed()) { onYes(); return; }
+      if (btn.getAttribute("data-confirming") === "true") { revert(); onYes(); return; }
+      btn.setAttribute("data-confirming", "true");
+      btn.textContent = prompt;
+      btn.classList.add("bw-btn-danger");
+      timer = setTimeout(revert, 6000);
+    });
+  }
+
   /* ---- clipboard ---- */
 
+  /* Order matters inside a Rise iframe. execCommand runs synchronously inside
+     the click's user-activation window and works in frames that were never
+     granted clipboard-write; the async API is often not granted there, and by
+     the time its promise rejects the activation can be gone. Reliable first. */
   function copyText(text, done) {
     if (!text) { done(false); return; }
+    if (legacyCopy(text)) { done(true); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacyCopy(text)); });
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
       return;
     }
-    done(legacyCopy(text));
+    done(false);
   }
 
   function legacyCopy(text) {
@@ -1895,8 +1931,7 @@ write [MISSING: metric name] and keep going.</pre>
       });
     });
 
-    el.reset.addEventListener("click", function () {
-      if (!window.confirm("Clear everything and start this activity over? This can't be undone.")) return;
+    wireConfirm(el.reset, "Press again to erase everything", function () {
       discarding = true;
       if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
       try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* nothing to clear */ }
@@ -1905,7 +1940,7 @@ write [MISSING: metric name] and keep going.</pre>
     });
   }
 
-  /* Back to a blank activity without reloading the frame — a reload would only
+  /* Back to a blank activity without reloading the frame  -  a reload would only
      reset this block, and would not tell the others. */
   function resetInPlace() {
     workflowData = defaultData();
@@ -1942,6 +1977,7 @@ write [MISSING: metric name] and keep going.</pre>
 
   function init() {
     cacheDom();
+    if (!CONFIG.followSystemDarkMode) el.root.setAttribute("data-theme", "light");
     load();
     applyRole();
     recomputeTools();

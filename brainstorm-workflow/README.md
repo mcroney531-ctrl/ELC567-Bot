@@ -136,19 +136,39 @@ finish — Step 5 falls back to assembling the prompt from their own answers.
 
 Deploys as-is to Vercel/Netlify functions or behind Express. `npm i @anthropic-ai/sdk`.
 
+**Do not gate this on the `Origin` header.** The activity runs in a `srcdoc` iframe whose origin
+serializes as `null`, so an origin allowlist can reject every real request while doing nothing to
+stop a scripted one. Gate on a shared header and a rate limit instead.
+
 ```js
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic();            // reads ANTHROPIC_API_KEY from the environment
-const ALLOWED = ["https://your-rise-domain.example.com"];
+const client = new Anthropic();          // reads ANTHROPIC_API_KEY from the environment
+const COURSE_KEY = process.env.COURSE_KEY;
+const hits = new Map();                  // swap for Redis if you run more than one instance
+
+function rateLimited(ip, perMinute = 12) {
+  const now = Date.now();
+  const recent = (hits.get(ip) || []).filter(t => now - t < 60000);
+  recent.push(now);
+  hits.set(ip, recent);
+  return recent.length > perMinute;
+}
 
 export default async function handler(req, res) {
-  const origin = req.headers.origin;
-  if (ALLOWED.includes(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  // The iframe's origin is "null", so a wildcard is the only thing that works.
+  // This is not the security boundary; the key check and rate limit below are.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-course-key");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+
+  if (COURSE_KEY && req.headers["x-course-key"] !== COURSE_KEY) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  const ip = (req.headers["x-forwarded-for"] || "").split(",")[0] || "unknown";
+  if (rateLimited(ip)) return res.status(429).json({ error: "slow down" });
 
   const { system, messages } = req.body ?? {};
   if (!Array.isArray(messages) || !messages.length) {
@@ -159,7 +179,7 @@ export default async function handler(req, res) {
     const response = await client.messages.create({
       model: "claude-opus-5",
       max_tokens: 1500,
-      output_config: { effort: "low" },    // a chat turn, not a research task — keeps it snappy
+      output_config: { effort: "low" },  // a chat turn, not a research task - keeps it snappy
       system,
       messages: messages.slice(-20).map(m => ({
         role: m.role === "assistant" ? "assistant" : "user",
@@ -175,9 +195,12 @@ export default async function handler(req, res) {
 }
 ```
 
-Worth adding before you put it in front of a cohort: rate limiting per IP, a shared secret in
-`botHeaders` so the endpoint isn't open to the world, and a cap on transcript length (the
-`slice(-20)` above is the crude version).
+**Be honest with yourself about the shared key.** `botHeaders` lives in a file every learner can
+read, so `x-course-key` raises the effort required to abuse your endpoint; it does not make it
+private. What actually protects you is the rate limit above, a hard spend cap set at your provider,
+and being willing to rotate the key and republish if it leaks. For a course cohort that's a
+reasonable trade. For anything with real money behind it, put the endpoint behind a login your
+LMS already enforces.
 
 ---
 
@@ -195,10 +218,44 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
 | `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"capture"`, `"coach"`, `"artifact"`. See above. |
+| `followSystemDarkMode` | `false` | Off on purpose: a Rise lesson is light, and following the learner's OS dark mode drops a dark panel into a white page. Turn on only if your host is dark. |
 
 `BOT_SYSTEM_PROMPT`, directly below `CONFIG`, is what a live coach is told to do — including the
 instruction to emit its final prompt in a fenced ` ```master-prompt ` block. **Keep that
 instruction if you rewrite the prompt**; it's how Step 5 finds the finished artifact.
+
+---
+
+## Deploying to Review 360
+
+The activity is built to survive a Rise iframe it does not control, which is what a published
+Review 360 link gives you:
+
+- **It stays light.** OS dark mode is ignored unless `followSystemDarkMode` is on, so the block
+  never renders dark inside a white lesson.
+- **Copying works without permissions.** The copy button tries the synchronous `execCommand` path
+  first, because that runs inside the click's activation window and works in frames never granted
+  `clipboard-write`. If every path fails it selects the prompt and tells the learner to press
+  Ctrl+C, so the deliverable is never trapped in the page.
+- **No modals.** Destructive actions confirm on the button itself with a second press, so a frame
+  without `allow-modals` can't turn "Start over" into a dead button.
+- **Pure ASCII.** The file contains no bytes above 127 - typography is HTML entities and `\u`
+  escapes - so it can't be mangled by a host page serving a different charset.
+
+Two things to verify on the real published link, because a Review 360 link is a different domain
+and pipeline from preview:
+
+1. **Re-run `tools/rise-storage-probe.html` there** if you're using the multi-block layout. The
+   split depends on blocks sharing a storage origin, and that verdict doesn't automatically carry
+   over from preview.
+2. **Check the block height.** Rise decides how tall an embed is. The chat scrolls internally, but
+   the capture block grows with each workflow card - make sure a learner with five steps isn't
+   clipped.
+
+Also specific to Review 360: it collects reviewer comments, not activity data. Nothing a learner
+writes comes back to you - the master prompt exists only in their browser until they copy it out.
+And because storage is keyed to the serving domain, progress doesn't follow a learner between
+preview, the review link, and any later LMS copy.
 
 ---
 
@@ -238,7 +295,7 @@ validates loses its checkmark until it does.
 
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
-npm test         # all four suites, 129 assertions
+npm test         # all five suites, 142 assertions
 ```
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
@@ -256,6 +313,10 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   reload restores all three, and that Start over in one clears them all.
 - `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
   iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
+- `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and
+  modal-free, that dark mode stays off by default and still works when opted in, that copying
+  survives a missing clipboard API and leaves the text selected when it can't copy at all, and
+  that one press of Start over never erases anything.
 
 Every suite fails on any uncaught page error or unexpected console error, so a runtime exception
 anywhere in the flow shows up as a test failure.

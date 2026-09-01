@@ -165,8 +165,8 @@ try {
     (await F('coach').locator('.bw-msg-bot').first().textContent()).includes('Every Monday'));
 
   // ---- start over in one block clears them all ----
-  page.on('dialog', d => d.accept());
   await F('artifact').locator('#bw-reset').click();
+  await F('artifact').locator('#bw-reset').click();   // inline confirm
   await settle(900);
   check('reset cleared the capture block', (await F('capture').locator('#bw-problem').inputValue()) === '');
   check('reset cleared the coach transcript', await F('coach').locator('.bw-msg').count() === 0,
