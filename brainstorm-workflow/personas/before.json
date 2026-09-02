@@ -1,0 +1,28 @@
+{
+  "_note": "Recorded from the pre-fix build so the report can show what changed. Regenerate only if you deliberately re-baseline.",
+  "marcus": {
+    "task": "Step 3, rebuilding the slides. Same twelve layouts every week with new numbers dropped in, and it eats an hour and a half on its own.",
+    "changed": [
+      "task"
+    ]
+  },
+  "dana": {
+    "task": "Probably the writing part. It just takes forever.",
+    "keep": "I do not know, I guess the parts about impact?",
+    "output": "Just something that sounds professional and is not so dry.",
+    "context": "Not really anything, just make it good.",
+    "changed": [
+      "task",
+      "keep",
+      "output",
+      "context"
+    ],
+    "ackWas": "That I can work with."
+  },
+  "amara": {
+    "task": "Honestly all of it. Step 2 especially - checking criteria is just matching a list.",
+    "changed": [
+      "task"
+    ]
+  }
+}
