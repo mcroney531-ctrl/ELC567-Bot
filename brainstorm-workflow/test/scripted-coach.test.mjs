@@ -29,6 +29,9 @@ try {
   check('step2 locked at start', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
   await page.click('[data-next="1"]');
   check('short problem blocked', !(await page.locator('#bw-warn-1').isHidden()));
+  check('the counter reads as a floor, not a cap',
+    /more characters before you can continue/.test(await page.locator('#bw-problem-count').textContent()),
+    await page.locator('#bw-problem-count').textContent());
 
   await page.fill('#bw-problem', 'Every Monday I spend two hours building status updates for eleven clients, pulling the same numbers and rewriting the same sentences.');
   await page.click('[data-next="1"]');

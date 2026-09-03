@@ -2002,8 +2002,10 @@ write [MISSING: metric name] and keep going.</pre>
 
   function updateProblemCount() {
     var len = el.problem.value.trim().length;
+    // "0 / 40 characters" reads as a cap. It is a floor: enough to describe the
+    // task, because everything downstream is built from this sentence.
     el.problemCount.textContent = len < CONFIG.minProblemChars
-      ? len + " / " + CONFIG.minProblemChars + " characters"
+      ? (CONFIG.minProblemChars - len) + " more characters before you can continue"
       : len + " characters";
   }
 
