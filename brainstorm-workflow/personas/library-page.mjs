@@ -10,6 +10,13 @@ import { LIBRARY, TAGS } from './library.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/* Index everything a person might search by - the tools and the answers carry
+   the domain words ("aviation", "patient", "customs") that the name and role do not. */
+const searchIndex = p => [p.name, p.role, p.tests, p.problem,
+  p.steps.map(s => s.join(' ')).join(' '),
+  p.handoff, p.output, p.keep, p.context, p.tags.join(' ')
+].join(' ').toLowerCase().replace(/\s+/g, ' ');
+
 const field = (label, value) => `
   <div class="fld">
     <div class="fld-k">${label}</div>
@@ -27,7 +34,7 @@ const stepRow = (s, i) => `
   </div>`;
 
 const card = p => `
-<article class="p" data-tags="${p.tags.join(' ')}" data-search="${esc((p.name + ' ' + p.role + ' ' + p.tests + ' ' + p.problem).toLowerCase())}" id="p-${p.id}">
+<article class="p" data-tags="${p.tags.join(' ')}" data-search="${esc(searchIndex(p))}" id="p-${p.id}">
   <button class="p-hd" type="button" aria-expanded="false">
     <span class="p-name">${esc(p.name)}${p.core ? '<span class="core">regression set</span>' : ''}</span>
     <span class="p-role">${esc(p.role)}</span>
@@ -272,3 +279,28 @@ const html = `<title>Persona Library</title>
 
 fs.writeFileSync(path.join(HERE, 'library.html'), html);
 console.log('wrote personas/library.html (' + (html.length / 1024).toFixed(0) + ' KB, ' + LIBRARY.length + ' personas)');
+
+/* Also emit a spreadsheet form. The artifact viewer's sandbox makes any download
+   a page starts itself inert, so the offline copies are produced here instead. */
+const maxSteps = Math.max(...LIBRARY.map(p => p.steps.length));
+const cell = v => {
+  const t = String(v == null ? '' : v);
+  return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+};
+const header = ['id', 'name', 'role', 'tags', 'what it tests', 'problem']
+  .concat(Array.from({ length: maxSteps }, (_, i) => [`step ${i + 1} action`, `step ${i + 1} tools`]).flat())
+  .concat(['chat 1 handoff', 'chat 2a output', 'chat 2b keep', 'chat 3 context'])
+  .concat(['retry 1', 'retry 2a', 'retry 2b', 'retry 3']);
+
+const rows = LIBRARY.map(p => {
+  const steps = Array.from({ length: maxSteps }, (_, i) => p.steps[i] || ['', '']).flat();
+  const r = p.retry || {};
+  return [p.id, p.name, p.role, p.tags.join(' | '), p.tests, p.problem]
+    .concat(steps)
+    .concat([p.handoff, p.output, p.keep, p.context])
+    .concat([r.handoff || '', r.output || '', r.keep || '', r.context || '']);
+});
+
+const csv = '\uFEFF' + [header].concat(rows).map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
+fs.writeFileSync(path.join(HERE, 'library.csv'), csv);
+console.log('wrote personas/library.csv (' + rows.length + ' rows, ' + header.length + ' columns)');

@@ -379,8 +379,10 @@ some specific, some vague, some self-contradicting, some edge cases for the inte
 workflow, a two-step one, an all-paper workflow, a learner who answers questions with questions).
 Six carry `retry` answers for when the coach pushes back.
 
-`node personas/library-page.mjs` builds `personas/library.html`, a page with a copy button on every
-field for testing by hand. Three of the 30 are also the regression set in `personas.mjs`, replayed
+`node personas/library-page.mjs` builds two offline copies: `personas/library.html`, a self-contained
+page with a copy button on every field, which works opened straight from disk; and
+`personas/library.csv` for anyone who would rather work in a spreadsheet. Both are generated, so edit
+`library.mjs` and re-run rather than editing them. Three of the 30 are also the regression set in `personas.mjs`, replayed
 headlessly by `node personas/run.mjs` and written up by `node personas/report.mjs`.
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
