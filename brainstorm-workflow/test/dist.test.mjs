@@ -20,13 +20,14 @@ const report = makeReporter('dist build');
 const check = report.check;
 
 const FILES = [
-  ['problem', '1-problem.html'],
-  ['workflow', '2-workflow.html'],
-  ['draft', '3-draft.html'],
-  ['c1', '4-coach-handoff.html'],
-  ['c2', '5-coach-standards.html'],
-  ['c3', '6-coach-guardrails.html'],
-  ['artifact', '7-artifact.html']
+  ['intro', '1-intro.html'],
+  ['problem', '2-problem.html'],
+  ['workflow', '3-workflow.html'],
+  ['draft', '4-draft.html'],
+  ['c1', '5-coach-handoff.html'],
+  ['c2', '6-coach-standards.html'],
+  ['c3', '7-coach-guardrails.html'],
+  ['artifact', '8-artifact.html']
 ];
 
 const esc = t => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -64,7 +65,8 @@ try {
   await page.goto('http://127.0.0.1:8141/');
   await page.waitForTimeout(1000);
 
-  check('block 1 shows the problem box', await F('problem').locator('#bw-problem').isVisible());
+  check('the intro block shows the worked example', await F('intro').locator('.bw-example').isVisible());
+  check('block 2 shows the problem box', await F('problem').locator('#bw-problem').isVisible());
   check('block 2 shows the workflow cards', await F('workflow').locator('.bw-step[data-step="2"]').isVisible());
   check('block 3 shows the draft prompt step', await F('draft').locator('.bw-step[data-step="3"]').isVisible());
   check('chat blocks show a chat', await F('c1').locator('.bw-step[data-step="4"]').isVisible());

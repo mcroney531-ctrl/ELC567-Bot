@@ -13,7 +13,7 @@ const check = report.check;
 const doc = role => withConfig({ blockRole: `"${role}"` })
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 const lesson = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0">
-${[['problem', 'problem'], ['workflow', 'workflow'], ['draft', 'draft'], ['artifact', 'artifact']]
+${[['intro', 'intro'], ['problem', 'problem'], ['workflow', 'workflow'], ['draft', 'draft'], ['artifact', 'artifact']]
   .map(([id, r]) => `<p>Rise content.</p><iframe id="${id}" style="width:900px;height:760px;border:0" srcdoc="${doc(r)}"></iframe>`)
   .join('\n')}</body></html>`;
 
@@ -45,8 +45,15 @@ try {
   check('block 1 renders only step 1', await visible('problem') === '1', await visible('problem'));
   check('block 2 renders only step 2', await visible('workflow') === '2', await visible('workflow'));
   check('block 3 renders only step 3', await visible('draft') === '3', await visible('draft'));
-  check('block 1 keeps the intro', await F('problem').locator('.bw-hero').isVisible());
-  check('block 2 drops the intro', !(await F('workflow').locator('.bw-hero').isVisible()));
+  // ---- the intro block is framing only ----
+  check('intro block shows the hero', await F('intro').locator('.bw-hero').isVisible());
+  check('intro block shows the worked example', await F('intro').locator('.bw-example').isVisible());
+  check('intro block renders no steps', await visible('intro') === '', await visible('intro'));
+  check('intro block hides the progress rail', !(await F('intro').locator('.bw-progress').isVisible()));
+  check('intro block hides the footer', !(await F('intro').locator('.bw-foot').isVisible()));
+  check('the problem block no longer repeats the hero',
+    !(await F('problem').locator('.bw-hero').isVisible()));
+  check('the workflow block has no hero either', !(await F('workflow').locator('.bw-hero').isVisible()));
 
   // ---- the minimum is 25 characters, and reads as a floor ----
   check('counter states what is still needed',

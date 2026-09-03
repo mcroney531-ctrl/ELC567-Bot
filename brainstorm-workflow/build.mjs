@@ -16,14 +16,15 @@ const SRC = path.join(HERE, 'index.html');
 const OUT = path.join(HERE, 'dist');
 
 const BLOCKS = [
-  ['1-problem',          'problem',          'BLOCK 1 - name the repetitive task'],
-  ['2-workflow',         'workflow',         'BLOCK 2 - map the steps and the tools'],
-  ['3-draft',            'draft',            'BLOCK 3 - the draft prompt, built from blocks 1 and 2'],
-  ['4-coach-handoff',    'coach-handoff',    'BLOCK 4 - chat: which step should the AI take over'],
-  ['5-coach-standards',  'coach-standards',  'BLOCK 5 - chat: what a good result looks like, what stays yours'],
-  ['6-coach-guardrails', 'coach-guardrails', 'BLOCK 6 - chat: house rules, then hands back the prompt'],
-  ['7-artifact',         'artifact',         'BLOCK 7 - the finished master prompt, editable and copyable'],
-  ['alt-blocks-1-3-combined', 'capture',     'ALTERNATIVE - blocks 1, 2 and 3 together in one block'],
+  ['1-intro',            'intro',            'BLOCK 1 - the hook, the outcome, and the worked example'],
+  ['2-problem',          'problem',          'BLOCK 2 - name the repetitive task'],
+  ['3-workflow',         'workflow',         'BLOCK 3 - map the steps and the tools'],
+  ['4-draft',            'draft',            'BLOCK 4 - the draft prompt, built from blocks 2 and 3'],
+  ['5-coach-handoff',    'coach-handoff',    'BLOCK 5 - chat: which step should the AI take over'],
+  ['6-coach-standards',  'coach-standards',  'BLOCK 6 - chat: what a good result looks like, what stays yours'],
+  ['7-coach-guardrails', 'coach-guardrails', 'BLOCK 7 - chat: house rules, then hands back the prompt'],
+  ['8-artifact',         'artifact',         'BLOCK 8 - the finished master prompt, editable and copyable'],
+  ['alt-blocks-2-4-combined', 'capture',     'ALTERNATIVE - the intro and blocks 2, 3 and 4 in one block'],
   ['alt-single-block',   'all',              'ALTERNATIVE - the whole activity in one block']
 ];
 

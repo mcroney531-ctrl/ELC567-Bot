@@ -22,16 +22,18 @@ Run `npm run build` and paste the files from `dist/` — one per block, no editi
 
 | Paste this file | Into the block that should be |
 |---|---|
-| `dist/1-problem.html` | Name the repetitive task |
-| `dist/2-workflow.html` | Map the steps and the tools |
-| `dist/3-draft.html` | The draft prompt, built from blocks 1 and 2 |
-| `dist/4-coach-handoff.html` | Chat: which step should the AI take over |
-| `dist/5-coach-standards.html` | Chat: what good looks like, what stays yours |
-| `dist/6-coach-guardrails.html` | Chat: house rules, then hands back the prompt |
-| `dist/7-artifact.html` | The finished master prompt |
+| `dist/1-intro.html` | The hook, the outcome, and the worked example |
+| `dist/2-problem.html` | Name the repetitive task |
+| `dist/3-workflow.html` | Map the steps and the tools |
+| `dist/4-draft.html` | The draft prompt, built from blocks 2 and 3 |
+| `dist/5-coach-handoff.html` | Chat: which step should the AI take over |
+| `dist/6-coach-standards.html` | Chat: what good looks like, what stays yours |
+| `dist/7-coach-guardrails.html` | Chat: house rules, then hands back the prompt |
+| `dist/8-artifact.html` | The finished master prompt |
 
-Two alternatives if seven blocks is more than you want: `dist/alt-blocks-1-3-combined.html` puts the
-first three in one block, and `dist/alt-single-block.html` is the whole activity in one.
+Two alternatives if eight blocks is more than you want: `dist/alt-blocks-2-4-combined.html` puts the
+intro and the first three steps in one block, and `dist/alt-single-block.html` is the whole activity
+in one.
 
 Each file is the whole activity with its `blockRole` already set, so you never hunt for a config
 line in Rise's code editor. Put your own Rise text blocks between them. Edit `index.html` and re-run
@@ -65,16 +67,17 @@ teaching content between them. Each paste is the same file with one line changed
 
 | Block | `blockRole` | What it is |
 |---|---|---|
-| 1 | `"problem"` | Name the repetitive task (keeps the intro) |
-| 2 | `"workflow"` | Map the steps and the tools |
-| 3 | `"draft"` | The auto-built draft prompt |
-| 4 | `"coach-handoff"` | Chat: which step should the AI take over? |
-| 5 | `"coach-standards"` | Chat: what does a good result look like, and what stays yours? |
-| 6 | `"coach-guardrails"` | Chat: context and house rules — closes by handing back the prompt |
-| 7 | `"artifact"` | The finished master prompt, editable and copyable |
+| 1 | `"intro"` | The hook, the outcome and the worked example. No steps, no progress rail, no state |
+| 2 | `"problem"` | Name the repetitive task |
+| 3 | `"workflow"` | Map the steps and the tools |
+| 4 | `"draft"` | The auto-built draft prompt |
+| 5 | `"coach-handoff"` | Chat: which step should the AI take over? |
+| 6 | `"coach-standards"` | Chat: what does a good result look like, and what stays yours? |
+| 7 | `"coach-guardrails"` | Chat: context and house rules — closes by handing back the prompt |
+| 8 | `"artifact"` | The finished master prompt, editable and copyable |
 
-Every block waits on what it actually needs and opens itself when that arrives: block 2 on the task
-being named, block 3 on the workflow being mapped, the chats and the artifact on both. Use any of
+Every block waits on what it actually needs and opens itself when that arrives: block 3 on the task
+being named, block 4 on the workflow being mapped, the chats and the artifact on both. Use any of
 the three chats, in that order — you don't need all three. `"capture"` bundles blocks 1-3 into one
 if you'd rather, and the default `"all"` keeps the whole activity in a single block.
 
@@ -267,7 +270,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
-| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"capture"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`, `"artifact"`. See above. |
+| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"intro"`, `"problem"`, `"workflow"`, `"draft"`, `"capture"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`, `"artifact"`. See above. |
 | `syncPollMs` | `1200` | How often a split block re-checks storage for a sibling's work. Only used when `blockRole` isn't `"all"`. |
 | `followSystemDarkMode` | `false` | Off on purpose: a Rise lesson is light, and following the learner's OS dark mode drops a dark panel into a white page. Turn on only if your host is dark. |
 
@@ -376,7 +379,7 @@ validates loses its checkmark until it does.
 ```bash
 npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
 npm run build    # regenerate dist/ after editing index.html
-npm test         # all eight suites, 224 assertions
+npm test         # all eight suites, 232 assertions
 ```
 
 ### Test personas
