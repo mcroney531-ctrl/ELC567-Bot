@@ -16,12 +16,15 @@ const SRC = path.join(HERE, 'index.html');
 const OUT = path.join(HERE, 'dist');
 
 const BLOCKS = [
-  ['1-capture',          'capture',          'BLOCK 1 - the problem + workflow form, and the draft prompt'],
-  ['2-coach-handoff',    'coach-handoff',    'BLOCK 2 - chat: which step should the AI take over'],
-  ['3-coach-standards',  'coach-standards',  'BLOCK 3 - chat: what a good result looks like, what stays yours'],
-  ['4-coach-guardrails', 'coach-guardrails', 'BLOCK 4 - chat: house rules, then hands back the prompt'],
-  ['5-artifact',         'artifact',         'BLOCK 5 - the finished master prompt, editable and copyable'],
-  ['single-block',       'all',              'ALL FIVE STEPS in one block - use this instead of 1-5 above']
+  ['1-problem',          'problem',          'BLOCK 1 - name the repetitive task'],
+  ['2-workflow',         'workflow',         'BLOCK 2 - map the steps and the tools'],
+  ['3-draft',            'draft',            'BLOCK 3 - the draft prompt, built from blocks 1 and 2'],
+  ['4-coach-handoff',    'coach-handoff',    'BLOCK 4 - chat: which step should the AI take over'],
+  ['5-coach-standards',  'coach-standards',  'BLOCK 5 - chat: what a good result looks like, what stays yours'],
+  ['6-coach-guardrails', 'coach-guardrails', 'BLOCK 6 - chat: house rules, then hands back the prompt'],
+  ['7-artifact',         'artifact',         'BLOCK 7 - the finished master prompt, editable and copyable'],
+  ['alt-blocks-1-3-combined', 'capture',     'ALTERNATIVE - blocks 1, 2 and 3 together in one block'],
+  ['alt-single-block',   'all',              'ALTERNATIVE - the whole activity in one block']
 ];
 
 const src = fs.readFileSync(SRC, 'utf8');
@@ -56,4 +59,4 @@ for (const [file, role, label] of BLOCKS) {
   }
   console.log(`${dest.replace(HERE + '/', '')}  ->  blockRole "${role}"  (${(out.length / 1024).toFixed(0)} KB)`);
 }
-console.log('\nAll six files verified: correct role, pure ASCII.');
+console.log('\nAll ' + BLOCKS.length + ' files verified: correct role, pure ASCII.');

@@ -20,11 +20,13 @@ const report = makeReporter('dist build');
 const check = report.check;
 
 const FILES = [
-  ['capture', '1-capture.html'],
-  ['c1', '2-coach-handoff.html'],
-  ['c2', '3-coach-standards.html'],
-  ['c3', '4-coach-guardrails.html'],
-  ['artifact', '5-artifact.html']
+  ['problem', '1-problem.html'],
+  ['workflow', '2-workflow.html'],
+  ['draft', '3-draft.html'],
+  ['c1', '4-coach-handoff.html'],
+  ['c2', '5-coach-standards.html'],
+  ['c3', '6-coach-guardrails.html'],
+  ['artifact', '7-artifact.html']
 ];
 
 const esc = t => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -62,19 +64,22 @@ try {
   await page.goto('http://127.0.0.1:8141/');
   await page.waitForTimeout(1000);
 
-  check('capture block shows the form', await F('capture').locator('#bw-problem').isVisible());
+  check('block 1 shows the problem box', await F('problem').locator('#bw-problem').isVisible());
+  check('block 2 shows the workflow cards', await F('workflow').locator('.bw-step[data-step="2"]').isVisible());
+  check('block 3 shows the draft prompt step', await F('draft').locator('.bw-step[data-step="3"]').isVisible());
   check('chat blocks show a chat', await F('c1').locator('.bw-step[data-step="4"]').isVisible());
   check('artifact block shows the prompt box', await F('artifact').locator('.bw-step[data-step="5"]').isVisible());
 
-  await F('capture').locator('#bw-problem').fill(
+  await F('problem').locator('#bw-problem').fill(
     'Every Monday I spend two hours building status updates for eleven clients, rewriting the same lines.');
-  await F('capture').locator('[data-next="1"]').click();
-  const cards = F('capture').locator('#bw-cards .bw-card');
+  await F('problem').locator('[data-next="1"]').click();
+  await page.waitForTimeout(1500);
+  const cards = F('workflow').locator('#bw-cards .bw-card');
   await cards.nth(0).locator('input').nth(0).fill('Pull last week delivery numbers');
   await cards.nth(0).locator('input').nth(1).fill('Asana, Harvest');
   await cards.nth(1).locator('input').nth(0).fill('Draft the update per client');
   await cards.nth(1).locator('input').nth(1).fill('Google Docs');
-  await F('capture').locator('[data-next="2"]').click();
+  await F('workflow').locator('[data-next="2"]').click();
   await page.waitForTimeout(900);
 
   await waitBots('c1', 1);
