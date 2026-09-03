@@ -371,6 +371,18 @@ npm run build    # regenerate dist/ after editing index.html
 npm test         # all seven suites, 194 assertions
 ```
 
+### Test personas
+
+`personas/library.mjs` holds 30 complete run-throughs &mdash; a problem statement, a workflow, and
+the four chat answers &mdash; spread across different jobs and deliberately varied in answer quality:
+some specific, some vague, some self-contradicting, some edge cases for the interface (a seven-step
+workflow, a two-step one, an all-paper workflow, a learner who answers questions with questions).
+Six carry `retry` answers for when the coach pushes back.
+
+`node personas/library-page.mjs` builds `personas/library.html`, a page with a copy button on every
+field for testing by hand. Three of the 30 are also the regression set in `personas.mjs`, replayed
+headlessly by `node personas/run.mjs` and written up by `node personas/report.mjs`.
+
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
 
 - `test/scripted-coach.test.mjs` — the full walkthrough on the built-in coach: gating and
