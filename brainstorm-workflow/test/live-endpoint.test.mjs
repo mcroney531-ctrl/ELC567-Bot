@@ -46,7 +46,9 @@ try {
   // --- 1. live badge + priming request shape ---
   state.mode = 'reply'; state.requests.length = 0; state.headers.length = 0;
   await fillToStep4();
-  check('badge flips to live', (await page.locator('#bw-bot-badge').textContent()).includes('Live'));
+  check('badge names the live assistant',
+    (await page.locator('#bw-bot-badge').textContent()).includes('AI learning assistant'),
+    await page.locator('#bw-bot-badge').textContent());
   await waitBots(1);
   check('opening comes from the endpoint', (await bots().first().textContent()).includes('Live reply one'));
   const req = state.requests[0];
