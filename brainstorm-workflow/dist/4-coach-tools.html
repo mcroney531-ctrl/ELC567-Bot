@@ -1,5 +1,5 @@
 <!-- ==========================================================
-     BLOCK 2 - chat: which step should the AI take over
+     BLOCK 4 - chat: where each of those steps happens
      Paste this ENTIRE file into one Rise custom code block.
      Generated from index.html - edit that, then re-run build.mjs.
      ========================================================== -->
@@ -16,38 +16,44 @@
    ========================================================================== */
 
 .bw {
-  /* ---- palette (light) ---- */
-  --bw-bg: #ffffff;
-  --bw-surface: #f7f8fa;
-  --bw-surface-2: #eef0f4;
-  --bw-border: #dfe3ea;
-  --bw-border-strong: #c3c9d4;
-  --bw-text: #1c2333;
-  --bw-text-muted: #5b6478;
-  --bw-text-faint: #858ea3;
-  --bw-accent: #2f5bd7;
-  --bw-accent-hover: #244aba;
-  --bw-accent-soft: #e8eeff;
-  --bw-good: #12805c;
-  --bw-good-soft: #e2f4ed;
-  --bw-warn: #9a5b00;
-  --bw-warn-soft: #fdf0dc;
-  --bw-danger: #b3261e;
-  --bw-danger-soft: #fdeceb;
-  --bw-final: #6b3fd4;
-  --bw-final-soft: #f1ecff;
+  /* ---- palette: warm ivory ground, lavender accents ---- */
+  --bw-page: #f6f4fc;          /* ambient tint behind the cards */
+  --bw-bg: #fdfcff;            /* card surface */
+  --bw-surface: #f8f7fd;       /* sunk panels and the chat ground */
+  --bw-surface-2: #efedf9;
+  --bw-border: #ece9f7;
+  --bw-border-strong: #dcd7f0;
+  --bw-text: #2a2a4a;
+  --bw-text-muted: #6f6d92;
+  --bw-text-faint: #9b98b8;
+  --bw-accent: #7c74e0;
+  --bw-accent-hover: #6a62d4;
+  --bw-accent-soft: #efedfb;
+  --bw-accent-grad: linear-gradient(135deg, #8d84e8, #7675d8);
+  --bw-accent-tail: #7675d8;
+  --bw-bubble-bot: #ffffff;    /* the coach's bubble, and anything that sits on it */
+  --bw-compose: rgba(255, 255, 255, .74);
+  --bw-good: #2f8f6f;
+  --bw-good-soft: #e6f5ef;
+  --bw-warn: #96671c;
+  --bw-warn-soft: #fbf1de;
+  --bw-danger: #b5443c;
+  --bw-danger-soft: #fbecea;
+  --bw-final: #7c74e0;
+  --bw-final-soft: #efedfb;
 
-  --bw-radius: 10px;
-  --bw-radius-sm: 7px;
+  --bw-radius: 22px;
+  --bw-radius-sm: 14px;
+  --bw-radius-bubble: 20px;
   --bw-gap: 16px;
-  --bw-shadow: 0 1px 2px rgba(20, 28, 48, .06), 0 4px 14px rgba(20, 28, 48, .05);
+  --bw-shadow: 0 2px 8px rgba(93, 85, 180, .05), 0 12px 32px rgba(93, 85, 180, .07);
 
   box-sizing: border-box;
-  max-width: 860px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 4px;
+  padding: 12px;
   color: var(--bw-text);
-  background: var(--bw-bg);
+  background: var(--bw-page);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.55;
@@ -58,26 +64,29 @@
 
 @media (prefers-color-scheme: dark) {
   .bw:not([data-theme="light"]) {
-    --bw-bg: #14171f;
-    --bw-surface: #1b1f2a;
-    --bw-surface-2: #232836;
-    --bw-border: #2e3444;
-    --bw-border-strong: #3f4759;
-    --bw-text: #e8ebf2;
-    --bw-text-muted: #a4adc0;
-    --bw-text-faint: #7d869b;
-    --bw-accent: #7d9cff;
-    --bw-accent-hover: #9ab1ff;
-    --bw-accent-soft: #1e2740;
-    --bw-good: #4fc79c;
-    --bw-good-soft: #16302a;
-    --bw-warn: #e0a458;
-    --bw-warn-soft: #322616;
-    --bw-danger: #f08079;
-    --bw-danger-soft: #341d1d;
-    --bw-final: #b19bf5;
-    --bw-final-soft: #241d3b;
-    --bw-shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    --bw-page: #14121f;
+    --bw-bg: #1b1830;
+    --bw-surface: #211d38;
+    --bw-surface-2: #2a2545;
+    --bw-border: #322c52;
+    --bw-border-strong: #443c6b;
+    --bw-text: #ece9fb;
+    --bw-text-muted: #a9a4c9;
+    --bw-text-faint: #837da6;
+    --bw-accent: #a79dff;
+    --bw-accent-hover: #b9b1ff;
+    --bw-accent-soft: #262046;
+    --bw-bubble-bot: #262138;
+    --bw-compose: rgba(33, 29, 56, .78);
+    --bw-good: #5fc79c;
+    --bw-good-soft: #17322a;
+    --bw-warn: #e0a95f;
+    --bw-warn-soft: #33280f;
+    --bw-danger: #f08b82;
+    --bw-danger-soft: #37201e;
+    --bw-final: #a79dff;
+    --bw-final-soft: #262046;
+    --bw-shadow: 0 2px 8px rgba(0,0,0,.34), 0 12px 32px rgba(0,0,0,.28);
   }
 }
 
@@ -240,20 +249,24 @@
 
 /* ---- buttons ---- */
 .bw-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 9px 16px; font: inherit; font-size: .875rem; font-weight: 600;
-  border-radius: var(--bw-radius-sm); border: 1px solid transparent; cursor: pointer;
-  background: var(--bw-accent); color: #fff; transition: background .15s ease, border-color .15s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 20px; font: inherit; font-size: .875rem; font-weight: 600;
+  border-radius: 999px; border: 1px solid transparent; cursor: pointer;
+  background: var(--bw-accent-grad); color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 116, 224, .28);
+  transition: filter .15s ease, box-shadow .15s ease, background .15s ease;
 }
-.bw-btn:hover:not(:disabled) { background: var(--bw-accent-hover); }
+.bw-btn:hover:not(:disabled) { filter: brightness(1.06); box-shadow: 0 6px 18px rgba(124, 116, 224, .34); }
+/* The step's own Next is the strongest thing on the block. */
+.bw-actions .bw-btn[data-next] { flex: 1 1 100%; padding: 14px 22px; font-size: .9375rem; }
 .bw-btn:disabled { opacity: .45; cursor: not-allowed; }
-.bw-btn-ghost { background: none; color: var(--bw-text); border-color: var(--bw-border-strong); }
+.bw-btn-ghost { background: var(--bw-bubble-bot); color: var(--bw-text); border-color: var(--bw-border-strong); box-shadow: none; }
 .bw-btn-ghost:hover:not(:disabled) { background: var(--bw-surface); border-color: var(--bw-accent); color: var(--bw-accent); }
-.bw-btn-quiet { background: none; color: var(--bw-text-muted); border-color: transparent; padding: 6px 8px; font-size: .8125rem; }
+.bw-btn-quiet { background: none; color: var(--bw-text-muted); border-color: transparent; padding: 6px 10px; font-size: .8125rem; box-shadow: none; }
 .bw-btn-quiet:hover:not(:disabled) { background: var(--bw-surface); color: var(--bw-text); }
-.bw-btn-danger { background: var(--bw-danger); border-color: var(--bw-danger); color: #fff; }
+.bw-btn-danger { background: var(--bw-danger); border-color: var(--bw-danger); color: #fff; box-shadow: none; }
 .bw-btn-danger:hover:not(:disabled) { background: var(--bw-danger); filter: brightness(.92); }
-.bw-btn-final { background: var(--bw-final); }
+.bw-btn-final { background: var(--bw-accent-grad); }
 .bw-btn-final:hover:not(:disabled) { background: var(--bw-final); filter: brightness(.92); }
 .bw-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .bw-actions .bw-spacer { flex: 1 1 auto; }
@@ -283,30 +296,49 @@
 
 /* ---- chat ---- */
 .bw-chat {
-  border: 1px solid var(--bw-border); border-radius: var(--bw-radius-sm);
+  border: 1px solid var(--bw-border); border-radius: var(--bw-radius);
   background: var(--bw-surface); overflow: hidden;
 }
 .bw-chat-log {
-  height: clamp(260px, 42vh, 420px); overflow-y: auto;
-  padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  height: clamp(280px, 44vh, 440px); overflow-y: auto;
+  padding: 18px 16px; display: flex; flex-direction: column; gap: 18px;
 }
-.bw-msg { display: flex; flex-direction: column; gap: 4px; max-width: 88%; }
-.bw-msg-who { font-size: .6875rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bw-text-faint); }
+.bw-msg { display: flex; gap: 10px; align-items: flex-start; max-width: 86%; }
+.bw-msg-user { align-self: flex-end; flex-direction: row-reverse; }
+.bw-msg-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.bw-msg-user .bw-msg-col { align-items: flex-end; }
+.bw-avatar { flex: 0 0 auto; display: block; width: 34px; height: 34px; margin-top: 2px; }
 .bw-msg-body {
-  padding: 10px 13px; border-radius: 12px; font-size: .9375rem; line-height: 1.55;
+  position: relative;
+  padding: 12px 16px; border-radius: var(--bw-radius-bubble);
+  font-size: .9375rem; line-height: 1.55;
   white-space: pre-wrap; word-break: break-word;
 }
-.bw-msg-bot .bw-msg-body { background: var(--bw-bg); border: 1px solid var(--bw-border); border-bottom-left-radius: 4px; }
-.bw-msg-user { align-self: flex-end; align-items: flex-end; }
-.bw-msg-user .bw-msg-body { background: var(--bw-accent); color: #fff; border-bottom-right-radius: 4px; }
-.bw-msg-body pre {
-  margin: 8px 0 2px; padding: 10px; overflow-x: auto;
-  background: var(--bw-surface-2); border: 1px solid var(--bw-border);
-  border-radius: 6px; font-size: .75rem; line-height: 1.5; white-space: pre-wrap;
+.bw-msg-bot .bw-msg-body {
+  background: var(--bw-bubble-bot); border: 1px solid var(--bw-border);
+  border-bottom-left-radius: 6px; box-shadow: 0 1px 3px rgba(93, 85, 180, .05);
 }
-.bw-typing { display: inline-flex; gap: 4px; padding: 12px 14px; }
+.bw-msg-user .bw-msg-body {
+  background: var(--bw-accent-grad); color: #fff;
+  border-bottom-right-radius: 6px; box-shadow: 0 3px 12px rgba(124, 116, 224, .26);
+}
+/* The tails. Small, and only on the corner nearest the speaker. */
+.bw-msg-body::after {
+  content: ""; position: absolute; bottom: 1px;
+  width: 0; height: 0; border: 6px solid transparent; border-bottom: 0;
+}
+.bw-msg-bot .bw-msg-body::after { left: -5px; border-right-color: var(--bw-bubble-bot); }
+.bw-msg-user .bw-msg-body::after { right: -5px; border-left-color: var(--bw-accent-tail); }
+.bw-msg-time { font-size: .72rem; color: var(--bw-text-faint); padding: 0 8px; }
+.bw-msg-body pre {
+  margin: 8px 0 2px; padding: 11px 12px; overflow-x: auto;
+  background: var(--bw-surface); border: 1px solid var(--bw-border);
+  border-radius: 12px; font-size: .75rem; line-height: 1.5; white-space: pre-wrap;
+}
+.bw-msg-user .bw-msg-body pre { background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .3); }
+.bw-typing { display: inline-flex; gap: 5px; padding: 14px 16px; }
 .bw-typing i {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--bw-text-faint);
+  width: 6px; height: 6px; border-radius: 50%; background: var(--bw-accent);
   animation: bw-bounce 1.1s infinite ease-in-out;
 }
 .bw-typing i:nth-child(2) { animation-delay: .16s; }
@@ -317,17 +349,35 @@
   .bw-progress-fill, .bw-step-caret { transition: none; }
 }
 .bw-chat-compose {
-  display: flex; gap: 8px; align-items: flex-end;
-  padding: 10px; border-top: 1px solid var(--bw-border); background: var(--bw-bg);
+  display: flex; gap: 10px; align-items: flex-end;
+  padding: 12px; border-top: 1px solid var(--bw-border);
+  background: var(--bw-compose);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
-.bw-chat-compose textarea { min-height: 44px; max-height: 140px; font-size: .9375rem; }
+.bw-chat-compose textarea {
+  min-height: 46px; max-height: 140px; font-size: .9375rem;
+  padding: 12px 18px; border-radius: 22px; background: var(--bw-bubble-bot);
+  box-shadow: inset 0 1px 3px rgba(93, 85, 180, .06);
+}
+/* Circular send, matching the composer's height. */
+.bw-chat-send {
+  flex: 0 0 auto; width: 44px; height: 44px; padding: 0; border-radius: 50%;
+}
+.bw-chat-send svg { width: 19px; height: 19px; }
+.bw-chat-note {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 12px 2px; font-size: .75rem; color: var(--bw-text-faint);
+}
+.bw-chat-note svg { width: 12px; height: 12px; opacity: .8; }
 .bw-chat-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .bw-badge {
-  font-size: .6875rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 999px; background: var(--bw-surface-2); color: var(--bw-text-faint);
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .75rem; font-weight: 600; letter-spacing: .01em;
+  padding: 4px 10px; border-radius: 999px; background: var(--bw-accent-soft); color: var(--bw-accent);
 }
+.bw-badge svg { width: 12px; height: 12px; }
 .bw-badge-live { background: var(--bw-good-soft); color: var(--bw-good); }
-.bw-badge-mock { background: var(--bw-warn-soft); color: var(--bw-warn); }
+.bw-badge-mock { background: var(--bw-accent-soft); color: var(--bw-accent); }
 
 /* ---- footer ---- */
 .bw-foot {
@@ -494,11 +544,14 @@ write [MISSING: metric name] and keep going.</pre>
           Walk through it the way you'd explain it to a new hire on their first day. One action per
           card, plus wherever that action happens. Two steps minimum &mdash; most tasks have four or five.
         </p>
-        <div class="bw-cards" id="bw-cards"></div>
-        <div class="bw-actions">
-          <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
-          <span class="bw-spacer"></span>
-          <button type="button" class="bw-btn" data-next="2">Next: see your draft prompt</button>
+        <div class="bw-notice bw-notice-info" id="bw-prereq-2" hidden></div>
+        <div id="bw-workflow-wrap">
+          <div class="bw-cards" id="bw-cards"></div>
+          <div class="bw-actions">
+            <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
+            <span class="bw-spacer"></span>
+            <button type="button" class="bw-btn" data-next="2">Next: see your draft prompt</button>
+          </div>
         </div>
         <div class="bw-notice bw-notice-warn" id="bw-warn-2" hidden></div>
       </div>
@@ -520,11 +573,14 @@ write [MISSING: metric name] and keep going.</pre>
           This is your workflow, restated as something an AI can act on. It's a starting point, not
           the deliverable &mdash; it still doesn't know what "good" looks like for you. That's what Step 4 fixes.
         </p>
-        <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
-        <div class="bw-actions">
-          <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
-          <span class="bw-spacer"></span>
-          <button type="button" class="bw-btn" data-next="3">Next: sharpen it with the coach</button>
+        <div class="bw-notice bw-notice-info" id="bw-prereq-3" hidden></div>
+        <div id="bw-draft-wrap">
+          <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
+          <div class="bw-actions">
+            <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
+            <span class="bw-spacer"></span>
+            <button type="button" class="bw-btn" data-next="3">Next: sharpen it with the coach</button>
+          </div>
         </div>
       </div>
     </li>
@@ -557,9 +613,10 @@ write [MISSING: metric name] and keep going.</pre>
           <div class="bw-chat-compose">
             <label class="bw-sr" for="bw-chat-input">Your reply to the coach</label>
             <textarea id="bw-chat-input" rows="1" placeholder="Type your answer&hellip; (Enter to send, Shift+Enter for a new line)"></textarea>
-            <button type="button" class="bw-btn" id="bw-chat-send">Send</button>
+            <button type="button" class="bw-btn bw-chat-send" id="bw-chat-send" aria-label="Send"></button>
           </div>
         </div>
+        <p class="bw-chat-note" id="bw-chat-note"></p>
         </div>
         <div class="bw-notice bw-notice-error" id="bw-chat-error" hidden></div>
         <div class="bw-notice bw-notice-warn" id="bw-warn-4" hidden></div>
@@ -648,8 +705,9 @@ write [MISSING: metric name] and keep going.</pre>
     // breaking change to the activity.
     storageKey: "brainstorm_workflow_data",
 
-    // Minimum characters before Step 1 counts as answered.
-    minProblemChars: 40,
+    // Minimum characters before Step 1 counts as answered. A floor, not a cap:
+    // everything downstream is written from this sentence.
+    minProblemChars: 25,
 
     // Minimum filled-in workflow cards before Step 2 counts as answered.
     minWorkflowSteps: 2,
@@ -661,7 +719,11 @@ write [MISSING: metric name] and keep going.</pre>
     // several Rise custom blocks in one lesson and give each a different role;
     // they share state through localStorage and update each other live.
     //   "all"               - the whole five-step activity in one block (default)
-    //   "capture"           - steps 1-3: the problem, the workflow map, the draft prompt
+    //   "intro"             - the framing and the worked example, nothing else
+    //   "capture"           - steps 1-3 together in one block
+    //   "problem"           - step 1 only: name the task
+    //   "workflow"          - step 2 only: map the steps and tools
+    //   "draft"             - step 3 only: the auto-built draft prompt
     //   "coach-handoff"     - chat 1: which step the AI takes over
     //   "coach-standards"   - chat 2: what good looks like, and what stays yours
     //   "coach-guardrails"  - chat 3: context and rules, then the finished prompt
@@ -670,7 +732,7 @@ write [MISSING: metric name] and keep going.</pre>
     // master prompt. Use any of them, in that order; you don't need all three.
     // Splitting only works where the blocks share an origin. Verify with
     // tools/rise-storage-probe.html before relying on it.
-    blockRole: "coach-handoff",
+    blockRole: "coach-tools",
 
     // How often a split block re-checks storage for a sibling's work. The
     // storage event is the fast path, but a block below the fold is not
@@ -688,7 +750,13 @@ write [MISSING: metric name] and keep going.</pre>
      its own fields, on top of whatever siblings have saved since. */
   var ROLES = {
     all:                { steps: [1, 2, 3, 4, 5], intro: true,  label: "",                  stage: "all" },
-    capture:            { steps: [1, 2, 3],       intro: true,  label: "Map it",            stage: null },
+    intro:              { steps: [],              intro: true,  label: "",                  stage: null },
+    capture:            { steps: [1, 2, 3],       intro: true,  label: "Set it up",         stage: null },
+    problem:            { steps: [1],             intro: false, label: "Name it",           stage: null },
+    workflow:           { steps: [2],             intro: false, label: "Map it",            stage: null },
+    "coach-workflow":   { steps: [2],             intro: false, label: "Walk me through it", stage: "workflow" },
+    "coach-tools":      { steps: [2],             intro: false, label: "Where it happens",   stage: "tools" },
+    draft:              { steps: [3],             intro: false, label: "Your draft",        stage: null },
     "coach-handoff":    { steps: [4],             intro: false, label: "Hand it over",      stage: "handoff" },
     "coach-standards":  { steps: [4],             intro: false, label: "Set the bar",       stage: "standards" },
     "coach-guardrails": { steps: [4],             intro: false, label: "Set the guardrails", stage: "guardrails" },
@@ -701,19 +769,30 @@ write [MISSING: metric name] and keep going.</pre>
      not per field. */
   var STAGES = {
     all:        { answers: ["handoff", "output", "keep", "context", "notes"], minTurns: 2 },
+    // These two capture the workflow itself rather than an answer key, so they
+    // own part of the steps array instead of a slice of botAnswers.
+    workflow:   { answers: [], minTurns: 1, owns: "actions" },
+    tools:      { answers: [], minTurns: 1, owns: "tools" },
     handoff:    { answers: ["handoff"],                                       minTurns: 1 },
     standards:  { answers: ["output", "keep"],                                minTurns: 2 },
     guardrails: { answers: ["context", "notes"],                              minTurns: 1 }
   };
+  var ownsActions = function () { return STAGE && STAGES[STAGE].owns === "actions"; };
+  var ownsTools = function () { return STAGE && STAGES[STAGE].owns === "tools"; };
 
   var OWNED_FIELDS = {
     all:      ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2", "v2Source"],
     capture:  ["problem", "steps", "toolsAll", "masterPromptV1"],
+    problem:  ["problem"],
+    workflow: ["steps", "toolsAll"],
+    draft:    ["masterPromptV1"],
     artifact: ["masterPromptV2", "v2Source"]
   };
   var ROLE  = ROLES[CONFIG.blockRole] || ROLES.all;
   var OWNED = OWNED_FIELDS[CONFIG.blockRole] || [];   // chat blocks own no top-level fields
   var STAGE = ROLE.stage;                             // null for capture / artifact
+  /* The two stages that take down the workflow itself rather than an opinion. */
+  var isCaptureChat = !!(STAGE && STAGES[STAGE].owns);
   var ownsStep = function (n) { return ROLE.steps.indexOf(n) !== -1; };
   var ownsAnswer = function (k) {
     return STAGE ? STAGES[STAGE].answers.indexOf(k) !== -1 : false;
@@ -788,8 +867,8 @@ write [MISSING: metric name] and keep going.</pre>
       v2Source: "",          // "bot" | "template" | "user"
       // One transcript per stage, so several chat blocks are separate
       // conversations that still build one shared master prompt.
-      conversations: { all: [], handoff: [], standards: [], guardrails: [] },
-      mockProgress:  { all: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
+      conversations: { all: [], workflow: [], tools: [], handoff: [], standards: [], guardrails: [] },
+      mockProgress:  { all: 0,  workflow: 0,  tools: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
       pushedBack: {},
@@ -880,13 +959,38 @@ write [MISSING: metric name] and keep going.</pre>
         if (workflowData.pushedBack[k]) base.pushedBack[k] = true;
         else delete base.pushedBack[k];
       });
+
+      // These stages have no answer key, so their one flag rides on the stage name.
+      if (STAGES[STAGE].owns) {
+        if (workflowData.pushedBack[STAGE]) base.pushedBack[STAGE] = true;
+        else delete base.pushedBack[STAGE];
+      }
+
+      /* The two capture stages share the steps array: one owns what each step
+         is, the other owns where it happens. Each writes only its own half so
+         re-describing the workflow can't wipe the tools, and vice versa. */
+      if (ownsActions()) {
+        var priorTools = base.steps || [];
+        base.steps = workflowData.steps.map(function (st, i) {
+          return { action: st.action, tools: (priorTools[i] || {}).tools || "" };
+        });
+      }
+      if (ownsTools()) {
+        var priorActions = base.steps || [];
+        base.steps = priorActions.map(function (st, i) {
+          return { action: st.action, tools: (workflowData.steps[i] || {}).tools || "" };
+        });
+        base.toolsAll = workflowData.toolsAll;
+      }
     }
 
     base.progress = base.progress || defaultData().progress;
     base.progress.done = base.progress.done || {};
     ROLE.steps.forEach(function (n) {
       if (workflowData.progress.done[n]) base.progress.done[n] = true;
-      else delete base.progress.done[n];
+      // A chat block shares its step with the other chats in that step, so it
+      // may raise the tick but must never take a sibling's back down.
+      else if (!isSplitCoach) delete base.progress.done[n];
     });
     return base;
   }
@@ -905,6 +1009,21 @@ write [MISSING: metric name] and keep going.</pre>
     Object.keys(blank).forEach(function (k) {
       if (k === "version" || k === "progress" ||
           k === "conversations" || k === "mockProgress" || k === "botAnswers") return;
+
+      // steps is co-owned: take back only the half this block doesn't write.
+      if (k === "steps" && (ownsActions() || ownsTools())) {
+        var incoming = stored.steps || [];
+        workflowData.steps = ownsActions()
+          ? workflowData.steps.map(function (st, i) {
+              return { action: st.action, tools: (incoming[i] || {}).tools || "" };
+            })
+          : incoming.map(function (st, i) {
+              return { action: st.action, tools: (workflowData.steps[i] || {}).tools || "" };
+            });
+        return;
+      }
+      if (k === "toolsAll" && ownsTools()) return;
+
       if (OWNED.indexOf(k) === -1) workflowData[k] = stored[k];
     });
 
@@ -956,6 +1075,7 @@ write [MISSING: metric name] and keep going.</pre>
      have been throttled offscreen comes back to life. */
   function wireCrossBlockSync() {
     if (CONFIG.blockRole === "all") return;   // single block: no siblings to track
+    if (!ROLE.steps.length) return;           // the intro block holds no state
     lastSeenRaw = currentRaw();
 
     window.addEventListener("storage", function (e) {
@@ -999,8 +1119,8 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   function adoptExternal() {
-    if (ownsStep(2)) renderCards();
-    if (ownsStep(4)) { refreshOpening(); renderChatLog(); }
+    if (ownsStep(2) && !isCaptureChat) renderCards();
+    if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(); }
     render();
     maybeStartConversation();
     if (ownsStep(5)) refreshV2(false);
@@ -1053,22 +1173,342 @@ write [MISSING: metric name] and keep going.</pre>
     workflowData.toolsAll = out;
   }
 
+  /* A step counts once it has an action. Tools are captured separately now, so
+     a workflow can be mapped before anyone has said where it happens. */
   function filledSteps() {
-    return workflowData.steps.filter(function (s) {
-      return String(s.action).trim() && String(s.tools).trim();
-    });
+    return workflowData.steps.filter(function (s) { return String(s.action).trim(); });
+  }
+
+  function toolsCaptured() {
+    return workflowData.steps.some(function (s) { return String(s.tools).trim(); }) ||
+           workflowData.toolsAll.length > 0;
   }
 
   function stepsAsList() {
     var list = filledSteps();
     if (!list.length) return "(not mapped yet)";
     return list.map(function (s, i) {
-      return (i + 1) + ". " + s.action.trim() + " \u2014 tools: " + s.tools.trim();
+      var tools = String(s.tools || "").trim();
+      return (i + 1) + ". " + s.action.trim() + (tools ? " \u2014 tools: " + tools : "");
     }).join("\n");
   }
 
   function toolsAsList() {
     return workflowData.toolsAll.length ? workflowData.toolsAll.join(", ") : "(none listed)";
+  }
+
+  /* ==========================================================================
+     CAPTURE BY CONVERSATION
+     --------------------------------------------------------------------------
+     Two of the chat blocks don't ask an opinion question - they take down the
+     workflow itself. People describe a process the way they'd say it out loud:
+     one run-on sentence, or a few lines, or a tidy numbered list if they're
+     the sort. All three have to end up in the same steps array, because that
+     array is what the master prompt is built from. So: parse what they said,
+     show the numbered list back, and let them correct it by number.
+     ========================================================================== */
+
+  /* "Yes" is rarely just "yes". It's "yep that's right", "looks good to me",
+     "no changes". Treat it as agreement only when the WHOLE message is made of
+     agreeing words - so "yes, but step 2 is wrong" still gets read as an edit. */
+  var AFFIRM_LEAD = /^(y|ye|yes|yep|yeah|yup|correct|right|exactly|perfect|great|good|looks good|sounds good|lgtm|ok|okay|done|confirmed|sure|spot on|no changes?|nothing to change|that'?s (it|right|correct|them|all))\b/i;
+  var AFFIRM_REST = /^[\s,.!-]*(?:(?:that'?s?|thats|it|is|are|all|of|them|look|looks|sound|sounds|read|reads|right|correct|good|great|perfect|fine|exactly|accurate|true|to|me|for|i|think|so|yeah|yes|yep|yup|ok|okay|now|nothing|else|no|change|changes|need|needed|and|the|my|list|step|steps|order|too|as|well|spot|on)[\s,.!-]*)*$/i;
+  function isConfirm(text) {
+    var m = AFFIRM_LEAD.exec(String(text || "").trim());
+    return !!m && AFFIRM_REST.test(String(text).trim().slice(m[0].length));
+  }
+
+  /* Filler people open a correction with. Stripped before looking for a step
+     number so "yes, but step 2 should be..." reads the same as "step 2 is...". */
+  var LEAD_FILLER = /^(?:\s*(?:no|nope|yes|yeah|yep|ok|okay|actually|sorry|wait|hold on|hmm|well|um|uh|oh|but|and|also|hey|please|can you|could you|i think|i mean)\b[,'\s]*)+/i;
+
+  /* "step 2 should be draft the summary", "3 = reformat the deck", "fix 1: pull the numbers" */
+  var STEP_EDIT = /^(?:change|fix|make|edit|update|replace)?\s*(?:step\s*)?#?(\d{1,2})\s*(?:should\s+(?:be|say|read)|is|to|=|:|\u2014|-)\s*(.+)$/i;
+
+  /* The words people actually use to mean "and after that". */
+  var SEQ_SPLIT = /(?:[,;.]\s*)?\b(?:and\s+then|then|after\s+that|after\s+which|afterwards|next|followed\s+by|finally|lastly|from\s+there|once\s+that'?s\s+done)\b[,:]?\s+/gi;
+
+  var MARKER = /^(?:\d{1,2}[.)\]:-]|[-*\u2022])\s+/;
+
+  /* One pass isn't enough: "oh and then I email it" has four of these stacked
+     up before the verb the step is actually about. */
+  var ACTION_PREFIX = /^(?:and|so|well|ok|okay|um|uh|oh|also|but|then|next|after that|after which|afterwards|before that|before this|beforehand|prior to that|finally|lastly|first|firstly|second|secondly|third|basically|usually|typically|normally|generally|i|i'?d|i'?ll|we|we'?d)\b[,'\s]*/i;
+
+  /* "before that I export the numbers" belongs at the top of the list, not the
+     bottom. Cheap to honour, and it's how people actually remember a step. */
+  var GOES_FIRST = /^(?:\s*(?:oh|and|but|actually|wait|well)\b[,'\s]*)*(?:before (?:that|this|all that|any of that)|beforehand|prior to (?:that|this)|first(?:ly)? (?:i|though)|to start(?: with)?)\b/i;
+
+  function tidyAction(raw) {
+    var t = String(raw || "").replace(/\s+/g, " ").trim();
+    var prev;
+    do { prev = t; t = t.replace(ACTION_PREFIX, ""); } while (t && t !== prev);
+    t = t.replace(/^(?:have to|need to|usually|always)\s+/i, "");
+    t = t.replace(/[.,;:\s]+$/, "");
+    if (t.length > 240) t = t.slice(0, 240);
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+  }
+
+  function tidyList(list) {
+    var out = [];
+    list.forEach(function (item) {
+      var t = tidyAction(item);
+      if (t.length >= 3) out.push(t);
+    });
+    return out.slice(0, 12);
+  }
+
+  /* Prose in, numbered steps out. Tried in order of how sure we can be. */
+  function splitIntoActions(text) {
+    var raw = String(text || "").replace(/\r/g, "");
+    var lines = raw.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+
+    // 1. Already a list, one per line - the tidy case, and unambiguous.
+    var marked = lines.filter(function (l) { return MARKER.test(l); });
+    if (marked.length >= 2) {
+      return tidyList(marked.map(function (l) { return l.replace(MARKER, ""); }));
+    }
+
+    // 2. Numbered, but typed as one paragraph: "1. pull 2. draft 3. send".
+    if (lines.length === 1 && /(?:^|\s)\d{1,2}[.)]\s+\S/.test(raw)) {
+      var inline = raw.split(/(?:^|\s)\d{1,2}[.)]\s+/).slice(1);
+      if (inline.length >= 2) return tidyList(inline);
+    }
+
+    // 3. Several lines, no markers - a line break is a step break.
+    if (lines.length >= 2) return tidyList(lines);
+
+    // 4. One line of speech. Split on the sequencing words, then on sentences.
+    SEQ_SPLIT.lastIndex = 0;
+    var seq = raw.split(SEQ_SPLIT);
+    if (tidyList(seq).length >= 2) return tidyList(seq);
+
+    var sentences = raw.split(/[.;]\s+/);
+    if (tidyList(sentences).length >= 2) return tidyList(sentences);
+
+    return tidyList([raw]);
+  }
+
+  /* "1 Asana, 2 Google Docs" - only when EVERY segment is numbered, so a plain
+     list of tool names can never be misread as step numbers. */
+  function parseToolPairs(text) {
+    var segs = String(text || "").split(/[\n;,]+/).filter(function (s) { return s.trim(); });
+    if (!segs.length) return null;
+    var pairs = [];
+    for (var i = 0; i < segs.length; i++) {
+      var m = /^\s*(?:step\s*)?#?(\d{1,2})\s*(?:[.)\]:=\u2014-]\s*|\s+)(?:is\s+|in\s+|on\s+|uses?\s+|via\s+|through\s+)?(.+)$/i.exec(segs[i].trim());
+      if (!m) return null;
+      var tools = String(m[2]).replace(/[.\s]+$/, "").trim();
+      if (!tools) return null;
+      pairs.push({ n: parseInt(m[1], 10), tools: tools });
+    }
+    return pairs;
+  }
+
+  /* Indexes into steps[], so trailing blank cards can't shift the numbering. */
+  function filledIndexes() {
+    var out = [];
+    workflowData.steps.forEach(function (s, i) {
+      if (String(s.action).trim()) out.push(i);
+    });
+    return out;
+  }
+
+  function setActions(list) {
+    var prior = workflowData.steps;
+    workflowData.steps = list.map(function (action, i) {
+      return { action: action, tools: (prior[i] || {}).tools || "" };
+    });
+    recomputeTools();
+  }
+
+  /* The numbered list as the learner sees it read back. */
+  function stepsPlain(withTools) {
+    var list = filledSteps();
+    if (!list.length) return "(nothing yet)";
+    return list.map(function (s, i) {
+      var tools = String(s.tools || "").trim();
+      return (i + 1) + ". " + s.action + (withTools ? " \u2014 " + (tools || "?") : "");
+    }).join("\n");
+  }
+
+  function readBack(lead, withTools, tail) {
+    return [lead, "", stepsPlain(withTools), "", tail].join("\n");
+  }
+
+  var lastCapture = null;
+
+  /* Runs on the learner's message in BOTH modes - a live coach writes better
+     replies than the script does, but it can't write into the steps array. */
+  function captureFromUser(raw) {
+    var text = String(raw || "").trim();
+    lastCapture = ownsActions() ? captureActions(text) : captureToolsFrom(text);
+    return lastCapture;
+  }
+
+  function captureActions(text) {
+    var have = filledSteps().length;
+
+    if (have >= CONFIG.minWorkflowSteps && isConfirm(text)) return { kind: "confirm" };
+
+    var edit = STEP_EDIT.exec(text.replace(LEAD_FILLER, ""));
+    if (edit && have) {
+      var i = parseInt(edit[1], 10) - 1;
+      var body = tidyAction(edit[2]);
+      var idx = filledIndexes();
+      if (body && i >= 0 && i <= idx.length) {
+        if (i === idx.length) workflowData.steps.push({ action: body, tools: "" });
+        else workflowData.steps[idx[i]].action = body;
+        return { kind: "edit" };
+      }
+    }
+
+    var actions = splitIntoActions(text);
+    if (!actions.length) return { kind: "none" };
+
+    // One new step on top of a list already taken down reads as "oh, and then
+    // I also..." - appending is what they meant, not starting over.
+    if (actions.length === 1 && have) {
+      var one = { action: actions[0], tools: "" };
+      workflowData.steps = GOES_FIRST.test(text)
+        ? [one].concat(filledSteps())
+        : filledSteps().concat([one]);
+      recomputeTools();
+      return { kind: "append" };
+    }
+
+    setActions(actions);
+    return actions.length < CONFIG.minWorkflowSteps ? { kind: "short" } : { kind: "set" };
+  }
+
+  function captureToolsFrom(text) {
+    var idx = filledIndexes();
+    if (!idx.length) return { kind: "nosteps" };
+    if (toolsCaptured() && isConfirm(text)) return { kind: "confirm" };
+
+    var pairs = parseToolPairs(text);
+    if (pairs) {
+      var hit = 0;
+      pairs.forEach(function (p) {
+        var target = idx[p.n - 1];
+        if (target !== undefined) { workflowData.steps[target].tools = p.tools; hit++; }
+      });
+      if (hit) {
+        recomputeTools();
+        return { kind: hit >= idx.length ? "set" : "edit" };
+      }
+    }
+
+    var tokens = parseTools(text);
+    if (!tokens.length) return { kind: "none" };
+
+    if (tokens.length === 1) {
+      idx.forEach(function (i) { workflowData.steps[i].tools = tokens[0]; });
+      recomputeTools();
+      return { kind: "set" };
+    }
+    if (tokens.length === idx.length) {
+      idx.forEach(function (i, k) { workflowData.steps[i].tools = tokens[k]; });
+      recomputeTools();
+      return { kind: "set" };
+    }
+
+    // Counts don't line up, so any pairing would be a guess. Ask once.
+    if (!workflowData.pushedBack[STAGE]) {
+      workflowData.pushedBack[STAGE] = true;
+      return { kind: "mismatch", steps: idx.length, tools: tokens.length };
+    }
+
+    // Asked already. Match in the order given, pile the remainder on the last
+    // step, and read it back so it can be corrected by number.
+    idx.forEach(function (i, k) {
+      if (k < tokens.length) workflowData.steps[i].tools = tokens[k];
+    });
+    if (tokens.length > idx.length) {
+      workflowData.steps[idx[idx.length - 1]].tools = tokens.slice(idx.length - 1).join(", ");
+    }
+    recomputeTools();
+    return { kind: "guessed" };
+  }
+
+  var CHECK_IT =
+    "Look right? If a step is off or missing, tell me the number and what it should say \u2014 " +
+    "\"step 2 should be draft the summary\". If it's right, just say so.";
+
+  var ACTION_REPLIES = {
+    set:     function () { return readBack("Here's what I've got:", false, CHECK_IT); },
+    edit:    function () { return readBack("Updated. The list now reads:", false, CHECK_IT); },
+    append:  function () { return readBack("Added. That gives me:", false, CHECK_IT); },
+    short:   function () {
+      return readBack("So far I've got:", false,
+        "That's a start, but one step isn't a workflow. **What happens right before it, and what " +
+        "happens right after?** Two minimum \u2014 most tasks like this have four or five.");
+    },
+    confirm: function () {
+      return [
+        "Locked in. That numbered list is what everything below is built from.",
+        "",
+        "Keep reading \u2014 next you'll tell me where each of these steps actually happens."
+      ].join("\n");
+    },
+    none: function () {
+      return [
+        "I didn't catch any steps in that.",
+        "",
+        "**Say it as a sequence \u2014 what you do first, then next, then after that.** Rough phrases " +
+        "are fine: \"pull the numbers, then draft each update, then reformat the deck\". I'll number " +
+        "them and read them back."
+      ].join("\n");
+    }
+  };
+
+  var TOOLS_CHECK =
+    "Right? If one's wrong, give me the number and the tool \u2014 \"2 is Excel\". If it's all correct, " +
+    "just say so.";
+
+  var TOOL_REPLIES = {
+    set:  function () { return readBack("Here's your workflow with the tools in:", true, TOOLS_CHECK); },
+    edit: function () { return readBack("Updated:", true, TOOLS_CHECK); },
+    guessed: function () {
+      return readBack("I've matched them up in the order you gave them:", true,
+        "Some of that is a guess. Fix any line by number \u2014 \"3 is Outlook\".");
+    },
+    mismatch: function (out) {
+      return [
+        "I've got " + out.steps + " steps and " + out.tools + " tools, so pairing them would be " +
+        "guesswork \u2014 and a wrong tool in the prompt is worse than none.",
+        "",
+        stepsPlain(false),
+        "",
+        "**Give me one per number** \u2014 \"1 Tableau, 2 Word, 3 PowerPoint\". If it's the same place " +
+        "throughout, just name it once."
+      ].join("\n");
+    },
+    confirm: function () {
+      return [
+        "Good \u2014 that's your workflow and where it lives. Everything below is built on it.",
+        "",
+        "Keep reading."
+      ].join("\n");
+    },
+    none: function () {
+      return [
+        "I didn't catch a tool name in that.",
+        "",
+        "**Name the app, file, or place each step happens in** \u2014 Excel, Outlook, the shared drive, " +
+        "a paper form on your desk. \"Nothing, it's in my head\" is a real answer too, and worth " +
+        "writing down."
+      ].join("\n");
+    },
+    nosteps: function () {
+      return "I don't have your steps yet \u2014 they come from the section above. Map those first and " +
+             "I'll pick this back up.";
+    }
+  };
+
+  function captureCoachReply() {
+    var out = lastCapture || { kind: "none" };
+    var table = ownsActions() ? ACTION_REPLIES : TOOL_REPLIES;
+    return (table[out.kind] || table.none)(out);
   }
 
   /* ==========================================================================
@@ -1540,6 +1980,48 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   var SCRIPTS = {
+    /* The two capture chats. Their replies come from captureCoachReply(), which
+       reads back what the parser actually took down - so all these need is an
+       opening that asks the right question. */
+    workflow: {
+      opening: function () {
+        var problem = String(workflowData.problem).trim();
+        return [
+          "Let's map this out before we touch a prompt.",
+          "",
+          problem
+            ? "You said: \"" + shortQuote(problem, 22) + "\""
+            : "You haven't named the task above yet \u2014 do that first and I'll pick it up here.",
+          "",
+          "**Walk me through how you do it now, start to finish.** Say it however it comes out " +
+          "\u2014 \"I pull the numbers, then draft each update, then reformat the deck\" is perfect. " +
+          "I'll number the steps and read them back so you can check them."
+        ].join("\n");
+      },
+      turns: [],
+      extra: function () { return captureCoachReply(); }
+    },
+
+    tools: {
+      opening: function () {
+        var have = filledSteps().length;
+        if (!have) {
+          return "I don't have your steps yet \u2014 they come from the section above. Map those " +
+                 "first and this picks up on its own.";
+        }
+        return [
+          "Same workflow, one more pass. Here's what you gave me:",
+          "",
+          stepsPlain(false),
+          "",
+          "**Where does each of these actually happen?** Name the app, file, or place \u2014 " +
+          "\"1 Tableau, 2 Word, 3 PowerPoint\". If it's all in one place, just name it once."
+        ].join("\n");
+      },
+      turns: [],
+      extra: function () { return captureCoachReply(); }
+    },
+
     // The single-block layout: one conversation covering all four questions.
     all: { opening: mockOpening, turns: MOCK_STAGES,
            extra: function (note) { return foldNote(note, "Keep going if anything else is off, or take it to Step 5."); } },
@@ -1687,6 +2169,10 @@ write [MISSING: metric name] and keep going.</pre>
   function activeScript() { return SCRIPTS[STAGE] || SCRIPTS.all; }
 
   function mockCoachReply(userText) {
+    // The capture stages have already written the answer down; the script's
+    // only job is to read it back.
+    if (isCaptureChat) return captureCoachReply();
+
     var script = activeScript();
     var i = workflowData.mockProgress[STAGE] || 0;
 
@@ -1740,6 +2226,7 @@ write [MISSING: metric name] and keep going.</pre>
     el.chatSend = $("bw-chat-send");
     el.chatError = $("bw-chat-error");
     el.chatRestart = $("bw-chat-restart");
+    el.chatNote = $("bw-chat-note");
     el.botBadge = $("bw-bot-badge");
     el.promptV2 = $("bw-prompt-v2");
     el.v2Source = $("bw-v2-source");
@@ -1749,6 +2236,10 @@ write [MISSING: metric name] and keep going.</pre>
     el.progressFill = $("bw-progress-fill");
     el.progressLabel = $("bw-progress-label");
     el.reset = $("bw-reset");
+    el.prereq2 = $("bw-prereq-2");
+    el.prereq3 = $("bw-prereq-3");
+    el.workflowWrap = $("bw-workflow-wrap");
+    el.draftWrap = $("bw-draft-wrap");
     el.prereq4 = $("bw-prereq-4");
     el.prereq5 = $("bw-prereq-5");
     el.chatWrap = $("bw-chat-wrap");
@@ -1763,6 +2254,21 @@ write [MISSING: metric name] and keep going.</pre>
   /* Each chat block is its own topic, so it gets its own heading and framing
      rather than three identical "Sharpen it with the coach" panels. */
   var COACH_COPY = {
+    workflow: {
+      title: "Walk me through the workflow",
+      sub: "Say it out loud; the coach writes it down",
+      intro: "No form to fill in \u2014 just describe how you do this today, the way you'd explain " +
+             "it to someone covering for you. The coach turns it into a numbered list and reads it " +
+             "back so you can fix anything it got wrong.",
+      next: "Done \u2014 keep reading below"
+    },
+    tools: {
+      title: "Where does each step happen?",
+      sub: "Name the tools, step by step",
+      intro: "The coach has your steps from the section above. This pass adds where each one " +
+             "happens \u2014 which is what stops the finished prompt from being generic advice.",
+      next: "Next: see your draft prompt"
+    },
     handoff: {
       title: "What should the AI take over?",
       sub: "Pick the step that costs you most",
@@ -1790,22 +2296,46 @@ write [MISSING: metric name] and keep going.</pre>
   function applyRole() {
     if (CONFIG.blockRole === "all") return;
 
+    /* Two of the chats belong to step 2 rather than step 4, so the markup moves
+       to them. One chat panel serves every stage; only its home changes. */
+    if (isCaptureChat) {
+      var panel2 = document.getElementById("bw-panel-2");
+      var warn2 = document.getElementById("bw-warn-2");
+      var acts2 = document.querySelector("#bw-workflow-wrap .bw-actions");
+      panel2.insertBefore(el.chatWrap, warn2);
+      panel2.insertBefore(el.chatError, warn2);
+      if (acts2) panel2.appendChild(acts2);
+      if (el.addStep) el.addStep.hidden = true;
+      if (el.workflowWrap) el.workflowWrap.hidden = true;
+    }
+
+    var stepNo = ROLE.steps.length ? ROLE.steps[0] : 4;
     var copy = COACH_COPY[STAGE];
     if (copy) {
-      var head = document.getElementById("bw-head-4");
+      var head = document.getElementById("bw-head-" + stepNo);
       var titleNode = head.querySelector(".bw-h2");
       var subNode = head.querySelector(".bw-step-sub");
-      var introNode = document.querySelector("#bw-panel-4 .bw-step-intro");
+      var introNode = document.querySelector("#bw-panel-" + stepNo + " .bw-step-intro");
       if (titleNode) titleNode.textContent = copy.title;
       if (subNode) subNode.textContent = copy.sub;
       if (introNode) introNode.textContent = copy.intro;
       // The middle chats hand off to the next chat, not to the final prompt.
-      var nextBtn = document.querySelector('[data-next="4"]');
+      var nextBtn = document.querySelector('[data-next="' + stepNo + '"]');
       if (nextBtn && copy.next) nextBtn.textContent = copy.next;
     }
 
     var hero = document.querySelector(".bw-hero");
     if (hero && !ROLE.intro) hero.hidden = true;
+
+    // The intro block is framing only: no steps, no progress, nothing to save.
+    if (!ROLE.steps.length) {
+      [".bw-steps", ".bw-progress", ".bw-foot"].forEach(function (sel) {
+        var node = document.querySelector(sel);
+        if (node) node.hidden = true;
+      });
+      if (el.handoff) el.handoff.hidden = true;
+      return;
+    }
     el.steps.forEach(function (node, i) {
       if (!ownsStep(i + 1)) node.hidden = true;
     });
@@ -1828,40 +2358,72 @@ write [MISSING: metric name] and keep going.</pre>
      above it is filled in. This re-runs on every storage event, so the block
      unlocks itself the moment the learner finishes the section above. */
   var isSplitCoach = !!STAGE && STAGE !== "all";
-  var isGated = isSplitCoach || CONFIG.blockRole === "artifact";
+
+  /* A block that renders one step of a split lesson has nothing to work with
+     until the blocks above it are filled in. Each one waits on what it actually
+     needs, and re-checks on every storage sync - so it opens itself the moment
+     the section above is done. */
+  var GATES = {
+    workflow: { step: 2, hide: "workflowWrap", notice: "prereq2",
+                needs: function () { return stepValid(1); },
+                msg: "Name the task in the section above first \u2014 the workflow map builds on what " +
+                     "you write there. This opens on its own once you've done that." },
+    draft:    { step: 3, hide: "draftWrap", notice: "prereq3",
+                needs: function () { return stepValid(1) && stepValid(2); },
+                msg: "Your draft prompt is written from the two sections above. Fill those in and it " +
+                     "appears here." },
+    artifact: { step: 5, hide: "finalWrap", notice: "prereq5",
+                needs: function () { return stepValid(1) && stepValid(2); },
+                msg: "Your master prompt builds itself from the sections above. Finish those and it " +
+                     "appears here." }
+  };
+  if (isCaptureChat) {
+    // These two chats live in step 2, and each waits on the one before it.
+    GATES[CONFIG.blockRole] = ownsActions()
+      ? { step: 2, hide: "chatWrap", notice: "prereq2",
+          needs: function () { return stepValid(1); },
+          msg: "Name the task in the section above first \u2014 the coach maps the workflow around " +
+               "it. This opens on its own once you've done that." }
+      : { step: 2, hide: "chatWrap", notice: "prereq2",
+          needs: function () { return filledSteps().length >= CONFIG.minWorkflowSteps; },
+          msg: "Walk the coach through your steps in the section above first \u2014 this one asks " +
+               "where each of them happens. It opens on its own once they're down." };
+  } else if (isSplitCoach) {
+    GATES[CONFIG.blockRole] = {
+      step: 4, hide: "chatWrap", notice: "prereq4",
+      needs: function () { return stepValid(1) && stepValid(2); },
+      msg: "Map your workflow in the sections above first \u2014 the coach needs your problem and your " +
+           "steps before it can ask anything useful. This opens on its own once you've done that."
+    };
+  }
+  var GATE = GATES[CONFIG.blockRole] || null;
+  var isGated = !!GATE;
 
   function prereqMet() {
-    if (!isGated) return true;
-    return stepValid(1) && stepValid(2);
+    return GATE ? GATE.needs() : true;
   }
 
   function applyPrereqState() {
+    if (!GATE) return;
     var ready = prereqMet();
 
-    // A gated block must not claim things it doesn't have yet: drop the
-    // step's own intro copy and stop the chip reading "In progress".
-    if (isGated) {
-      var own = ROLE.steps[0];
-      var intro = document.querySelector("#bw-panel-" + own + " .bw-step-intro");
-      if (intro) intro.hidden = !ready;
-      var chip = document.querySelector('.bw-step[data-step="' + own + '"] [data-chip]');
-      if (chip && !ready) chip.textContent = "Waiting";
-    }
+    // A gated block must not claim things it doesn't have yet: drop the step's
+    // own intro copy and stop the chip reading "In progress".
+    var intro = document.querySelector("#bw-panel-" + GATE.step + " .bw-step-intro");
+    if (intro) intro.hidden = !ready;
+    var chip = document.querySelector('.bw-step[data-step="' + GATE.step + '"] [data-chip]');
+    if (chip && !ready) chip.textContent = "Waiting";
 
-    if (isSplitCoach) {
-      el.prereq4.textContent = ready ? "" :
-        "Map your workflow in the section above first \u2014 the coach needs your problem and your " +
-        "steps before it can ask anything useful. This opens on its own once you've done that.";
-      el.prereq4.hidden = ready;
-      el.chatWrap.hidden = !ready;
-      var next4 = document.querySelector('[data-next="4"]');
-      if (next4) next4.disabled = !ready;
-    } else if (CONFIG.blockRole === "artifact") {
-      el.prereq5.textContent = ready ? "" :
-        "Your master prompt builds itself from the sections above. Finish those and it appears here.";
-      el.prereq5.hidden = ready;
-      el.finalWrap.hidden = !ready;
+    var notice = el[GATE.notice];
+    if (notice) {
+      notice.textContent = ready ? "" : GATE.msg;
+      notice.hidden = ready;
     }
+    var body = el[GATE.hide];
+    if (body) body.hidden = !ready;
+
+    var next = document.querySelector('[data-next="' + GATE.step + '"]');
+    if (next) next.disabled = !ready;
   }
 
   /* ---- validation ---- */
@@ -1878,7 +2440,10 @@ write [MISSING: metric name] and keep going.</pre>
   function stepValid(n) {
     switch (n) {
       case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
-      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps;
+      // The block that maps the workflow is done once the steps are down; every
+      // other block needs the tools too, because the prompt is built from both.
+      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps &&
+                     (ownsActions() || toolsCaptured());
       case 3: return true;
       case 4: return userTurns() >= turnsNeeded();
       default: return true;
@@ -1892,6 +2457,11 @@ write [MISSING: metric name] and keep going.</pre>
           ? "Give it a little more \u2014 what the task is, how often, and what it costs you. About a sentence and a half."
           : "Describe the task before moving on. Rough words are fine.";
       case 2:
+        if (ownsActions())
+          return "Walk the coach through at least " + CONFIG.minWorkflowSteps +
+            " steps first \u2014 everything below is built from that list.";
+        if (ownsTools())
+          return "Tell the coach where these steps happen before moving on.";
         return "Fill in at least " + CONFIG.minWorkflowSteps +
           " steps, each with both the action and the tool you do it in.";
       case 4:
@@ -1923,7 +2493,7 @@ write [MISSING: metric name] and keep going.</pre>
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
     }
-    if (n === 4) maybeStartConversation();
+    if (n === 4 || (n === 2 && isCaptureChat)) maybeStartConversation();
     if (n === 5) refreshV2(false);
   }
 
@@ -2134,22 +2704,67 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   function appendMessage(role, text, persist) {
-    if (persist !== false) convo().push({ role: role, text: text });
-    el.chatLog.appendChild(buildMessage(role, text));
+    var msg = { role: role, text: text, at: timeLabel() };
+    if (persist !== false) convo().push(msg);
+    el.chatLog.appendChild(buildMessage(msg));
     scrollChat();
   }
 
-  function buildMessage(role, text) {
+  /* Static, trusted markup - no message content goes through innerHTML. */
+  /* The coach's face. Embedded as a data URI so a Rise block stays a single
+     self-contained file - the CSP on an embed blocks external images anyway. */
+  var AVATAR_SRC = "data:image/png;base64,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";
+
+  function botAvatar() {
+    var img = document.createElement("img");
+    img.className = "bw-avatar";
+    img.src = AVATAR_SRC;
+    img.alt = "";
+    img.setAttribute("aria-hidden", "true");
+    return img;
+  }
+
+  var SPARKLE_SVG =
+    '<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true" focusable="false">' +
+      '<path d="M6 0l1.15 3.35L10.5 4.5 7.15 5.65 6 9 4.85 5.65 1.5 4.5l3.35-1.15z"></path></svg>';
+  var SEND_SVG =
+    '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      '<path d="M10 16.2V4.4"></path><path d="M4.6 9.8L10 4.4l5.4 5.4"></path></svg>';
+
+  function timeLabel() {
+    try { return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+    catch (e) { return ""; }
+  }
+
+  function buildMessage(msg) {
     var wrap = document.createElement("div");
-    wrap.className = "bw-msg bw-msg-" + role;
+    wrap.className = "bw-msg bw-msg-" + msg.role;
+
+    if (msg.role === "bot") wrap.appendChild(botAvatar());
+
+    var col = document.createElement("div");
+    col.className = "bw-msg-col";
+
+    // Kept for screen readers - the avatar and the side carry it visually.
     var who = document.createElement("span");
-    who.className = "bw-msg-who";
-    who.textContent = role === "bot" ? "Coach" : "You";
+    who.className = "bw-msg-who bw-sr";
+    who.textContent = msg.role === "bot" ? "Coach said" : "You said";
+    col.appendChild(who);
+
     var body = document.createElement("div");
     body.className = "bw-msg-body";
-    renderRich(body, text);
-    wrap.appendChild(who);
-    wrap.appendChild(body);
+    renderRich(body, msg.text);
+    col.appendChild(body);
+
+    if (msg.at) {
+      var t = document.createElement("span");
+      t.className = "bw-msg-time";
+      t.textContent = msg.at;
+      col.appendChild(t);
+    }
+
+    wrap.appendChild(col);
     return wrap;
   }
 
@@ -2193,15 +2808,16 @@ write [MISSING: metric name] and keep going.</pre>
     var wrap = document.createElement("div");
     wrap.className = "bw-msg bw-msg-bot";
     wrap.setAttribute("data-typing", "true");
-    var who = document.createElement("span");
-    who.className = "bw-msg-who";
-    who.textContent = "Coach";
+    var av = botAvatar();
+    var col = document.createElement("div");
+    col.className = "bw-msg-col";
     var body = document.createElement("div");
     body.className = "bw-msg-body bw-typing";
     body.setAttribute("aria-label", "Coach is typing");
     for (var i = 0; i < 3; i++) body.appendChild(document.createElement("i"));
-    wrap.appendChild(who);
-    wrap.appendChild(body);
+    col.appendChild(body);
+    wrap.appendChild(av);
+    wrap.appendChild(col);
     el.chatLog.appendChild(wrap);
     scrollChat();
   }
@@ -2210,7 +2826,6 @@ write [MISSING: metric name] and keep going.</pre>
     chatPending = busy;
     el.chatSend.disabled = busy;
     el.chatInput.disabled = busy;
-    el.chatSend.textContent = busy ? "\u2026" : "Send";
     showTyping(busy);
   }
 
@@ -2243,6 +2858,7 @@ write [MISSING: metric name] and keep going.</pre>
       setChatBusy(false);
       appendMessage("bot", reply);
       if (workflowData.v2Source !== "user") refreshV2(false);
+      if (isCaptureChat) render();
       if (stepValid(4)) showWarning(4, "");
       save();
       if (onDone) onDone();
@@ -2260,7 +2876,8 @@ write [MISSING: metric name] and keep going.</pre>
      capture block has given it something to work with, and in single-block
      mode only when the learner has actually reached step 4. */
   function maybeStartConversation() {
-    if (!ownsStep(4)) return;
+    if (!STAGE) return;
+    if (!isCaptureChat && !ownsStep(4)) return;
     if (CONFIG.blockRole === "all" && workflowData.progress.current !== 4) return;
     if (!prereqMet()) return;
     startConversation();
@@ -2288,6 +2905,13 @@ write [MISSING: metric name] and keep going.</pre>
     if (!text) return;
     el.chatInput.value = "";
     autosize(el.chatInput);
+    if (isCaptureChat) {
+      // Do this before the reply comes back: a live coach writes better words
+      // than the script does, but it can't write into the steps array.
+      captureFromUser(text);
+      renderPromptV1();
+      if (stepValid(2)) showWarning(2, "");
+    }
     appendMessage("user", text);
     save();
     askBot(text);
@@ -2296,7 +2920,7 @@ write [MISSING: metric name] and keep going.</pre>
   function renderChatLog() {
     el.chatLog.textContent = "";
     convo().forEach(function (m) {
-      el.chatLog.appendChild(buildMessage(m.role, m.text));
+      el.chatLog.appendChild(buildMessage(m));
     });
     scrollChat();
   }
@@ -2308,7 +2932,13 @@ write [MISSING: metric name] and keep going.</pre>
 
   function wireStep4() {
     bot = activeAdapter();
-    el.botBadge.textContent = bot.live ? "Live coach" : "Guided coach";
+    el.botBadge.innerHTML = SPARKLE_SVG;
+    el.botBadge.appendChild(document.createTextNode(bot.live ? "AI learning assistant" : "Guided coach"));
+    el.chatSend.innerHTML = SEND_SVG;
+    if (el.chatNote) {
+      el.chatNote.innerHTML = SPARKLE_SVG;
+      el.chatNote.appendChild(document.createTextNode("AI can make mistakes. Check important info."));
+    }
     el.botBadge.className = "bw-badge " + (bot.live ? "bw-badge-live" : "bw-badge-mock");
     el.botBadge.title = bot.live
       ? "Connected to your configured coach endpoint."
@@ -2329,6 +2959,16 @@ write [MISSING: metric name] and keep going.</pre>
       STAGES[STAGE].answers.forEach(function (k) {
         workflowData.botAnswers[k] = blankAnswers[k];
       });
+      if (isCaptureChat) {
+        // Clear only the half this block took down; the other stage keeps its own.
+        workflowData.steps = workflowData.steps.map(function (st) {
+          return ownsActions() ? { action: "", tools: st.tools } : { action: st.action, tools: "" };
+        });
+        recomputeTools();
+        delete workflowData.pushedBack[STAGE];
+        lastCapture = null;
+        renderPromptV1();
+      }
       if (workflowData.v2Source !== "user") { workflowData.masterPromptV2 = ""; workflowData.v2Source = ""; }
       showChatError("");
       renderChatLog();

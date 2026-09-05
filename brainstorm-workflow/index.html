@@ -749,6 +749,8 @@ write [MISSING: metric name] and keep going.</pre>
     capture:            { steps: [1, 2, 3],       intro: true,  label: "Set it up",         stage: null },
     problem:            { steps: [1],             intro: false, label: "Name it",           stage: null },
     workflow:           { steps: [2],             intro: false, label: "Map it",            stage: null },
+    "coach-workflow":   { steps: [2],             intro: false, label: "Walk me through it", stage: "workflow" },
+    "coach-tools":      { steps: [2],             intro: false, label: "Where it happens",   stage: "tools" },
     draft:              { steps: [3],             intro: false, label: "Your draft",        stage: null },
     "coach-handoff":    { steps: [4],             intro: false, label: "Hand it over",      stage: "handoff" },
     "coach-standards":  { steps: [4],             intro: false, label: "Set the bar",       stage: "standards" },
@@ -762,10 +764,16 @@ write [MISSING: metric name] and keep going.</pre>
      not per field. */
   var STAGES = {
     all:        { answers: ["handoff", "output", "keep", "context", "notes"], minTurns: 2 },
+    // These two capture the workflow itself rather than an answer key, so they
+    // own part of the steps array instead of a slice of botAnswers.
+    workflow:   { answers: [], minTurns: 1, owns: "actions" },
+    tools:      { answers: [], minTurns: 1, owns: "tools" },
     handoff:    { answers: ["handoff"],                                       minTurns: 1 },
     standards:  { answers: ["output", "keep"],                                minTurns: 2 },
     guardrails: { answers: ["context", "notes"],                              minTurns: 1 }
   };
+  var ownsActions = function () { return STAGE && STAGES[STAGE].owns === "actions"; };
+  var ownsTools = function () { return STAGE && STAGES[STAGE].owns === "tools"; };
 
   var OWNED_FIELDS = {
     all:      ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2", "v2Source"],
@@ -778,6 +786,8 @@ write [MISSING: metric name] and keep going.</pre>
   var ROLE  = ROLES[CONFIG.blockRole] || ROLES.all;
   var OWNED = OWNED_FIELDS[CONFIG.blockRole] || [];   // chat blocks own no top-level fields
   var STAGE = ROLE.stage;                             // null for capture / artifact
+  /* The two stages that take down the workflow itself rather than an opinion. */
+  var isCaptureChat = !!(STAGE && STAGES[STAGE].owns);
   var ownsStep = function (n) { return ROLE.steps.indexOf(n) !== -1; };
   var ownsAnswer = function (k) {
     return STAGE ? STAGES[STAGE].answers.indexOf(k) !== -1 : false;
@@ -852,8 +862,8 @@ write [MISSING: metric name] and keep going.</pre>
       v2Source: "",          // "bot" | "template" | "user"
       // One transcript per stage, so several chat blocks are separate
       // conversations that still build one shared master prompt.
-      conversations: { all: [], handoff: [], standards: [], guardrails: [] },
-      mockProgress:  { all: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
+      conversations: { all: [], workflow: [], tools: [], handoff: [], standards: [], guardrails: [] },
+      mockProgress:  { all: 0,  workflow: 0,  tools: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
       pushedBack: {},
@@ -944,13 +954,38 @@ write [MISSING: metric name] and keep going.</pre>
         if (workflowData.pushedBack[k]) base.pushedBack[k] = true;
         else delete base.pushedBack[k];
       });
+
+      // These stages have no answer key, so their one flag rides on the stage name.
+      if (STAGES[STAGE].owns) {
+        if (workflowData.pushedBack[STAGE]) base.pushedBack[STAGE] = true;
+        else delete base.pushedBack[STAGE];
+      }
+
+      /* The two capture stages share the steps array: one owns what each step
+         is, the other owns where it happens. Each writes only its own half so
+         re-describing the workflow can't wipe the tools, and vice versa. */
+      if (ownsActions()) {
+        var priorTools = base.steps || [];
+        base.steps = workflowData.steps.map(function (st, i) {
+          return { action: st.action, tools: (priorTools[i] || {}).tools || "" };
+        });
+      }
+      if (ownsTools()) {
+        var priorActions = base.steps || [];
+        base.steps = priorActions.map(function (st, i) {
+          return { action: st.action, tools: (workflowData.steps[i] || {}).tools || "" };
+        });
+        base.toolsAll = workflowData.toolsAll;
+      }
     }
 
     base.progress = base.progress || defaultData().progress;
     base.progress.done = base.progress.done || {};
     ROLE.steps.forEach(function (n) {
       if (workflowData.progress.done[n]) base.progress.done[n] = true;
-      else delete base.progress.done[n];
+      // A chat block shares its step with the other chats in that step, so it
+      // may raise the tick but must never take a sibling's back down.
+      else if (!isSplitCoach) delete base.progress.done[n];
     });
     return base;
   }
@@ -969,6 +1004,21 @@ write [MISSING: metric name] and keep going.</pre>
     Object.keys(blank).forEach(function (k) {
       if (k === "version" || k === "progress" ||
           k === "conversations" || k === "mockProgress" || k === "botAnswers") return;
+
+      // steps is co-owned: take back only the half this block doesn't write.
+      if (k === "steps" && (ownsActions() || ownsTools())) {
+        var incoming = stored.steps || [];
+        workflowData.steps = ownsActions()
+          ? workflowData.steps.map(function (st, i) {
+              return { action: st.action, tools: (incoming[i] || {}).tools || "" };
+            })
+          : incoming.map(function (st, i) {
+              return { action: st.action, tools: (workflowData.steps[i] || {}).tools || "" };
+            });
+        return;
+      }
+      if (k === "toolsAll" && ownsTools()) return;
+
       if (OWNED.indexOf(k) === -1) workflowData[k] = stored[k];
     });
 
@@ -1064,8 +1114,8 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   function adoptExternal() {
-    if (ownsStep(2)) renderCards();
-    if (ownsStep(4)) { refreshOpening(); renderChatLog(); }
+    if (ownsStep(2) && !isCaptureChat) renderCards();
+    if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(); }
     render();
     maybeStartConversation();
     if (ownsStep(5)) refreshV2(false);
@@ -1118,22 +1168,342 @@ write [MISSING: metric name] and keep going.</pre>
     workflowData.toolsAll = out;
   }
 
+  /* A step counts once it has an action. Tools are captured separately now, so
+     a workflow can be mapped before anyone has said where it happens. */
   function filledSteps() {
-    return workflowData.steps.filter(function (s) {
-      return String(s.action).trim() && String(s.tools).trim();
-    });
+    return workflowData.steps.filter(function (s) { return String(s.action).trim(); });
+  }
+
+  function toolsCaptured() {
+    return workflowData.steps.some(function (s) { return String(s.tools).trim(); }) ||
+           workflowData.toolsAll.length > 0;
   }
 
   function stepsAsList() {
     var list = filledSteps();
     if (!list.length) return "(not mapped yet)";
     return list.map(function (s, i) {
-      return (i + 1) + ". " + s.action.trim() + " \u2014 tools: " + s.tools.trim();
+      var tools = String(s.tools || "").trim();
+      return (i + 1) + ". " + s.action.trim() + (tools ? " \u2014 tools: " + tools : "");
     }).join("\n");
   }
 
   function toolsAsList() {
     return workflowData.toolsAll.length ? workflowData.toolsAll.join(", ") : "(none listed)";
+  }
+
+  /* ==========================================================================
+     CAPTURE BY CONVERSATION
+     --------------------------------------------------------------------------
+     Two of the chat blocks don't ask an opinion question - they take down the
+     workflow itself. People describe a process the way they'd say it out loud:
+     one run-on sentence, or a few lines, or a tidy numbered list if they're
+     the sort. All three have to end up in the same steps array, because that
+     array is what the master prompt is built from. So: parse what they said,
+     show the numbered list back, and let them correct it by number.
+     ========================================================================== */
+
+  /* "Yes" is rarely just "yes". It's "yep that's right", "looks good to me",
+     "no changes". Treat it as agreement only when the WHOLE message is made of
+     agreeing words - so "yes, but step 2 is wrong" still gets read as an edit. */
+  var AFFIRM_LEAD = /^(y|ye|yes|yep|yeah|yup|correct|right|exactly|perfect|great|good|looks good|sounds good|lgtm|ok|okay|done|confirmed|sure|spot on|no changes?|nothing to change|that'?s (it|right|correct|them|all))\b/i;
+  var AFFIRM_REST = /^[\s,.!-]*(?:(?:that'?s?|thats|it|is|are|all|of|them|look|looks|sound|sounds|read|reads|right|correct|good|great|perfect|fine|exactly|accurate|true|to|me|for|i|think|so|yeah|yes|yep|yup|ok|okay|now|nothing|else|no|change|changes|need|needed|and|the|my|list|step|steps|order|too|as|well|spot|on)[\s,.!-]*)*$/i;
+  function isConfirm(text) {
+    var m = AFFIRM_LEAD.exec(String(text || "").trim());
+    return !!m && AFFIRM_REST.test(String(text).trim().slice(m[0].length));
+  }
+
+  /* Filler people open a correction with. Stripped before looking for a step
+     number so "yes, but step 2 should be..." reads the same as "step 2 is...". */
+  var LEAD_FILLER = /^(?:\s*(?:no|nope|yes|yeah|yep|ok|okay|actually|sorry|wait|hold on|hmm|well|um|uh|oh|but|and|also|hey|please|can you|could you|i think|i mean)\b[,'\s]*)+/i;
+
+  /* "step 2 should be draft the summary", "3 = reformat the deck", "fix 1: pull the numbers" */
+  var STEP_EDIT = /^(?:change|fix|make|edit|update|replace)?\s*(?:step\s*)?#?(\d{1,2})\s*(?:should\s+(?:be|say|read)|is|to|=|:|\u2014|-)\s*(.+)$/i;
+
+  /* The words people actually use to mean "and after that". */
+  var SEQ_SPLIT = /(?:[,;.]\s*)?\b(?:and\s+then|then|after\s+that|after\s+which|afterwards|next|followed\s+by|finally|lastly|from\s+there|once\s+that'?s\s+done)\b[,:]?\s+/gi;
+
+  var MARKER = /^(?:\d{1,2}[.)\]:-]|[-*\u2022])\s+/;
+
+  /* One pass isn't enough: "oh and then I email it" has four of these stacked
+     up before the verb the step is actually about. */
+  var ACTION_PREFIX = /^(?:and|so|well|ok|okay|um|uh|oh|also|but|then|next|after that|after which|afterwards|before that|before this|beforehand|prior to that|finally|lastly|first|firstly|second|secondly|third|basically|usually|typically|normally|generally|i|i'?d|i'?ll|we|we'?d)\b[,'\s]*/i;
+
+  /* "before that I export the numbers" belongs at the top of the list, not the
+     bottom. Cheap to honour, and it's how people actually remember a step. */
+  var GOES_FIRST = /^(?:\s*(?:oh|and|but|actually|wait|well)\b[,'\s]*)*(?:before (?:that|this|all that|any of that)|beforehand|prior to (?:that|this)|first(?:ly)? (?:i|though)|to start(?: with)?)\b/i;
+
+  function tidyAction(raw) {
+    var t = String(raw || "").replace(/\s+/g, " ").trim();
+    var prev;
+    do { prev = t; t = t.replace(ACTION_PREFIX, ""); } while (t && t !== prev);
+    t = t.replace(/^(?:have to|need to|usually|always)\s+/i, "");
+    t = t.replace(/[.,;:\s]+$/, "");
+    if (t.length > 240) t = t.slice(0, 240);
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+  }
+
+  function tidyList(list) {
+    var out = [];
+    list.forEach(function (item) {
+      var t = tidyAction(item);
+      if (t.length >= 3) out.push(t);
+    });
+    return out.slice(0, 12);
+  }
+
+  /* Prose in, numbered steps out. Tried in order of how sure we can be. */
+  function splitIntoActions(text) {
+    var raw = String(text || "").replace(/\r/g, "");
+    var lines = raw.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+
+    // 1. Already a list, one per line - the tidy case, and unambiguous.
+    var marked = lines.filter(function (l) { return MARKER.test(l); });
+    if (marked.length >= 2) {
+      return tidyList(marked.map(function (l) { return l.replace(MARKER, ""); }));
+    }
+
+    // 2. Numbered, but typed as one paragraph: "1. pull 2. draft 3. send".
+    if (lines.length === 1 && /(?:^|\s)\d{1,2}[.)]\s+\S/.test(raw)) {
+      var inline = raw.split(/(?:^|\s)\d{1,2}[.)]\s+/).slice(1);
+      if (inline.length >= 2) return tidyList(inline);
+    }
+
+    // 3. Several lines, no markers - a line break is a step break.
+    if (lines.length >= 2) return tidyList(lines);
+
+    // 4. One line of speech. Split on the sequencing words, then on sentences.
+    SEQ_SPLIT.lastIndex = 0;
+    var seq = raw.split(SEQ_SPLIT);
+    if (tidyList(seq).length >= 2) return tidyList(seq);
+
+    var sentences = raw.split(/[.;]\s+/);
+    if (tidyList(sentences).length >= 2) return tidyList(sentences);
+
+    return tidyList([raw]);
+  }
+
+  /* "1 Asana, 2 Google Docs" - only when EVERY segment is numbered, so a plain
+     list of tool names can never be misread as step numbers. */
+  function parseToolPairs(text) {
+    var segs = String(text || "").split(/[\n;,]+/).filter(function (s) { return s.trim(); });
+    if (!segs.length) return null;
+    var pairs = [];
+    for (var i = 0; i < segs.length; i++) {
+      var m = /^\s*(?:step\s*)?#?(\d{1,2})\s*(?:[.)\]:=\u2014-]\s*|\s+)(?:is\s+|in\s+|on\s+|uses?\s+|via\s+|through\s+)?(.+)$/i.exec(segs[i].trim());
+      if (!m) return null;
+      var tools = String(m[2]).replace(/[.\s]+$/, "").trim();
+      if (!tools) return null;
+      pairs.push({ n: parseInt(m[1], 10), tools: tools });
+    }
+    return pairs;
+  }
+
+  /* Indexes into steps[], so trailing blank cards can't shift the numbering. */
+  function filledIndexes() {
+    var out = [];
+    workflowData.steps.forEach(function (s, i) {
+      if (String(s.action).trim()) out.push(i);
+    });
+    return out;
+  }
+
+  function setActions(list) {
+    var prior = workflowData.steps;
+    workflowData.steps = list.map(function (action, i) {
+      return { action: action, tools: (prior[i] || {}).tools || "" };
+    });
+    recomputeTools();
+  }
+
+  /* The numbered list as the learner sees it read back. */
+  function stepsPlain(withTools) {
+    var list = filledSteps();
+    if (!list.length) return "(nothing yet)";
+    return list.map(function (s, i) {
+      var tools = String(s.tools || "").trim();
+      return (i + 1) + ". " + s.action + (withTools ? " \u2014 " + (tools || "?") : "");
+    }).join("\n");
+  }
+
+  function readBack(lead, withTools, tail) {
+    return [lead, "", stepsPlain(withTools), "", tail].join("\n");
+  }
+
+  var lastCapture = null;
+
+  /* Runs on the learner's message in BOTH modes - a live coach writes better
+     replies than the script does, but it can't write into the steps array. */
+  function captureFromUser(raw) {
+    var text = String(raw || "").trim();
+    lastCapture = ownsActions() ? captureActions(text) : captureToolsFrom(text);
+    return lastCapture;
+  }
+
+  function captureActions(text) {
+    var have = filledSteps().length;
+
+    if (have >= CONFIG.minWorkflowSteps && isConfirm(text)) return { kind: "confirm" };
+
+    var edit = STEP_EDIT.exec(text.replace(LEAD_FILLER, ""));
+    if (edit && have) {
+      var i = parseInt(edit[1], 10) - 1;
+      var body = tidyAction(edit[2]);
+      var idx = filledIndexes();
+      if (body && i >= 0 && i <= idx.length) {
+        if (i === idx.length) workflowData.steps.push({ action: body, tools: "" });
+        else workflowData.steps[idx[i]].action = body;
+        return { kind: "edit" };
+      }
+    }
+
+    var actions = splitIntoActions(text);
+    if (!actions.length) return { kind: "none" };
+
+    // One new step on top of a list already taken down reads as "oh, and then
+    // I also..." - appending is what they meant, not starting over.
+    if (actions.length === 1 && have) {
+      var one = { action: actions[0], tools: "" };
+      workflowData.steps = GOES_FIRST.test(text)
+        ? [one].concat(filledSteps())
+        : filledSteps().concat([one]);
+      recomputeTools();
+      return { kind: "append" };
+    }
+
+    setActions(actions);
+    return actions.length < CONFIG.minWorkflowSteps ? { kind: "short" } : { kind: "set" };
+  }
+
+  function captureToolsFrom(text) {
+    var idx = filledIndexes();
+    if (!idx.length) return { kind: "nosteps" };
+    if (toolsCaptured() && isConfirm(text)) return { kind: "confirm" };
+
+    var pairs = parseToolPairs(text);
+    if (pairs) {
+      var hit = 0;
+      pairs.forEach(function (p) {
+        var target = idx[p.n - 1];
+        if (target !== undefined) { workflowData.steps[target].tools = p.tools; hit++; }
+      });
+      if (hit) {
+        recomputeTools();
+        return { kind: hit >= idx.length ? "set" : "edit" };
+      }
+    }
+
+    var tokens = parseTools(text);
+    if (!tokens.length) return { kind: "none" };
+
+    if (tokens.length === 1) {
+      idx.forEach(function (i) { workflowData.steps[i].tools = tokens[0]; });
+      recomputeTools();
+      return { kind: "set" };
+    }
+    if (tokens.length === idx.length) {
+      idx.forEach(function (i, k) { workflowData.steps[i].tools = tokens[k]; });
+      recomputeTools();
+      return { kind: "set" };
+    }
+
+    // Counts don't line up, so any pairing would be a guess. Ask once.
+    if (!workflowData.pushedBack[STAGE]) {
+      workflowData.pushedBack[STAGE] = true;
+      return { kind: "mismatch", steps: idx.length, tools: tokens.length };
+    }
+
+    // Asked already. Match in the order given, pile the remainder on the last
+    // step, and read it back so it can be corrected by number.
+    idx.forEach(function (i, k) {
+      if (k < tokens.length) workflowData.steps[i].tools = tokens[k];
+    });
+    if (tokens.length > idx.length) {
+      workflowData.steps[idx[idx.length - 1]].tools = tokens.slice(idx.length - 1).join(", ");
+    }
+    recomputeTools();
+    return { kind: "guessed" };
+  }
+
+  var CHECK_IT =
+    "Look right? If a step is off or missing, tell me the number and what it should say \u2014 " +
+    "\"step 2 should be draft the summary\". If it's right, just say so.";
+
+  var ACTION_REPLIES = {
+    set:     function () { return readBack("Here's what I've got:", false, CHECK_IT); },
+    edit:    function () { return readBack("Updated. The list now reads:", false, CHECK_IT); },
+    append:  function () { return readBack("Added. That gives me:", false, CHECK_IT); },
+    short:   function () {
+      return readBack("So far I've got:", false,
+        "That's a start, but one step isn't a workflow. **What happens right before it, and what " +
+        "happens right after?** Two minimum \u2014 most tasks like this have four or five.");
+    },
+    confirm: function () {
+      return [
+        "Locked in. That numbered list is what everything below is built from.",
+        "",
+        "Keep reading \u2014 next you'll tell me where each of these steps actually happens."
+      ].join("\n");
+    },
+    none: function () {
+      return [
+        "I didn't catch any steps in that.",
+        "",
+        "**Say it as a sequence \u2014 what you do first, then next, then after that.** Rough phrases " +
+        "are fine: \"pull the numbers, then draft each update, then reformat the deck\". I'll number " +
+        "them and read them back."
+      ].join("\n");
+    }
+  };
+
+  var TOOLS_CHECK =
+    "Right? If one's wrong, give me the number and the tool \u2014 \"2 is Excel\". If it's all correct, " +
+    "just say so.";
+
+  var TOOL_REPLIES = {
+    set:  function () { return readBack("Here's your workflow with the tools in:", true, TOOLS_CHECK); },
+    edit: function () { return readBack("Updated:", true, TOOLS_CHECK); },
+    guessed: function () {
+      return readBack("I've matched them up in the order you gave them:", true,
+        "Some of that is a guess. Fix any line by number \u2014 \"3 is Outlook\".");
+    },
+    mismatch: function (out) {
+      return [
+        "I've got " + out.steps + " steps and " + out.tools + " tools, so pairing them would be " +
+        "guesswork \u2014 and a wrong tool in the prompt is worse than none.",
+        "",
+        stepsPlain(false),
+        "",
+        "**Give me one per number** \u2014 \"1 Tableau, 2 Word, 3 PowerPoint\". If it's the same place " +
+        "throughout, just name it once."
+      ].join("\n");
+    },
+    confirm: function () {
+      return [
+        "Good \u2014 that's your workflow and where it lives. Everything below is built on it.",
+        "",
+        "Keep reading."
+      ].join("\n");
+    },
+    none: function () {
+      return [
+        "I didn't catch a tool name in that.",
+        "",
+        "**Name the app, file, or place each step happens in** \u2014 Excel, Outlook, the shared drive, " +
+        "a paper form on your desk. \"Nothing, it's in my head\" is a real answer too, and worth " +
+        "writing down."
+      ].join("\n");
+    },
+    nosteps: function () {
+      return "I don't have your steps yet \u2014 they come from the section above. Map those first and " +
+             "I'll pick this back up.";
+    }
+  };
+
+  function captureCoachReply() {
+    var out = lastCapture || { kind: "none" };
+    var table = ownsActions() ? ACTION_REPLIES : TOOL_REPLIES;
+    return (table[out.kind] || table.none)(out);
   }
 
   /* ==========================================================================
@@ -1605,6 +1975,48 @@ write [MISSING: metric name] and keep going.</pre>
   }
 
   var SCRIPTS = {
+    /* The two capture chats. Their replies come from captureCoachReply(), which
+       reads back what the parser actually took down - so all these need is an
+       opening that asks the right question. */
+    workflow: {
+      opening: function () {
+        var problem = String(workflowData.problem).trim();
+        return [
+          "Let's map this out before we touch a prompt.",
+          "",
+          problem
+            ? "You said: \"" + shortQuote(problem, 22) + "\""
+            : "You haven't named the task above yet \u2014 do that first and I'll pick it up here.",
+          "",
+          "**Walk me through how you do it now, start to finish.** Say it however it comes out " +
+          "\u2014 \"I pull the numbers, then draft each update, then reformat the deck\" is perfect. " +
+          "I'll number the steps and read them back so you can check them."
+        ].join("\n");
+      },
+      turns: [],
+      extra: function () { return captureCoachReply(); }
+    },
+
+    tools: {
+      opening: function () {
+        var have = filledSteps().length;
+        if (!have) {
+          return "I don't have your steps yet \u2014 they come from the section above. Map those " +
+                 "first and this picks up on its own.";
+        }
+        return [
+          "Same workflow, one more pass. Here's what you gave me:",
+          "",
+          stepsPlain(false),
+          "",
+          "**Where does each of these actually happen?** Name the app, file, or place \u2014 " +
+          "\"1 Tableau, 2 Word, 3 PowerPoint\". If it's all in one place, just name it once."
+        ].join("\n");
+      },
+      turns: [],
+      extra: function () { return captureCoachReply(); }
+    },
+
     // The single-block layout: one conversation covering all four questions.
     all: { opening: mockOpening, turns: MOCK_STAGES,
            extra: function (note) { return foldNote(note, "Keep going if anything else is off, or take it to Step 5."); } },
@@ -1752,6 +2164,10 @@ write [MISSING: metric name] and keep going.</pre>
   function activeScript() { return SCRIPTS[STAGE] || SCRIPTS.all; }
 
   function mockCoachReply(userText) {
+    // The capture stages have already written the answer down; the script's
+    // only job is to read it back.
+    if (isCaptureChat) return captureCoachReply();
+
     var script = activeScript();
     var i = workflowData.mockProgress[STAGE] || 0;
 
@@ -1833,6 +2249,21 @@ write [MISSING: metric name] and keep going.</pre>
   /* Each chat block is its own topic, so it gets its own heading and framing
      rather than three identical "Sharpen it with the coach" panels. */
   var COACH_COPY = {
+    workflow: {
+      title: "Walk me through the workflow",
+      sub: "Say it out loud; the coach writes it down",
+      intro: "No form to fill in \u2014 just describe how you do this today, the way you'd explain " +
+             "it to someone covering for you. The coach turns it into a numbered list and reads it " +
+             "back so you can fix anything it got wrong.",
+      next: "Done \u2014 keep reading below"
+    },
+    tools: {
+      title: "Where does each step happen?",
+      sub: "Name the tools, step by step",
+      intro: "The coach has your steps from the section above. This pass adds where each one " +
+             "happens \u2014 which is what stops the finished prompt from being generic advice.",
+      next: "Next: see your draft prompt"
+    },
     handoff: {
       title: "What should the AI take over?",
       sub: "Pick the step that costs you most",
@@ -1860,17 +2291,31 @@ write [MISSING: metric name] and keep going.</pre>
   function applyRole() {
     if (CONFIG.blockRole === "all") return;
 
+    /* Two of the chats belong to step 2 rather than step 4, so the markup moves
+       to them. One chat panel serves every stage; only its home changes. */
+    if (isCaptureChat) {
+      var panel2 = document.getElementById("bw-panel-2");
+      var warn2 = document.getElementById("bw-warn-2");
+      var acts2 = document.querySelector("#bw-workflow-wrap .bw-actions");
+      panel2.insertBefore(el.chatWrap, warn2);
+      panel2.insertBefore(el.chatError, warn2);
+      if (acts2) panel2.appendChild(acts2);
+      if (el.addStep) el.addStep.hidden = true;
+      if (el.workflowWrap) el.workflowWrap.hidden = true;
+    }
+
+    var stepNo = ROLE.steps.length ? ROLE.steps[0] : 4;
     var copy = COACH_COPY[STAGE];
     if (copy) {
-      var head = document.getElementById("bw-head-4");
+      var head = document.getElementById("bw-head-" + stepNo);
       var titleNode = head.querySelector(".bw-h2");
       var subNode = head.querySelector(".bw-step-sub");
-      var introNode = document.querySelector("#bw-panel-4 .bw-step-intro");
+      var introNode = document.querySelector("#bw-panel-" + stepNo + " .bw-step-intro");
       if (titleNode) titleNode.textContent = copy.title;
       if (subNode) subNode.textContent = copy.sub;
       if (introNode) introNode.textContent = copy.intro;
       // The middle chats hand off to the next chat, not to the final prompt.
-      var nextBtn = document.querySelector('[data-next="4"]');
+      var nextBtn = document.querySelector('[data-next="' + stepNo + '"]');
       if (nextBtn && copy.next) nextBtn.textContent = copy.next;
     }
 
@@ -1927,7 +2372,18 @@ write [MISSING: metric name] and keep going.</pre>
                 msg: "Your master prompt builds itself from the sections above. Finish those and it " +
                      "appears here." }
   };
-  if (isSplitCoach) {
+  if (isCaptureChat) {
+    // These two chats live in step 2, and each waits on the one before it.
+    GATES[CONFIG.blockRole] = ownsActions()
+      ? { step: 2, hide: "chatWrap", notice: "prereq2",
+          needs: function () { return stepValid(1); },
+          msg: "Name the task in the section above first \u2014 the coach maps the workflow around " +
+               "it. This opens on its own once you've done that." }
+      : { step: 2, hide: "chatWrap", notice: "prereq2",
+          needs: function () { return filledSteps().length >= CONFIG.minWorkflowSteps; },
+          msg: "Walk the coach through your steps in the section above first \u2014 this one asks " +
+               "where each of them happens. It opens on its own once they're down." };
+  } else if (isSplitCoach) {
     GATES[CONFIG.blockRole] = {
       step: 4, hide: "chatWrap", notice: "prereq4",
       needs: function () { return stepValid(1) && stepValid(2); },
@@ -1979,7 +2435,10 @@ write [MISSING: metric name] and keep going.</pre>
   function stepValid(n) {
     switch (n) {
       case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
-      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps;
+      // The block that maps the workflow is done once the steps are down; every
+      // other block needs the tools too, because the prompt is built from both.
+      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps &&
+                     (ownsActions() || toolsCaptured());
       case 3: return true;
       case 4: return userTurns() >= turnsNeeded();
       default: return true;
@@ -1993,6 +2452,11 @@ write [MISSING: metric name] and keep going.</pre>
           ? "Give it a little more \u2014 what the task is, how often, and what it costs you. About a sentence and a half."
           : "Describe the task before moving on. Rough words are fine.";
       case 2:
+        if (ownsActions())
+          return "Walk the coach through at least " + CONFIG.minWorkflowSteps +
+            " steps first \u2014 everything below is built from that list.";
+        if (ownsTools())
+          return "Tell the coach where these steps happen before moving on.";
         return "Fill in at least " + CONFIG.minWorkflowSteps +
           " steps, each with both the action and the tool you do it in.";
       case 4:
@@ -2024,7 +2488,7 @@ write [MISSING: metric name] and keep going.</pre>
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
     }
-    if (n === 4) maybeStartConversation();
+    if (n === 4 || (n === 2 && isCaptureChat)) maybeStartConversation();
     if (n === 5) refreshV2(false);
   }
 
@@ -2389,6 +2853,7 @@ write [MISSING: metric name] and keep going.</pre>
       setChatBusy(false);
       appendMessage("bot", reply);
       if (workflowData.v2Source !== "user") refreshV2(false);
+      if (isCaptureChat) render();
       if (stepValid(4)) showWarning(4, "");
       save();
       if (onDone) onDone();
@@ -2406,7 +2871,8 @@ write [MISSING: metric name] and keep going.</pre>
      capture block has given it something to work with, and in single-block
      mode only when the learner has actually reached step 4. */
   function maybeStartConversation() {
-    if (!ownsStep(4)) return;
+    if (!STAGE) return;
+    if (!isCaptureChat && !ownsStep(4)) return;
     if (CONFIG.blockRole === "all" && workflowData.progress.current !== 4) return;
     if (!prereqMet()) return;
     startConversation();
@@ -2434,6 +2900,13 @@ write [MISSING: metric name] and keep going.</pre>
     if (!text) return;
     el.chatInput.value = "";
     autosize(el.chatInput);
+    if (isCaptureChat) {
+      // Do this before the reply comes back: a live coach writes better words
+      // than the script does, but it can't write into the steps array.
+      captureFromUser(text);
+      renderPromptV1();
+      if (stepValid(2)) showWarning(2, "");
+    }
     appendMessage("user", text);
     save();
     askBot(text);
@@ -2481,6 +2954,16 @@ write [MISSING: metric name] and keep going.</pre>
       STAGES[STAGE].answers.forEach(function (k) {
         workflowData.botAnswers[k] = blankAnswers[k];
       });
+      if (isCaptureChat) {
+        // Clear only the half this block took down; the other stage keeps its own.
+        workflowData.steps = workflowData.steps.map(function (st) {
+          return ownsActions() ? { action: "", tools: st.tools } : { action: st.action, tools: "" };
+        });
+        recomputeTools();
+        delete workflowData.pushedBack[STAGE];
+        lastCapture = null;
+        renderPromptV1();
+      }
       if (workflowData.v2Source !== "user") { workflowData.masterPromptV2 = ""; workflowData.v2Source = ""; }
       showChatError("");
       renderChatLog();

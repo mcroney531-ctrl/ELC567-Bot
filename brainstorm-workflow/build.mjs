@@ -18,13 +18,15 @@ const OUT = path.join(HERE, 'dist');
 const BLOCKS = [
   ['1-intro',            'intro',            'BLOCK 1 - the hook, the outcome, and the worked example'],
   ['2-problem',          'problem',          'BLOCK 2 - name the repetitive task'],
-  ['3-workflow',         'workflow',         'BLOCK 3 - map the steps and the tools'],
-  ['4-draft',            'draft',            'BLOCK 4 - the draft prompt, built from blocks 2 and 3'],
-  ['5-coach-handoff',    'coach-handoff',    'BLOCK 5 - chat: which step should the AI take over'],
-  ['6-coach-standards',  'coach-standards',  'BLOCK 6 - chat: what a good result looks like, what stays yours'],
-  ['7-coach-guardrails', 'coach-guardrails', 'BLOCK 7 - chat: house rules, then hands back the prompt'],
-  ['8-artifact',         'artifact',         'BLOCK 8 - the finished master prompt, editable and copyable'],
-  ['alt-blocks-2-4-combined', 'capture',     'ALTERNATIVE - the intro and blocks 2, 3 and 4 in one block'],
+  ['3-coach-workflow',   'coach-workflow',   'BLOCK 3 - chat: describe the workflow, coach numbers it'],
+  ['4-coach-tools',      'coach-tools',      'BLOCK 4 - chat: where each of those steps happens'],
+  ['5-draft',            'draft',            'BLOCK 5 - the draft prompt, built from blocks 2 to 4'],
+  ['6-coach-handoff',    'coach-handoff',    'BLOCK 6 - chat: which step should the AI take over'],
+  ['7-coach-standards',  'coach-standards',  'BLOCK 7 - chat: what a good result looks like, what stays yours'],
+  ['8-coach-guardrails', 'coach-guardrails', 'BLOCK 8 - chat: house rules, then hands back the prompt'],
+  ['9-artifact',         'artifact',         'BLOCK 9 - the finished master prompt, editable and copyable'],
+  ['alt-workflow-form',  'workflow',         'ALTERNATIVE - blocks 3 and 4 as one fill-in-the-cards form'],
+  ['alt-capture-combined', 'capture',        'ALTERNATIVE - the intro and blocks 2, 3, 4 and 5 in one block'],
   ['alt-single-block',   'all',              'ALTERNATIVE - the whole activity in one block']
 ];
 

@@ -22,12 +22,13 @@ const check = report.check;
 const FILES = [
   ['intro', '1-intro.html'],
   ['problem', '2-problem.html'],
-  ['workflow', '3-workflow.html'],
-  ['draft', '4-draft.html'],
-  ['c1', '5-coach-handoff.html'],
-  ['c2', '6-coach-standards.html'],
-  ['c3', '7-coach-guardrails.html'],
-  ['artifact', '8-artifact.html']
+  ['steps', '3-coach-workflow.html'],
+  ['tools', '4-coach-tools.html'],
+  ['draft', '5-draft.html'],
+  ['c1', '6-coach-handoff.html'],
+  ['c2', '7-coach-standards.html'],
+  ['c3', '8-coach-guardrails.html'],
+  ['artifact', '9-artifact.html']
 ];
 
 const esc = t => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -67,8 +68,11 @@ try {
 
   check('the intro block shows the worked example', await F('intro').locator('.bw-example').isVisible());
   check('block 2 shows the problem box', await F('problem').locator('#bw-problem').isVisible());
-  check('block 2 shows the workflow cards', await F('workflow').locator('.bw-step[data-step="2"]').isVisible());
-  check('block 3 shows the draft prompt step', await F('draft').locator('.bw-step[data-step="3"]').isVisible());
+  check('block 3 is a chat, not a form',
+    await F('steps').locator('.bw-step[data-step="2"]').isVisible() &&
+    !(await F('steps').locator('#bw-workflow-wrap').isVisible()));
+  check('block 4 is a chat too', await F('tools').locator('.bw-step[data-step="2"]').isVisible());
+  check('block 5 shows the draft prompt step', await F('draft').locator('.bw-step[data-step="3"]').isVisible());
   check('chat blocks show a chat', await F('c1').locator('.bw-step[data-step="4"]').isVisible());
   check('artifact block shows the prompt box', await F('artifact').locator('.bw-step[data-step="5"]').isVisible());
 
@@ -76,23 +80,44 @@ try {
     'Every Monday I spend two hours building status updates for eleven clients, rewriting the same lines.');
   await F('problem').locator('[data-next="1"]').click();
   await page.waitForTimeout(1500);
-  const cards = F('workflow').locator('#bw-cards .bw-card');
-  await cards.nth(0).locator('input').nth(0).fill('Pull last week delivery numbers');
-  await cards.nth(0).locator('input').nth(1).fill('Asana, Harvest');
-  await cards.nth(1).locator('input').nth(0).fill('Draft the update per client');
-  await cards.nth(1).locator('input').nth(1).fill('Google Docs');
-  await F('workflow').locator('[data-next="2"]').click();
-  await page.waitForTimeout(900);
-
-  await waitBots('c1', 1);
-  check('chat 1 opened from the built file',
-    (await F('c1').locator('.bw-msg-bot').first().textContent()).includes('Every Monday'));
 
   const say = async (id, text, n) => {
     await F(id).locator('#bw-chat-input').fill(text);
     await F(id).locator('#bw-chat-send').click();
     await waitBots(id, n);
   };
+
+  // Block 3: the workflow arrives as one spoken sentence and comes back numbered.
+  await waitBots('steps', 1);
+  await say('steps',
+    'I pull last week delivery numbers, then draft the update per client, then reformat it into the deck', 2);
+  const readBack = await F('steps').locator('.bw-msg-bot').last().textContent();
+  check('block 3 numbers a spoken workflow',
+    /1\. Pull last week delivery numbers/.test(readBack) &&
+    /2\. Draft the update per client/.test(readBack) &&
+    /3\. Reformat it into the deck/.test(readBack), readBack.slice(0, 200));
+  await say('steps', 'yes', 3);
+  await page.waitForTimeout(900);
+
+  // Block 4: tools, one per number, matched against the list block 3 wrote.
+  await waitBots('tools', 1);
+  check('block 4 opens with block 3 list',
+    (await F('tools').locator('.bw-msg-bot').first().textContent()).includes('Draft the update per client'));
+  await say('tools', '1 Asana, 2 Google Docs, 3 PowerPoint', 2);
+  const toolsBack = await F('tools').locator('.bw-msg-bot').last().textContent();
+  check('block 4 pairs each tool with its step',
+    /1\..*Asana/.test(toolsBack) && /2\..*Google Docs/.test(toolsBack) &&
+    /3\..*PowerPoint/.test(toolsBack), toolsBack.slice(0, 200));
+  await say('tools', 'looks good', 3);
+  await page.waitForTimeout(1200);
+
+  check('the draft block picked both halves up',
+    (await F('draft').locator('#bw-prompt-v1').textContent()).includes('Google Docs'));
+
+  await waitBots('c1', 1);
+  check('chat 1 opened from the built file',
+    (await F('c1').locator('.bw-msg-bot').first().textContent()).includes('Every Monday'));
+
   await say('c1', 'The drafting. Same four paragraphs with different names in them.', 2);
   await waitBots('c2', 1);
   await say('c2', 'Four short paragraphs, no bullets, under 200 words, direct tone.', 2);

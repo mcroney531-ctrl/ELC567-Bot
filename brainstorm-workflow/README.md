@@ -24,20 +24,22 @@ Run `npm run build` and paste the files from `dist/` — one per block, no editi
 |---|---|
 | `dist/1-intro.html` | The hook, the outcome, and the worked example |
 | `dist/2-problem.html` | Name the repetitive task |
-| `dist/3-workflow.html` | Map the steps and the tools |
-| `dist/4-draft.html` | The draft prompt, built from blocks 2 and 3 |
-| `dist/5-coach-handoff.html` | Chat: which step should the AI take over |
-| `dist/6-coach-standards.html` | Chat: what good looks like, what stays yours |
-| `dist/7-coach-guardrails.html` | Chat: house rules, then hands back the prompt |
-| `dist/8-artifact.html` | The finished master prompt |
+| `dist/3-coach-workflow.html` | Chat: describe the workflow, the coach numbers it |
+| `dist/4-coach-tools.html` | Chat: where each of those steps happens |
+| `dist/5-draft.html` | The draft prompt, built from blocks 2 to 4 |
+| `dist/6-coach-handoff.html` | Chat: which step should the AI take over |
+| `dist/7-coach-standards.html` | Chat: what good looks like, what stays yours |
+| `dist/8-coach-guardrails.html` | Chat: house rules, then hands back the prompt |
+| `dist/9-artifact.html` | The finished master prompt |
 
-Two alternatives if eight blocks is more than you want: `dist/alt-blocks-2-4-combined.html` puts the
-intro and the first three steps in one block, and `dist/alt-single-block.html` is the whole activity
-in one.
+Three alternatives if nine blocks is more than you want: `dist/alt-workflow-form.html` replaces
+blocks 3 and 4 with the original fill-in-the-cards form in a single block,
+`dist/alt-capture-combined.html` puts the intro and blocks 2-5 together, and
+`dist/alt-single-block.html` is the whole activity in one.
 
 Each file is the whole activity with its `blockRole` already set, so you never hunt for a config
 line in Rise's code editor. Put your own Rise text blocks between them. Edit `index.html` and re-run
-the build to regenerate all six; `npm test` runs the built files through the full lesson so a broken
+the build to regenerate them all; `npm test` runs the built files through the full lesson so a broken
 build can't ship quietly.
 
 ### The manual route
@@ -69,23 +71,50 @@ teaching content between them. Each paste is the same file with one line changed
 |---|---|---|
 | 1 | `"intro"` | The hook, the outcome and the worked example. No steps, no progress rail, no state |
 | 2 | `"problem"` | Name the repetitive task |
-| 3 | `"workflow"` | Map the steps and the tools |
-| 4 | `"draft"` | The auto-built draft prompt |
-| 5 | `"coach-handoff"` | Chat: which step should the AI take over? |
-| 6 | `"coach-standards"` | Chat: what does a good result look like, and what stays yours? |
-| 7 | `"coach-guardrails"` | Chat: context and house rules — closes by handing back the prompt |
-| 8 | `"artifact"` | The finished master prompt, editable and copyable |
+| 3 | `"coach-workflow"` | Chat: walk me through the workflow — the coach numbers it |
+| 4 | `"coach-tools"` | Chat: where does each of those steps happen? |
+| 5 | `"draft"` | The auto-built draft prompt |
+| 6 | `"coach-handoff"` | Chat: which step should the AI take over? |
+| 7 | `"coach-standards"` | Chat: what does a good result look like, and what stays yours? |
+| 8 | `"coach-guardrails"` | Chat: context and house rules — closes by handing back the prompt |
+| 9 | `"artifact"` | The finished master prompt, editable and copyable |
 
 Every block waits on what it actually needs and opens itself when that arrives: block 3 on the task
-being named, block 4 on the workflow being mapped, the chats and the artifact on both. Use any of
-the three chats, in that order — you don't need all three. `"capture"` bundles blocks 1-3 into one
-if you'd rather, and the default `"all"` keeps the whole activity in a single block.
+being named, block 4 on the steps being mapped, block 5, the later chats and the artifact on both.
+Use any of the last three chats, in that order — you don't need all three. `"workflow"` replaces
+blocks 3 and 4 with the original card form, `"capture"` bundles blocks 1-5 into one, and the default
+`"all"` keeps the whole activity in a single block.
 
-**The three chats are separate conversations that build one shared master prompt.** Each has its own
-transcript, its own heading, and its own one or two questions; each writes its own slice of the
-answers. Chat 2 opens by quoting what chat 1 captured, chat 3 by quoting chat 2, so it reads as one
-coach picking up a new thread rather than three strangers asking overlapping questions. All of them
-stay live and editable — a learner can scroll back and revise, and the change flows forward.
+**Five chats, one shared master prompt.** Each has its own transcript, its own heading, and its own
+one or two questions; each writes its own slice of the data. Blocks 3 and 4 take the workflow down
+(see below); blocks 6-8 sharpen it. Chat 7 opens by quoting what chat 6 captured, chat 8 by quoting
+chat 7, so it reads as one coach picking up a new thread rather than strangers asking overlapping
+questions. All of them stay live and editable — a learner can scroll back and revise, and the change
+flows forward.
+
+### Blocks 3 and 4: the workflow is captured by conversation
+
+There is no form to fill in. The learner describes their process the way they'd say it out loud
+(*"I pull the numbers, then draft each account update, then reformat the deck"*) and the coach turns
+it into a numbered list and reads it back. Typed numbered lists, one-per-line lists and run-on
+sentences all land in the same `steps` array, because that array is what the master prompt is built
+from and nothing else.
+
+- **Corrections are by number.** *"Step 2 should be draft from the CRM notes"* rewrites that step
+  and leaves the rest alone. *"Yes, but step 2 is wrong"* is read as an edit, not as agreement.
+- **A step remembered late lands where they said it goes.** *"Oh and then I email it"* appends;
+  *"before that I export the numbers"* goes to the top.
+- **One step is not a workflow.** A single-step answer gets asked what comes before and after.
+- **Block 4 pairs tools to numbers.** *"1 Tableau, 2 Word, 3 PowerPoint"* pairs exactly; a bare list
+  that matches the step count zips in order; one tool named alone goes on every step. When the
+  counts don't line up it asks once rather than guessing, and only after that does it match in
+  order — flagging that it guessed, so the learner can fix it by number.
+- **The two blocks co-own the `steps` array.** Block 3 writes what each step *is*, block 4 writes
+  where it *happens*. Each writes only its own half, so re-describing the workflow can't wipe the
+  tools and vice versa.
+
+Parsing runs on the learner's message in both scripted and live mode: a live coach writes better
+replies than the script does, but it can't write into the steps array.
 
 Because every chat unlocks at once, a later one can write its opening before the learner has
 answered the earlier one. While a chat is still untouched its greeting stays current: the moment the
@@ -270,7 +299,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
-| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"intro"`, `"problem"`, `"workflow"`, `"draft"`, `"capture"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`, `"artifact"`. See above. |
+| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"intro"`, `"problem"`, `"coach-workflow"`, `"coach-tools"`, `"workflow"`, `"draft"`, `"capture"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`, `"artifact"`. See above. |
 | `syncPollMs` | `1200` | How often a split block re-checks storage for a sibling's work. Only used when `blockRole` isn't `"all"`. |
 | `followSystemDarkMode` | `false` | Off on purpose: a Rise lesson is light, and following the learner's OS dark mode drops a dark panel into a white page. Turn on only if your host is dark. |
 
@@ -419,11 +448,17 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   thin sections are marked and the block warns about them, that good answers produce neither, that a
   sweeping handoff plus a carve-out is reconciled explicitly, and that the task section names the
   step in instruction voice with the complaint dropped.
-- `test/dist.test.mjs` — rebuilds `dist/` and runs the real five-block lesson using those files
+- `test/dist.test.mjs` — rebuilds `dist/` and runs the real nine-block lesson using those files
   verbatim, so the artifacts that actually go into Rise are the ones under test.
 - `test/split-capture.test.mjs` — the capture form as three separate blocks: that each renders one
   step, that block 2 waits on the task being named and block 3 on the workflow being mapped, that
   each unlocks live when its prerequisite arrives, and that editing one cannot wipe another.
+- `test/capture-chat.test.mjs` — blocks 3 and 4, the workflow captured by conversation: that a
+  run-on sentence, a typed numbered list and a one-per-line list all land in the same steps array,
+  that a correction by number rewrites only that step, that "yes that looks right" is read as
+  agreement while "yes, but step 2 is wrong" is read as an edit, that a step remembered late lands
+  where the learner said it goes, that a tool count that doesn't match the step count is asked
+  about before it is guessed at, and that restarting one chat clears only the half it took down.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and
   modal-free, that dark mode stays off by default and still works when opted in, that copying
   survives a missing clipboard API and leaves the text selected when it can't copy at all, and
