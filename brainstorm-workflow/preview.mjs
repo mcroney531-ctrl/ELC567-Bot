@@ -14,40 +14,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LESSON } from './blocks.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, 'dist');
 
-/* The lesson as it is meant to be assembled: your Rise copy, then a block. */
-export const LESSON = [
-  { file: '1-intro.html', role: 'intro', label: 'Block 1',
-    title: 'The hook and the worked example',
-    rise: 'Your opening Rise text: why this matters for their actual job.' },
-  { file: '2-problem.html', role: 'problem', label: 'Block 2',
-    title: 'Name the repetitive task',
-    rise: 'Rise text: what makes a good candidate task - frequent, rule-shaped, low-stakes to get wrong once.' },
-  { file: '3-coach-workflow.html', role: 'coach-workflow', label: 'Block 3',
-    title: 'Chat: walk me through the workflow',
-    rise: 'Rise text: describe it the way you would to someone covering for you. Do not tidy it up first.' },
-  { file: '4-coach-tools.html', role: 'coach-tools', label: 'Block 4',
-    title: 'Chat: where does each step happen',
-    rise: 'Rise text: naming the tools is what stops the finished prompt being generic advice.' },
-  { file: '5-draft.html', role: 'draft', label: 'Block 5',
-    title: 'The draft prompt, built for them',
-    rise: 'Rise text: this is a starting point, not the deliverable. Read it and notice what it still does not know.' },
-  { file: '6-coach-handoff.html', role: 'coach-handoff', label: 'Block 6',
-    title: 'Chat: what should the AI take over',
-    rise: 'Rise text: the difference between handing over a task and handing over a judgment call.' },
-  { file: '7-coach-standards.html', role: 'coach-standards', label: 'Block 7',
-    title: 'Chat: what does good look like',
-    rise: 'Rise text: "make it professional" is not a specification. Examples of specs that are.' },
-  { file: '8-coach-guardrails.html', role: 'coach-guardrails', label: 'Block 8',
-    title: 'Chat: house rules and what it must never invent',
-    rise: 'Rise text: the day-one new hire test - what did you have to correct them on?' },
-  { file: '9-artifact.html', role: 'artifact', label: 'Block 9',
-    title: 'The finished master prompt',
-    rise: 'Rise text: where to paste it, and what to do when the first result is not right.' }
-];
 
 const esc = t => String(t)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -61,12 +32,12 @@ function body(inline) {
     return `
   <section class="pv-block" id="b${i + 1}">
     <header class="pv-head">
-      <span class="pv-tag">${esc(b.label)}</span>
+      <span class="pv-tag">Block ${i + 1}</span>
       <h2>${esc(b.title)}</h2>
       <code>blockRole: "${esc(b.role)}"</code>
     </header>
     <p class="pv-rise">${esc(b.rise)}</p>
-    <iframe class="pv-frame" title="${esc(b.label)} - ${esc(b.title)}" ${src}></iframe>
+    <iframe class="pv-frame" title="Block ${i + 1} - ${esc(b.title)}" ${src}></iframe>
   </section>`;
   }).join('\n');
 
@@ -92,7 +63,8 @@ function body(inline) {
                background: #f0edf9; }
   .pv-jump a:hover { background: var(--pv-accent); color: #fff; }
   .pv-btn { border: 1px solid var(--pv-line); background: #fff; color: var(--pv-ink); cursor: pointer;
-            border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; }
+            border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600;
+            text-decoration: none; display: inline-block; }
   .pv-btn:hover { border-color: var(--pv-accent); color: var(--pv-accent); }
   .pv-note { font-size: 12px; color: var(--pv-mute); }
 
@@ -133,6 +105,7 @@ function body(inline) {
   <nav class="pv-jump" aria-label="Jump to block">
     ${LESSON.map((b, i) => `<a href="#b${i + 1}" title="${esc(b.title)}">${i + 1}</a>`).join('')}
   </nav>
+  <a class="pv-btn" href="builder.html">Lesson builder</a>
   <button type="button" class="pv-btn" id="pv-reset">Start over</button>
 </div>
 

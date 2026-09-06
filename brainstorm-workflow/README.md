@@ -409,16 +409,29 @@ validates loses its checkmark until it does.
 npm run preview  # build, then the whole nine-block lesson at http://127.0.0.1:8080
 npm run build    # regenerate dist/ after editing index.html
 npm run serve    # serve an already-built dist/ without rebuilding
-npm test         # all ten suites, 284 assertions
+npm test         # all eleven suites, 317 assertions
 ```
 
 ### Previewing the lesson before it goes into Rise
 
-`npm run preview` builds everything and serves `dist/preview.html`: all nine blocks stacked in
-order, each loading its built file verbatim, with grey bands standing in for your own Rise text
-between them. It is the assembled lesson, not a mock-up of one &mdash; the blocks share state
-through `localStorage` exactly as they will in a published lesson, so filling in block 2 unlocks
-block 3 in front of you.
+`npm run preview` builds everything and serves two views of the same built files.
+
+**`/` &mdash; the plain preview.** All nine blocks stacked in order, each loading its built file
+verbatim, with grey bands standing in for your own Rise text between them. It is the assembled
+lesson, not a mock-up of one &mdash; the blocks share state through `localStorage` exactly as they
+will in a published lesson, so filling in block 2 unlocks block 3 in front of you.
+
+**`/builder.html` &mdash; the lesson builder.** The same blocks, but yours to arrange: draft the
+Rise copy that introduces each one, choose which block follows it, drag the rows into order, and
+export the result as Markdown or JSON. Storyboard and working preview in one page, which is the
+point &mdash; a planning doc can't show you the block, and a preview can't hold your copy.
+
+Two pieces of state, deliberately kept apart. Your outline lives under `bw_builder_outline`; the
+learner's answers live under `brainstorm_workflow_data` with the blocks. **Clear learner data**
+resets the second so you can walk the lesson again without touching a word you wrote; **Reset
+outline** does the opposite. Nothing you type is ever parsed as markup, so draft copy containing
+`<` or `&` is safe &mdash; and dragging a row inserts it at the target, shifting the rest, rather
+than trading two rows.
 
 - **Serve it, don't open it.** Chromium gives a `file://` page no `localStorage`, and without that
   the blocks cannot see each other. The bar at the top says which of the two you're looking at.
@@ -430,6 +443,12 @@ block 3 in front of you.
   so is `/rise-storage-probe.html` for checking whether a host shares storage at all.
 - `node preview.mjs --inline` emits `dist/preview-standalone.html`, one self-contained file with
   every block embedded, for hosting the preview somewhere that has no sibling files to link to.
+
+`blocks.mjs` is the single list of what blocks exist. `build.mjs` emits a file per entry,
+`preview.mjs` stacks the lesson ones in order, and `builder.mjs` offers all of them in its
+dropdown &mdash; so a block added there appears in all three without anyone remembering to update
+the other two. That is the drift the earlier standalone builder had: its dropdown still described a
+six-step lesson months after the activity had nine blocks.
 
 ### Test personas
 
@@ -479,6 +498,12 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   agreement while "yes, but step 2 is wrong" is read as an edit, that a step remembered late lands
   where the learner said it goes, that a tool count that doesn't match the step count is asked
   about before it is guessed at, and that restarting one chat clears only the half it took down.
+- `test/builder.test.mjs` — the lesson builder: that it opens on the shipped nine with the real
+  blocks embedded, that draft copy containing `</textarea>` survives a reload byte for byte and
+  never reaches the page as markup, that dragging a row inserts rather than swaps, that swapping
+  the block under a piece of copy loads that block, that removing takes two presses, that the
+  exports describe the lesson as arranged, and that clearing the learner data leaves the outline
+  untouched (and the reverse).
 - `test/preview.test.mjs` — the preview page: that all nine blocks load their built files, that the
   page reports honestly whether storage is shared, that frames size themselves rather than sitting
   at a fixed height, that the full lesson runs end to end inside it, and that Start over really
