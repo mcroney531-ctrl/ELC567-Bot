@@ -3164,7 +3164,11 @@ write [MISSING: metric name] and keep going.</pre>
   function reportHeight() {
     if (window.parent === window) return;
     var send = function () {
-      var h = Math.ceil(document.documentElement.scrollHeight);
+      // The body's own box, not documentElement.scrollHeight: scrollHeight can
+      // never report less than the frame it is in, so a host that sizes the
+      // frame from it can only ever grow the frame, never shrink it back.
+      var box = document.body.getBoundingClientRect();
+      var h = Math.ceil(box.height + box.top * 2);
       try { window.parent.postMessage({ type: "bw:height", height: h }, "*"); } catch (e) { /* cross-origin */ }
     };
     send();

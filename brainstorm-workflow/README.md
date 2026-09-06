@@ -406,10 +406,30 @@ validates loses its checkmark until it does.
 ## Development
 
 ```bash
-npm run serve    # http://127.0.0.1:8080 — use this, not file://, so localStorage works
+npm run preview  # build, then the whole nine-block lesson at http://127.0.0.1:8080
 npm run build    # regenerate dist/ after editing index.html
-npm test         # all eight suites, 232 assertions
+npm run serve    # serve an already-built dist/ without rebuilding
+npm test         # all ten suites, 284 assertions
 ```
+
+### Previewing the lesson before it goes into Rise
+
+`npm run preview` builds everything and serves `dist/preview.html`: all nine blocks stacked in
+order, each loading its built file verbatim, with grey bands standing in for your own Rise text
+between them. It is the assembled lesson, not a mock-up of one &mdash; the blocks share state
+through `localStorage` exactly as they will in a published lesson, so filling in block 2 unlocks
+block 3 in front of you.
+
+- **Serve it, don't open it.** Chromium gives a `file://` page no `localStorage`, and without that
+  the blocks cannot see each other. The bar at the top says which of the two you're looking at.
+- **Blocks size themselves.** Each one posts its height as it grows, so a long chat doesn't end up
+  behind an inner scrollbar the way a fixed-height frame would.
+- **Start over** clears the whole lesson. It reloads first and clears after, because every block
+  flushes its state on the way out and would otherwise write it straight back.
+- Individual blocks are on the same server by filename &mdash; `/3-coach-workflow.html` &mdash; and
+  so is `/rise-storage-probe.html` for checking whether a host shares storage at all.
+- `node preview.mjs --inline` emits `dist/preview-standalone.html`, one self-contained file with
+  every block embedded, for hosting the preview somewhere that has no sibling files to link to.
 
 ### Test personas
 
@@ -459,6 +479,10 @@ Tests need Playwright (`npm i -D playwright`, or a global install — the helper
   agreement while "yes, but step 2 is wrong" is read as an edit, that a step remembered late lands
   where the learner said it goes, that a tool count that doesn't match the step count is asked
   about before it is guessed at, and that restarting one chat clears only the half it took down.
+- `test/preview.test.mjs` — the preview page: that all nine blocks load their built files, that the
+  page reports honestly whether storage is shared, that frames size themselves rather than sitting
+  at a fixed height, that the full lesson runs end to end inside it, and that Start over really
+  starts over rather than being undone by the save-on-exit flush.
 - `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and
   modal-free, that dark mode stays off by default and still works when opted in, that copying
   survives a missing clipboard API and leaves the text selected when it can't copy at all, and
