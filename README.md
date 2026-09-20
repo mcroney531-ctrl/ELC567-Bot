@@ -26,7 +26,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # six suites, 197 assertions
+npm test      # six suites, 213 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -55,6 +55,19 @@ personas/           30 scripted run-throughs for manual testing
 hover and press, `--bw-duration-system` for state changes, one shared easing curve so the whole
 thing reads as one hand rather than several — plus a `prefers-reduced-motion` block that flattens
 every CSS transition at once.
+
+### Three views
+
+**Landing** is what a first-time learner reads: the title, the overview, the objectives, a start
+button, and the worked example folded up beneath it. **Home** is the journey map. **Stage** is the
+workspace for whichever stage they entered.
+
+Starting is one way through a GSAP transition &mdash; the landing lifts away, the map resolves in,
+and the stations draw themselves along the spine. After that the landing is reachable whenever they
+want it, from the back arrow at the top of home, and a return visit opens on home rather than
+making them read the pitch again. That "has started" flag is its own `localStorage` key rather than
+a field in the saved activity, because where someone is looking is not learner data. Starting over
+clears it, so a reset really does go back to the beginning.
 
 ### The journey map
 
@@ -324,7 +337,10 @@ anywhere in the flow shows up as a test failure.
   thin sections are marked and warned about, that good answers produce neither, that a sweeping
   handoff plus a carve-out is reconciled explicitly, and that the task section names the step in
   instruction voice with the complaint dropped.
-- `test/timeline.test.mjs` — the journey map: that it is what the activity opens on, that stations
+- `test/timeline.test.mjs` — the landing and the journey map: that the activity opens on the
+  landing with the objectives and a start button above the worked example, that starting reaches
+  home, that the back arrow returns to the landing without losing progress, that a return visit
+  opens on home, that stations that stations
   alternate and carry the three states, that a locked one says which stage opens it and cannot be
   clicked, that entering shows exactly one stage and does not repeat the timeline inside it, that
   finishing a stage continues into the next without returning home, that completion lines count

@@ -25,6 +25,7 @@ const enter = async n => {
   await page.waitForTimeout(650);
 };
 const toMap = async () => { await page.click('#bw-to-map'); await page.waitForTimeout(550); };
+const start = async () => { await page.click('#bw-start'); await page.waitForTimeout(750); };
 const fillStage1 = async () => {
   await page.fill('#bw-problem',
     'Every Monday I rebuild eleven client status decks by hand and it eats the whole morning.');
@@ -36,7 +37,25 @@ try {
   await page.goto(`http://127.0.0.1:${PORT}/`);
   await page.waitForTimeout(400);
 
+  // ------------------------------------------------------------- the landing
+  check('it opens on the landing', await page.locator('#bw-landing').isVisible());
+  check('which is not the map', !(await page.locator('#bw-map').isVisible()));
+  check('the objectives are there to read',
+    await page.locator('.bw-objectives li').count() === 4);
+  check('and a start button under them', await page.locator('#bw-start').isVisible());
+  check('the worked example sits below the start, not above it', await page.evaluate(() => {
+    const s = document.querySelector('#bw-start').getBoundingClientRect().top;
+    const e = document.querySelector('.bw-example').getBoundingClientRect().top;
+    return e > s;
+  }));
+
+  await start();
+
   // ---------------------------------------------------------------- the map
+  check('start lands on the map', await page.locator('#bw-map').isVisible());
+  check('and the landing steps aside', !(await page.locator('#bw-landing').isVisible()));
+  check('home offers a way back to the landing',
+    await page.locator('#bw-to-landing').isVisible());
   check('the map is home', await page.locator('#bw-map').isVisible());
   check('the workspace is not', !(await page.locator('#bw-stage').isVisible()));
   check('five stations', await page.locator('.bw-station').count() === 5);
@@ -178,12 +197,30 @@ try {
   await soloCtx.close();
   soloServer.close();
 
+  // -------------------------------------------- landing is reachable, and home sticks
+  await page.click('#bw-to-landing');
+  await page.waitForTimeout(500);
+  check('the back arrow reaches the landing', await page.locator('#bw-landing').isVisible());
+  check('the objectives are still readable there',
+    await page.locator('.bw-objectives li').count() === 4);
+  await start();
+  check('starting again returns to home', await page.locator('#bw-map').isVisible());
+  check('and progress is exactly where it was', await stateOf(1) === 'done', await stateOf(1));
+
+  await page.reload();
+  await page.waitForTimeout(600);
+  check('a return visit opens on home, not the landing',
+    await page.locator('#bw-map').isVisible() && !(await page.locator('#bw-landing').isVisible()));
+
   // ------------------------------------------------------------- reduced motion
   const rmCtx = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 1100, height: 900 } });
   const rm = await rmCtx.newPage();
   report.watch(rm);
   await rm.goto(`http://127.0.0.1:${PORT}/`);
   await rm.waitForTimeout(300);
+  await rm.click('#bw-start');
+  await rm.waitForTimeout(400);
+  check('starting works with motion turned off', await rm.locator('#bw-map').isVisible());
   await rm.locator('.bw-station[data-stage="1"] .bw-station-card').click();
   await rm.waitForTimeout(300);
   check('navigation still works with motion turned off',
@@ -192,6 +229,7 @@ try {
 
   // ------------------------------------------------------------- narrow screens
   await page.setViewportSize({ width: 360, height: 780 });
+  await page.waitForTimeout(200);
   await page.waitForTimeout(300);
   check('the spine stands up on a phone', await page.evaluate(() => {
     const cards = [...document.querySelectorAll('.bw-station-card')].map(c => c.getBoundingClientRect());

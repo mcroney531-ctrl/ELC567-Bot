@@ -31,7 +31,9 @@ async function fillToStep4() {
   report.watch(page);
   await page.goto('http://127.0.0.1:8901/');
   await page.waitForTimeout(250);
-  // In from the journey map, the way a learner arrives.
+  // In through the landing and the map, the way a learner arrives.
+  await page.click('#bw-start');
+  await page.waitForTimeout(700);
   await page.click('.bw-station[data-stage="1"] .bw-station-card');
   await page.waitForTimeout(650);
   await page.fill('#bw-problem', 'Every Monday I rebuild the same eleven client status updates by hand, and it eats two hours.');

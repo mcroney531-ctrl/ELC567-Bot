@@ -22,7 +22,8 @@ report.watch(page);
 const realBots = () => page.locator('.bw-msg-bot:not([data-typing])');
 const waitBots = n => wait(page, n);
 
-/* The journey map is home, so every entry into the activity goes through it. */
+/* Landing, then home, then a stage - the way a learner actually arrives. */
+const start = async () => { await page.click('#bw-start'); await page.waitForTimeout(700); };
 const enter = async n => {
   await page.click(`.bw-station[data-stage="${n}"] .bw-station-card`);
   await page.waitForTimeout(650);
@@ -33,7 +34,10 @@ try {
   await page.goto(FILE);
   await page.waitForTimeout(300);
 
-  check('lands on the journey map', await page.locator('#bw-map').isVisible());
+  check('lands on the landing, not the map', await page.locator('#bw-landing').isVisible());
+  check('with a way in', await page.locator('#bw-start').isVisible());
+  await start();
+  check('start opens the journey map', await page.locator('#bw-map').isVisible());
   await enter(1);
   check('step2 locked at start', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
   await page.click('[data-next="1"]');
@@ -130,7 +134,7 @@ try {
   // persistence
   await page.reload();
   await page.waitForTimeout(400);
-  check('reload comes back to the map', await page.locator('#bw-map').isVisible());
+  check('reload skips the landing once started', await page.locator('#bw-map').isVisible());
   await enter(5);
   check('reload restores step 5', await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
   check('reload restores V2 text', (await page.locator('#bw-prompt-v2').inputValue()).includes('under 200 words'));
@@ -185,7 +189,8 @@ try {
   await page.click('#bw-reset');
   await page.click('#bw-reset');   // inline confirm: second press commits
   await page.waitForTimeout(700);
-  check('reset returns to the map', await page.locator('#bw-map').isVisible());
+  check('reset returns to the landing', await page.locator('#bw-landing').isVisible());
+  await start();
   check('reset relocks step 2', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
   check('reset relocks the map', await page.locator('.bw-station[data-stage="2"]').getAttribute('data-state') === 'locked');
   await enter(1);

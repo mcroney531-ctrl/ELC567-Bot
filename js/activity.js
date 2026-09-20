@@ -1566,6 +1566,8 @@
     el.finalWrap = $("bw-final-wrap");
     el.handoff = $("bw-handoff");
     el.stage = $("bw-stage");
+    el.landing = $("bw-landing");
+    el.map = $("bw-map");
   }
 
   /* ---- block role ---- */
@@ -2451,7 +2453,23 @@
      ========================================================================== */
 
   var TIMELINE = CONFIG.blockRole === "all";
-  var view = "map";
+
+  /* Three views: the landing they read, the map that is home, and the stage
+     they work in. Kept outside workflowData - where someone is looking is not
+     learner data, and the state engine has no business knowing about it. */
+  var view = "landing";
+  var STARTED_KEY = "bw_started";
+
+  function hasStarted() {
+    try { return window.localStorage.getItem(STARTED_KEY) === "1"; }
+    catch (e) { return false; }
+  }
+  function markStarted(on) {
+    try {
+      if (on) window.localStorage.setItem(STARTED_KEY, "1");
+      else window.localStorage.removeItem(STARTED_KEY);
+    } catch (e) { /* private mode; they just see the landing again */ }
+  }
 
   /* Placeholder marks, one per stage - deliberately plain, deliberately easy to
      throw away. Stroked in currentColor so the state treatment owns the colour. */
@@ -2600,6 +2618,8 @@
   function setView(next) {
     view = next;
     el.root.setAttribute("data-view", next);
+    el.landing.hidden = next !== "landing";
+    el.map.hidden = next !== "map";
     el.stage.hidden = next !== "stage";
     if (next === "map") renderMap();
   }
@@ -2646,6 +2666,44 @@
       .to(card, { scale: 1.06, duration: .28, ease: "power2.out" }, 0);
   }
 
+  /* Starting: the landing lifts away and the journey draws itself in, station
+     by station along the spine. First impression of the map, so it gets the
+     one piece of choreography in here that is not strictly functional. */
+  function startActivity() {
+    markStarted(true);
+    var out = function () {
+      setView("map");
+      if (motionOff()) return;
+      window.gsap.timeline()
+        .fromTo("#bw-map", { opacity: 0, y: 14 },
+                { opacity: 1, y: 0, duration: .4, ease: "power2.out", clearProps: "all" })
+        .fromTo(".bw-station-card", { opacity: 0, scale: .9, y: 10 },
+                { opacity: 1, scale: 1, y: 0, duration: .42, ease: "back.out(1.6)",
+                  stagger: .07, clearProps: "all" }, .12)
+        .fromTo("#bw-rail-fill", { scaleX: 0 }, { scaleX: 1, duration: .4, ease: "power2.out",
+                  transformOrigin: "left center", clearProps: "all" }, .12);
+    };
+    if (motionOff()) { out(); return; }
+    window.gsap.to("#bw-landing", {
+      opacity: 0, y: -12, duration: .26, ease: "power2.in",
+      onComplete: function () {
+        window.gsap.set("#bw-landing", { clearProps: "all" });
+        out();
+      }
+    });
+  }
+
+  function backToLanding() {
+    setView("landing");
+    if (!motionOff()) {
+      window.gsap.fromTo("#bw-landing", { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: .34, ease: "power2.out", clearProps: "all" });
+    }
+    if (el.landing.scrollIntoView) {
+      el.landing.scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });
+    }
+  }
+
   function backToMap() {
     setView("map");
     if (!motionOff()) {
@@ -2662,10 +2720,19 @@
   function wireMap() {
     // A single-stage slice has no journey to map; it renders its one panel and
     // the workspace is all there is.
-    if (!TIMELINE) { el.stage.hidden = false; return; }
+    if (!TIMELINE) {
+      el.stage.hidden = false;
+      el.map.hidden = true;
+      el.landing.hidden = !ROLE.intro;   // only the framing slice keeps the framing
+      return;
+    }
     buildMap();
-    el.root.setAttribute("data-view", "map");
-    el.stage.hidden = true;
+    // Someone who has started already gets home, not the pitch they have read.
+    setView(hasStarted() ? "map" : "landing");
+    var start = document.getElementById("bw-start");
+    if (start) start.addEventListener("click", startActivity);
+    var toLanding = document.getElementById("bw-to-landing");
+    if (toLanding) toLanding.addEventListener("click", backToLanding);
     var back = document.getElementById("bw-to-map");
     if (back) back.addEventListener("click", backToMap);
     // The stage headers are titles now, not controls.
@@ -2718,7 +2785,8 @@
   function resetInPlace() {
     workflowData = defaultData();
     applyRole();
-    if (TIMELINE) setView("map");
+    // Starting over means starting over: back to the landing, not to home.
+    if (TIMELINE) { markStarted(false); setView("landing"); }
     recomputeTools();
     el.problem.value = "";
     updateProblemCount();

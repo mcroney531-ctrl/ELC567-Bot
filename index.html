@@ -12,8 +12,9 @@
 
 <div class="bw" id="bw">
 
-<!-- ======================= JOURNEY MAP (home) ======================= -->
-<section class="bw-map" id="bw-map">
+<!-- ========================= LANDING ========================= -->
+<!-- What they read before they start, and can come back to from home. -->
+<section class="bw-landing" id="bw-landing" hidden>
 
   <header class="bw-hero">
     <h1>Brainstorm an AI-Powered Workflow</h1>
@@ -43,53 +44,48 @@
     </ul>
   </header>
 
-  <!-- The spine. Stations are built by js/activity.js from STATIONS so the art
-       and the copy have one home; this is only where they land. -->
-  <nav class="bw-spine" id="bw-spine" aria-label="Activity stages">
-    <div class="bw-rail" aria-hidden="true"><div class="bw-rail-fill" id="bw-rail-fill"></div></div>
-    <ol class="bw-stations" id="bw-stations" role="list"></ol>
-  </nav>
+  <div class="bw-start-row">
+    <button type="button" class="bw-btn bw-btn-start" id="bw-start">Start the activity</button>
+  </div>
 
-  <p class="bw-map-hint" id="bw-map-hint"></p>
+  <details class="bw-example">
+    <summary>See the whole thing done first</summary>
+    <div class="bw-example-body">
+      <p><strong>Maya</strong> manages client success for a mid-size agency. Here's her run through all five steps.</p>
 
-    <details class="bw-example">
-      <summary>See the whole thing done first</summary>
-      <div class="bw-example-body">
-        <p><strong>Maya</strong> manages client success for a mid-size agency. Here's her run through all five steps.</p>
+      <div class="bw-example-row">
+        <p class="bw-eyebrow">Step 1 &mdash; The problem</p>
+        <p>"Every Monday I spend two hours building status updates for eleven clients. I'm pulling
+        the same numbers from the same places and rewriting the same sentences with different names in them."</p>
+      </div>
 
-        <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 1 &mdash; The problem</p>
-          <p>"Every Monday I spend two hours building status updates for eleven clients. I'm pulling
-          the same numbers from the same places and rewriting the same sentences with different names in them."</p>
-        </div>
+      <div class="bw-example-row">
+        <p class="bw-eyebrow">Step 2 &mdash; The workflow</p>
+        <ol>
+          <li>Pull last week's delivery numbers &mdash; <em>Asana, Harvest</em></li>
+          <li>Check the shared inbox for anything unresolved &mdash; <em>Gmail</em></li>
+          <li>Write a 4-paragraph update per client &mdash; <em>Google Docs</em></li>
+          <li>Reformat into the client's preferred channel &mdash; <em>Gmail, Slack</em></li>
+        </ol>
+      </div>
 
-        <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 2 &mdash; The workflow</p>
-          <ol>
-            <li>Pull last week's delivery numbers &mdash; <em>Asana, Harvest</em></li>
-            <li>Check the shared inbox for anything unresolved &mdash; <em>Gmail</em></li>
-            <li>Write a 4-paragraph update per client &mdash; <em>Google Docs</em></li>
-            <li>Reformat into the client's preferred channel &mdash; <em>Gmail, Slack</em></li>
-          </ol>
-        </div>
+      <div class="bw-example-row">
+        <p class="bw-eyebrow">Step 3 &mdash; Her first draft prompt</p>
+        <p>Auto-built from what she typed above. Honest, but generic &mdash; it describes her problem
+        without telling the AI what "good" looks like.</p>
+      </div>
 
-        <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 3 &mdash; Her first draft prompt</p>
-          <p>Auto-built from what she typed above. Honest, but generic &mdash; it describes her problem
-          without telling the AI what "good" looks like.</p>
-        </div>
+      <div class="bw-example-row">
+        <p class="bw-eyebrow">Step 4 &mdash; The refinement conversation</p>
+        <p>The coach pushes on the vague parts: <em>Which step would you hand off first? What does a
+        great update actually look like? What are you not willing to automate?</em> Maya realizes the
+        drafting is the drain, but the "here's what I'd watch next week" line is the part clients
+        actually read &mdash; and that line is hers to write.</p>
+      </div>
 
-        <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 4 &mdash; The refinement conversation</p>
-          <p>The coach pushes on the vague parts: <em>Which step would you hand off first? What does a
-          great update actually look like? What are you not willing to automate?</em> Maya realizes the
-          drafting is the drain, but the "here's what I'd watch next week" line is the part clients
-          actually read &mdash; and that line is hers to write.</p>
-        </div>
-
-        <div class="bw-example-row">
-          <p class="bw-eyebrow">Step 5 &mdash; Her master prompt</p>
-          <pre>## CONTEXT
+      <div class="bw-example-row">
+        <p class="bw-eyebrow">Step 5 &mdash; Her master prompt</p>
+        <pre>## CONTEXT
 I write weekly status updates for 11 agency clients. The numbers
 come from Asana and Harvest; the writing is the same four
 paragraphs with different names in them.
@@ -110,10 +106,33 @@ Plain prose, 4 short paragraphs, no bullets, no headers, under
 ## THINGS YOU NEED TO KNOW
 Never invent a number. If a figure is missing from what I paste,
 write [MISSING: metric name] and keep going.</pre>
-          <p class="bw-small">Two hours became twenty minutes. The judgment stayed with Maya.</p>
-        </div>
+        <p class="bw-small">Two hours became twenty minutes. The judgment stayed with Maya.</p>
       </div>
-    </details>
+    </div>
+  </details>
+
+</section>
+
+<!-- ==================== JOURNEY MAP (home) ==================== -->
+<section class="bw-map" id="bw-map" hidden>
+
+  <div class="bw-stage-bar">
+    <button type="button" class="bw-btn bw-btn-quiet bw-back" id="bw-to-landing">
+      <span aria-hidden="true">&#8592;</span> Overview
+    </button>
+    <span class="bw-spacer"></span>
+    <span class="bw-stage-where">Journey map</span>
+  </div>
+
+  <!-- The spine. Stations are built by js/activity.js from STATIONS so the art
+       and the copy have one home; this is only where they land. -->
+  <nav class="bw-spine" id="bw-spine" aria-label="Activity stages">
+    <div class="bw-rail" aria-hidden="true"><div class="bw-rail-fill" id="bw-rail-fill"></div></div>
+    <ol class="bw-stations" id="bw-stations" role="list"></ol>
+  </nav>
+
+  <p class="bw-map-hint" id="bw-map-hint"></p>
+
 
 </section>
 

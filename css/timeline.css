@@ -13,13 +13,23 @@
    ========================================================================== */
 
 /* ---- which view is showing ----
-   The workspace is toggled by its `hidden` attribute rather than from here,
-   because .bw [hidden] is display:none !important and would win anyway. */
-.bw[data-view="stage"] .bw-map { display: none; }
-/* Off the timeline entirely (a single-stage slice) the spine is meaningless. */
+   All three sections are toggled by their `hidden` attribute from
+   js/activity.js rather than from here, because .bw [hidden] is
+   display:none !important and would win against anything written here. */
+
+/* Off the timeline entirely (a single-stage slice) there is no journey. */
 .bw:not([data-view]) .bw-spine,
 .bw:not([data-view]) .bw-map-hint,
+.bw:not([data-view]) .bw-start-row,
 .bw:not([data-view]) .bw-stage-bar { display: none; }
+
+/* ---- the start of it ---- */
+.bw-start-row { margin-top: 24px; }
+.bw-btn-start {
+  width: 100%; padding: 13px 20px;
+  font-size: 1rem; font-weight: 650; letter-spacing: -.005em;
+}
+.bw-landing .bw-example { margin-top: 20px; }
 
 /* The map leads with the overview, so give the spine room to read as the
    next thing rather than as a footer to it. */
