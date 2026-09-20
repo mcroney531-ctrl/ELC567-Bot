@@ -1565,6 +1565,7 @@
     el.chatWrap = $("bw-chat-wrap");
     el.finalWrap = $("bw-final-wrap");
     el.handoff = $("bw-handoff");
+    el.stage = $("bw-stage");
   }
 
   /* ---- block role ---- */
@@ -1805,10 +1806,20 @@
 
   function openStep(n, scroll) {
     if (n > workflowData.progress.unlocked) return;
+    var moving = TIMELINE && view === "stage" && workflowData.progress.current !== n;
     workflowData.progress.current = n;
     render();
+    // Continuing from one stage to the next happens inside the workspace: the
+    // map is home, not a turnstile between every stage.
+    if (moving && !motionOff()) {
+      window.gsap.fromTo(el.stage.querySelector('.bw-step[data-state="active"]'),
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: .34, ease: "power2.out", clearProps: "all" });
+    }
     if (scroll !== false) {
-      var node = el.steps[n - 1];
+      // One stage is on screen at a time, so the top of the workspace is the
+      // thing worth scrolling to, not the card itself.
+      var node = TIMELINE ? el.stage : el.steps[n - 1];
       if (node && node.scrollIntoView) {
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
@@ -1871,6 +1882,8 @@
       : (ROLE.label || "Step " + current + " of 5");
 
     applyPrereqState();
+    renderMap();
+    stageWhere(current);
 
     renderPromptV1();
   }
@@ -2423,6 +2436,246 @@
     return ok;
   }
 
+
+  /* ==========================================================================
+     8. JOURNEY MAP
+     --------------------------------------------------------------------------
+     The home screen. Five stations on a spine; clicking an available one enters
+     that stage's workspace, which is the same step panel the accordion used to
+     expand. Nothing below reads or writes learner data - it renders
+     workflowData.progress and calls openStep(), exactly as the accordion header
+     did, so the state engine never learns that the navigation changed.
+
+     Art direction lives in css/timeline.css and in ART below. Both can be
+     replaced outright without touching the interaction system.
+     ========================================================================== */
+
+  var TIMELINE = CONFIG.blockRole === "all";
+  var view = "map";
+
+  /* Placeholder marks, one per stage - deliberately plain, deliberately easy to
+     throw away. Stroked in currentColor so the state treatment owns the colour. */
+  var ART = {
+    identify: '<path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
+    map: '<circle cx="5" cy="7" r="2"/><circle cx="19" cy="17" r="2"/><path d="M7 7h5a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h7"/>',
+    envision: '<path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 1.9v.2h5.2v-.2c0-.7.3-1.4.9-1.9A6 6 0 0 0 12 3Z"/>',
+    refine: '<path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/>',
+    deploy: '<path d="M4.5 12.5 20 4l-4 16-4.2-6.1L4.5 12.5Z"/><path d="M11.8 13.9 20 4"/>'
+  };
+
+  /* One entry per stage. `done` returns the completion line, and returns it from
+     structured state rather than from anything the learner typed free-hand, so a
+     demo run full of junk still reads as a finished journey. */
+  var STATIONS = [
+    { step: 1, name: "Identify", art: "identify", place: "above",
+      blurb: "Name a problem worth solving",
+      done: function () { return "Task defined"; } },
+    { step: 2, name: "Map", art: "map", place: "below",
+      blurb: "Break it into the real steps",
+      done: function () {
+        var k = filledSteps().length;
+        return k + (k === 1 ? " step" : " steps") + " mapped";
+      } },
+    { step: 3, name: "Envision", art: "envision", place: "above",
+      blurb: "Picture the version worth having",
+      done: function () { return "Ideal outcome defined"; } },
+    { step: 4, name: "Refine", art: "refine", place: "below",
+      blurb: "Sharpen the vague parts",
+      done: function () { return "Coach review finished"; } },
+    { step: 5, name: "Deploy", art: "deploy", place: "above",
+      blurb: "Put it to work",
+      done: function () { return "Master prompt ready"; } }
+  ];
+
+  var stationNodes = [];
+
+  function buildMap() {
+    var host = document.getElementById("bw-stations");
+    if (!host) return;
+    host.textContent = "";
+    stationNodes = STATIONS.map(function (s, i) {
+      var li = document.createElement("li");
+      li.className = "bw-station";
+      li.setAttribute("role", "listitem");
+      li.setAttribute("data-stage", String(s.step));
+      li.setAttribute("data-place", s.place);
+
+      var card = document.createElement("button");
+      card.type = "button";
+      card.className = "bw-station-card";
+
+      var art = document.createElement("figure");
+      art.className = "bw-station-art";
+      art.innerHTML =                                    // static, from ART above
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ART[s.art] + '</svg>';
+      var tick = document.createElement("span");
+      tick.className = "bw-station-check";
+      tick.setAttribute("aria-hidden", "true");
+      tick.textContent = "\u2713";
+      art.appendChild(tick);
+
+      var body = document.createElement("span");
+      body.className = "bw-station-body";
+      var index = document.createElement("span");
+      index.className = "bw-station-index";
+      index.textContent = "Stage " + s.step;
+      var name = document.createElement("span");
+      name.className = "bw-station-name";
+      name.textContent = s.name;
+      var status = document.createElement("span");
+      status.className = "bw-station-status";
+      body.appendChild(index); body.appendChild(name); body.appendChild(status);
+
+      card.appendChild(art);
+      card.appendChild(body);
+      card.addEventListener("click", function () {
+        if (li.getAttribute("data-state") === "locked") return;
+        enterStage(s.step, card);
+      });
+
+      var stem = document.createElement("span");
+      stem.className = "bw-station-stem";
+      stem.setAttribute("aria-hidden", "true");
+      var dot = document.createElement("span");
+      dot.className = "bw-station-dot";
+      dot.setAttribute("aria-hidden", "true");
+
+      li.appendChild(card); li.appendChild(stem); li.appendChild(dot);
+      host.appendChild(li);
+      return { def: s, li: li, card: card, status: status };
+    });
+  }
+
+  function renderMap() {
+    if (!TIMELINE || !stationNodes.length) return;
+    var progress = workflowData.progress;
+    var resume = 1;
+    while (resume < 5 && progress.done[resume]) resume++;
+
+    var doneCount = 0;
+    stationNodes.forEach(function (node) {
+      var n = node.def.step;
+      var isDone = !!progress.done[n];
+      var locked = n > progress.unlocked;
+      var state = isDone ? "done" : (locked ? "locked" : "available");
+      if (isDone) doneCount++;
+
+      node.li.setAttribute("data-state", state);
+      node.li.setAttribute("data-current", (!isDone && n === resume && !locked) ? "true" : "false");
+      node.card.disabled = locked;
+
+      node.status.textContent = isDone
+        ? "Complete · " + node.def.done()
+        : (locked ? lockedBecause(n) : node.def.blurb);
+      node.card.setAttribute("aria-label",
+        "Stage " + n + ", " + node.def.name + ". " + node.status.textContent +
+        (locked ? "" : ". Open this stage."));
+    });
+
+    // The connector greens up to the last completed station, not past it.
+    var fill = document.getElementById("bw-rail-fill");
+    if (fill) {
+      var pct = doneCount > 1 ? ((doneCount - 1) / 4) * 100 : 0;
+      fill.style.width = pct + "%";
+      fill.style.height = pct + "%";          // the vertical rail uses height
+    }
+
+    var hint = document.getElementById("bw-map-hint");
+    if (hint) {
+      hint.textContent = doneCount === 5
+        ? "Every stage complete. Open Deploy to copy your master prompt again."
+        : "Pick up at " + STATIONS[resume - 1].name + ". Stages open as you finish the one before.";
+    }
+  }
+
+  /* Why a station is shut, said in terms of the stage before it. */
+  function lockedBecause(n) {
+    var before = STATIONS[n - 2];
+    return before ? "Finish " + before.name + " first" : "Locked";
+  }
+
+  /* ---- moving between the map and a stage ---- */
+
+  function setView(next) {
+    view = next;
+    el.root.setAttribute("data-view", next);
+    el.stage.hidden = next !== "stage";
+    if (next === "map") renderMap();
+  }
+
+  function stageWhere(n) {
+    var node = document.getElementById("bw-stage-where");
+    if (node) node.textContent = "Stage " + n + " of 5 · " + STATIONS[n - 1].name;
+  }
+
+  function motionOff() {
+    return prefersReducedMotion() || typeof window.gsap === "undefined";
+  }
+
+  /* Entering a stage: the chosen card takes over while the rest of the journey
+     recedes, then the workspace resolves in. No camera, just scale, position
+     and opacity - which is all the feeling needs. */
+  function enterStage(n, card) {
+    if (view === "stage") { openStep(n); return; }
+    var others = stationNodes.map(function (s) { return s.card; })
+      .filter(function (c) { return c !== card; });
+    var rail = document.getElementById("bw-spine");
+
+    var arrive = function () {
+      setView("stage");
+      openStep(n, false);
+      if (el.root.scrollIntoView) {
+        el.root.scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });
+      }
+      if (!motionOff()) {
+        window.gsap.fromTo(el.stage,
+          { opacity: 0, y: 16, scale: .99 },
+          { opacity: 1, y: 0, scale: 1, duration: .42, ease: "power2.out", clearProps: "all" });
+      }
+      // The map is hidden now, so put the cards back before it is shown again.
+      if (typeof window.gsap !== "undefined") {
+        window.gsap.set(others.concat([card, rail]), { clearProps: "all" });
+      }
+    };
+
+    if (motionOff()) { arrive(); return; }
+    window.gsap.timeline({ onComplete: arrive })
+      .to(others, { opacity: 0, scale: .94, duration: .28, ease: "power2.out" }, 0)
+      .to(rail, { opacity: .25, duration: .28, ease: "power2.out" }, 0)
+      .to(card, { scale: 1.06, duration: .28, ease: "power2.out" }, 0);
+  }
+
+  function backToMap() {
+    setView("map");
+    if (!motionOff()) {
+      window.gsap.fromTo("#bw-map",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: .38, ease: "power2.out", clearProps: "all" });
+    }
+    var map = document.getElementById("bw-map");
+    if (map && map.scrollIntoView) {
+      map.scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });
+    }
+  }
+
+  function wireMap() {
+    // A single-stage slice has no journey to map; it renders its one panel and
+    // the workspace is all there is.
+    if (!TIMELINE) { el.stage.hidden = false; return; }
+    buildMap();
+    el.root.setAttribute("data-view", "map");
+    el.stage.hidden = true;
+    var back = document.getElementById("bw-to-map");
+    if (back) back.addEventListener("click", backToMap);
+    // The stage headers are titles now, not controls.
+    el.steps.forEach(function (node) {
+      var head = node.querySelector(".bw-step-head");
+      if (head) head.disabled = true;
+    });
+    renderMap();
+  }
+
   /* ==========================================================================
      7. INIT
      ========================================================================== */
@@ -2465,6 +2718,7 @@
   function resetInPlace() {
     workflowData = defaultData();
     applyRole();
+    if (TIMELINE) setView("map");
     recomputeTools();
     el.problem.value = "";
     updateProblemCount();
@@ -2504,6 +2758,7 @@
     if (!CONFIG.followSystemDarkMode) el.root.setAttribute("data-theme", "light");
     load();
     applyRole();
+    wireMap();
     recomputeTools();
     wireStep1();
     wireStep2();

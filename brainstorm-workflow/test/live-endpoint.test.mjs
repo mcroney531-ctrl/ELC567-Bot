@@ -30,6 +30,10 @@ async function fillToStep4() {
   page = await ctx.newPage();
   report.watch(page);
   await page.goto('http://127.0.0.1:8901/');
+  await page.waitForTimeout(250);
+  // In from the journey map, the way a learner arrives.
+  await page.click('.bw-station[data-stage="1"] .bw-station-card');
+  await page.waitForTimeout(650);
   await page.fill('#bw-problem', 'Every Monday I rebuild the same eleven client status updates by hand, and it eats two hours.');
   await page.click('[data-next="1"]');
   const c = page.locator('#bw-cards .bw-card');

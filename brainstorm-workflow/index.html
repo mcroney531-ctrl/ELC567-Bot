@@ -6,13 +6,15 @@
 <title>Workflow Brainstorm &mdash; Build Your Master Prompt</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/activity.css">
+<link rel="stylesheet" href="css/timeline.css">
 </head>
-<body>
 <body>
 
 <div class="bw" id="bw">
 
-  <!-- ================= INTRO / FRAMING ================= -->
+<!-- ======================= JOURNEY MAP (home) ======================= -->
+<section class="bw-map" id="bw-map">
+
   <header class="bw-hero">
     <p class="bw-eyebrow">Workflow Brainstorm</p>
     <h1>We all have that ONE THING.</h1>
@@ -94,6 +96,29 @@ write [MISSING: metric name] and keep going.</pre>
   </header>
 
   <!-- ================= PROGRESS ================= -->
+
+  <!-- The spine. Stations are built by js/activity.js from STATIONS so the art
+       and the copy have one home; this is only where they land. -->
+  <nav class="bw-spine" id="bw-spine" aria-label="Activity stages">
+    <div class="bw-rail" aria-hidden="true"><div class="bw-rail-fill" id="bw-rail-fill"></div></div>
+    <ol class="bw-stations" id="bw-stations" role="list"></ol>
+  </nav>
+
+  <p class="bw-map-hint" id="bw-map-hint"></p>
+
+</section>
+
+<!-- ===================== STAGE WORKSPACE ===================== -->
+<section class="bw-stage" id="bw-stage" hidden>
+
+  <div class="bw-stage-bar">
+    <button type="button" class="bw-btn bw-btn-quiet bw-back" id="bw-to-map">
+      <span aria-hidden="true">&#8592;</span> Journey map
+    </button>
+    <span class="bw-spacer"></span>
+    <span class="bw-stage-where" id="bw-stage-where"></span>
+  </div>
+
   <div class="bw-progress">
     <div class="bw-progress-track"><div class="bw-progress-fill" id="bw-progress-fill"></div></div>
     <span class="bw-progress-label" id="bw-progress-label">Step 1 of 5</span>
@@ -275,6 +300,8 @@ write [MISSING: metric name] and keep going.</pre>
   <div class="bw-notice bw-notice-info" id="bw-handoff" hidden></div>
 
   <!-- ================= FOOTER ================= -->
+</section>
+
   <div class="bw-foot">
     <span class="bw-saved" id="bw-saved" data-idle="true">Your work saves automatically in this browser.</span>
     <span class="bw-spacer"></span>

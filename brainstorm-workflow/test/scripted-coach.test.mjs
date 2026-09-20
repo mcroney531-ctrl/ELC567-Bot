@@ -22,10 +22,19 @@ report.watch(page);
 const realBots = () => page.locator('.bw-msg-bot:not([data-typing])');
 const waitBots = n => wait(page, n);
 
+/* The journey map is home, so every entry into the activity goes through it. */
+const enter = async n => {
+  await page.click(`.bw-station[data-stage="${n}"] .bw-station-card`);
+  await page.waitForTimeout(650);
+};
+const toMap = async () => { await page.click('#bw-to-map'); await page.waitForTimeout(500); };
+
 try {
   await page.goto(FILE);
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(300);
 
+  check('lands on the journey map', await page.locator('#bw-map').isVisible());
+  await enter(1);
   check('step2 locked at start', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
   await page.click('[data-next="1"]');
   check('short problem blocked', !(await page.locator('#bw-warn-1').isHidden()));
@@ -121,6 +130,8 @@ try {
   // persistence
   await page.reload();
   await page.waitForTimeout(400);
+  check('reload comes back to the map', await page.locator('#bw-map').isVisible());
+  await enter(5);
   check('reload restores step 5', await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
   check('reload restores V2 text', (await page.locator('#bw-prompt-v2').inputValue()).includes('under 200 words'));
   check('reload restores full transcript', await page.locator('.bw-msg').count() === 9,
@@ -132,6 +143,7 @@ try {
   await page.fill('#bw-prompt-v2', 'MY OWN EDIT');
   await page.reload();
   await page.waitForTimeout(400);
+  await enter(5);
   check('user edit survives reload', (await page.locator('#bw-prompt-v2').inputValue()) === 'MY OWN EDIT');
   check('source note hidden after user edit', await page.locator('#bw-v2-source').isHidden());
   await page.click('#bw-regen-v2');
@@ -147,18 +159,22 @@ try {
   check('clipboard holds the prompt', clip.includes('WHAT STAYS WITH ME'), clip.slice(0, 60));
   check('progress reads complete', (await page.locator('#bw-progress-label').textContent()) === 'Complete');
 
-  // editing step 1 back to invalid re-opens the gate
-  await page.click('#bw-head-1');
+  // editing stage 1 back to invalid re-opens the gate
+  await toMap();
+  await enter(1);
   await page.fill('#bw-problem', 'too short');
-  await page.click('#bw-head-2');
-  check('step 1 un-ticks when broken', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'false');
-  await page.click('#bw-head-1');
+  await toMap();
+  check('stage 1 un-ticks when broken', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'false');
+  check('and the map says so', await page.locator('.bw-station[data-stage="1"]').getAttribute('data-state') === 'available',
+    await page.locator('.bw-station[data-stage="1"]').getAttribute('data-state'));
+  await enter(1);
   await page.fill('#bw-problem', 'Every Monday I spend two hours building status updates for eleven clients.');
   await page.click('[data-next="1"]');
-  check('step 1 re-ticks when fixed', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'true');
+  check('stage 1 re-ticks when fixed', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'true');
 
   // restart conversation
-  await page.click('#bw-head-4');
+  await toMap();
+  await enter(4);
   await page.click('#bw-chat-restart');
   await page.click('#bw-chat-restart');   // inline confirm: second press commits
   await waitBots(1);
@@ -169,14 +185,20 @@ try {
   await page.click('#bw-reset');
   await page.click('#bw-reset');   // inline confirm: second press commits
   await page.waitForTimeout(700);
-  check('reset clears problem', (await page.locator('#bw-problem').inputValue()) === '');
+  check('reset returns to the map', await page.locator('#bw-map').isVisible());
   check('reset relocks step 2', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
+  check('reset relocks the map', await page.locator('.bw-station[data-stage="2"]').getAttribute('data-state') === 'locked');
+  await enter(1);
+  check('reset clears problem', (await page.locator('#bw-problem').inputValue()) === '');
 
-  // responsive smoke: no horizontal overflow at 360px
+  // responsive smoke: no horizontal overflow at 360px, on both views
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.waitForTimeout(200);
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  check('no horizontal overflow at 360px', overflow <= 1, 'overflow=' + overflow + 'px');
+  await page.waitForTimeout(250);
+  const over = () => page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  check('no horizontal overflow in a stage at 360px', await over() <= 1, 'overflow=' + await over() + 'px');
+  await toMap();
+  check('no horizontal overflow on the map at 360px', await over() <= 1, 'overflow=' + await over() + 'px');
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);
 }
