@@ -1,14 +1,15 @@
 /*
- * Hardening for the one environment that matters: a published Review 360 link,
- * where the activity runs inside a Rise iframe we don't control. Covers the
- * failure modes that iframe imposes - OS dark mode, a clipboard API the frame
- * was never granted, blocked modals, and host page character encoding.
+ * The failure modes that survived the move off Rise. Three of the four were
+ * found inside a Rise iframe, but none of them are Rise's fault: a browser can
+ * withhold the async clipboard API on any origin, block modals in any embed,
+ * and follow an OS dark mode the lesson around it does not.
  */
 import fs from 'node:fs';
-import { serveHtml, readActivity, withConfig, makeReporter, ACTIVITY, loadChromium } from './helpers.mjs';
+import path from 'node:path';
+import { serveSite, readActivity, makeReporter, ROOT, loadChromium } from './helpers.mjs';
 
 const chromium = await loadChromium();
-const report = makeReporter('rise hardening');
+const report = makeReporter('hardening');
 const check = report.check;
 
 // A finished activity, so step 5 is reachable without walking the whole flow.
@@ -28,20 +29,19 @@ let server, browser;
 try {
   browser = await chromium.launch();
 
-  // ---- 1. encoding: the file must not depend on the host page's charset ----
-  const raw = fs.readFileSync(ACTIVITY);
-  const nonAscii = [...raw].filter(b => b > 127).length;
-  check('activity file is pure ASCII', nonAscii === 0, nonAscii + ' non-ascii bytes');
+  // ---- 1. encoding is declared rather than inherited ----
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  check('the page declares its charset', /<meta charset="utf-8">/i.test(html));
+  check('and declares it before any content', html.indexOf('charset') < html.indexOf('<body'));
   check('no blocking modal calls left',
     !/window\.confirm\s*\(|window\.alert\s*\(|window\.prompt\s*\(/.test(readActivity()));
 
   // ---- 2. dark mode must not leak into a light Rise lesson ----
-  server = await serveHtml(readActivity(), 8127);
-  const bgOf = async (colorScheme, html) => {
-    if (html) { server.close(); server = await serveHtml(html, 8127); }
+  server = await serveSite(8127);
+  const bgOf = async (colorScheme, dark) => {
     const ctx = await browser.newContext({ colorScheme });
     const p = await ctx.newPage();
-    await p.goto('http://127.0.0.1:8127/');
+    await p.goto('http://127.0.0.1:8127/' + (dark ? '?dark=1' : ''));
     await p.waitForTimeout(300);
     const bg = await p.locator('#bw').evaluate(n => getComputedStyle(n).backgroundColor);
     await ctx.close();
@@ -50,10 +50,11 @@ try {
   const light = v => { const m = v.match(/\d+/g); return m && Number(m[0]) > 200; };
   check('light OS renders light', light(await bgOf('light')));
   check('dark OS still renders light by default', light(await bgOf('dark')), await bgOf('dark'));
-  const optIn = withConfig({ followSystemDarkMode: 'true' });
-  check('dark mode still available when opted in', !light(await bgOf('dark', optIn)));
   server.close();
-  server = await serveHtml(readActivity(), 8127);
+  server = await serveSite(8127, { followSystemDarkMode: 'true' });
+  check('dark mode still available when opted in', !light(await bgOf('dark')));
+  server.close();
+  server = await serveSite(8127);
 
   // ---- 3. clipboard: the frame may never have been granted the async API ----
   const artifactPage = async (breakClipboard, breakExecCommand) => {
@@ -65,11 +66,11 @@ try {
       if (noClip) { try { delete navigator.clipboard; } catch (e) { /* getter-only */ } }
       if (noExec) document.execCommand = () => false;
     }, [JSON.stringify(SEED), breakClipboard, breakExecCommand]);
-    await p.goto('http://127.0.0.1:8128/');
+    await p.goto('http://127.0.0.1:8128/role/artifact');
     await p.waitForTimeout(400);
     return { ctx, p };
   };
-  const artifactServer = await serveHtml(withConfig({ blockRole: '"artifact"' }), 8128);
+  const artifactServer = await serveSite(8128);
 
   let { ctx, p } = await artifactPage(true, false);   // no async API, execCommand works
   check('step 5 reachable from seeded state', await p.locator('#bw-prompt-v2').isVisible());

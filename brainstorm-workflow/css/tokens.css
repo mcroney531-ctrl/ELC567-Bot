@@ -1,0 +1,105 @@
+/* ==========================================================================
+   Brainstorm Workflow - design tokens
+   --------------------------------------------------------------------------
+   Everything is scoped under .bw rather than :root. That began as insulation
+   from Articulate Rise; it stays because it still keeps the activity from
+   restyling anything it is embedded in.
+
+   Motion follows the ELC564 style guide: two durations for UI (micro for
+   hover and press, system for state changes), one shared easing curve so the
+   whole thing reads as one hand rather than several.
+   ========================================================================== */
+
+.bw {
+  /* ---- palette: warm ivory ground, lavender accents ---- */
+  --bw-page: #f6f4fc;          /* ambient tint behind the cards */
+  --bw-bg: #fdfcff;            /* card surface */
+  --bw-surface: #f8f7fd;       /* sunk panels and the chat ground */
+  --bw-surface-2: #efedf9;
+  --bw-border: #ece9f7;
+  --bw-border-strong: #dcd7f0;
+  --bw-text: #2a2a4a;
+  --bw-text-muted: #6f6d92;
+  --bw-text-faint: #9b98b8;
+  --bw-accent: #7c74e0;
+  --bw-accent-hover: #6a62d4;
+  --bw-accent-soft: #efedfb;
+  --bw-accent-grad: linear-gradient(135deg, #8d84e8, #7675d8);
+  --bw-accent-tail: #7675d8;
+  --bw-bubble-bot: #ffffff;    /* the coach's bubble, and anything that sits on it */
+  --bw-compose: rgba(255, 255, 255, .74);
+  --bw-good: #2f8f6f;
+  --bw-good-soft: #e6f5ef;
+  --bw-warn: #96671c;
+  --bw-warn-soft: #fbf1de;
+  --bw-danger: #b5443c;
+  --bw-danger-soft: #fbecea;
+  --bw-final: #7c74e0;
+  --bw-final-soft: #efedfb;
+
+  --bw-radius: 22px;
+  --bw-radius-sm: 14px;
+  --bw-radius-bubble: 20px;
+  --bw-gap: 16px;
+  --bw-shadow: 0 2px 8px rgba(93, 85, 180, .05), 0 12px 32px rgba(93, 85, 180, .07);
+
+  box-sizing: border-box;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px;
+  color: var(--bw-text);
+  background: var(--bw-page);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.bw *, .bw *::before, .bw *::after { box-sizing: inherit; }
+.bw [hidden] { display: none !important; }   /* role hiding must beat any author display */
+
+@media (prefers-color-scheme: dark) {
+  .bw:not([data-theme="light"]) {
+    --bw-page: #14121f;
+    --bw-bg: #1b1830;
+    --bw-surface: #211d38;
+    --bw-surface-2: #2a2545;
+    --bw-border: #322c52;
+    --bw-border-strong: #443c6b;
+    --bw-text: #ece9fb;
+    --bw-text-muted: #a9a4c9;
+    --bw-text-faint: #837da6;
+    --bw-accent: #a79dff;
+    --bw-accent-hover: #b9b1ff;
+    --bw-accent-soft: #262046;
+    --bw-bubble-bot: #262138;
+    --bw-compose: rgba(33, 29, 56, .78);
+    --bw-good: #5fc79c;
+    --bw-good-soft: #17322a;
+    --bw-warn: #e0a95f;
+    --bw-warn-soft: #33280f;
+    --bw-danger: #f08b82;
+    --bw-danger-soft: #37201e;
+    --bw-final: #a79dff;
+    --bw-final-soft: #262046;
+    --bw-shadow: 0 2px 8px rgba(0,0,0,.34), 0 12px 32px rgba(0,0,0,.28);
+  }
+}
+
+/* ---- motion (ELC564 style guide) ---- */
+.bw {
+  --bw-ease-standard: cubic-bezier(0.65, 0, 0.35, 1);
+  --bw-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --bw-duration-micro: 0.2s;
+  --bw-duration-system: 0.5s;
+  --bw-duration-hero: 0.7s;
+}
+
+/* Honour the system setting everywhere at once. GSAP is told separately. */
+@media (prefers-reduced-motion: reduce) {
+  .bw, .bw *, .bw *::before, .bw *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

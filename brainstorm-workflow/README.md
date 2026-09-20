@@ -1,158 +1,69 @@
-# Workflow Brainstorm — Rise Custom Block
+# Workflow Brainstorm
 
-A five-step guided activity that walks a working professional from "this task eats two hours
-every week" to a **master prompt** they can paste into Claude or ChatGPT and use that day.
+A five-stage interactive activity that walks someone from *"this task eats my Monday"* to a master
+prompt they can paste into Claude, ChatGPT or Copilot and use that afternoon. Built for an
+E-Learning Challenge; it runs as a standalone site.
 
-Everything ships as one self-contained file: `index.html`. No build step, no dependencies,
-no external requests unless you connect a coach endpoint.
+**Stages.** The timeline names the transferable practice; the copy inside each stage keeps this
+activity's specific framing.
 
-| Step | What the learner does | What the code does |
+| Stage | The practice | In this activity |
 |---|---|---|
-| 1 | Describes the repetitive task | Captures `problem`, gates on ~40 characters |
-| 2 | Breaks it into steps + tools | Card builder; derives a de-duplicated tool list |
-| 3 | Reads the auto-generated draft prompt | `generateMasterPromptV1()` regenerates on every keystroke |
-| 4 | Talks to a coach that pushes on the vague parts | Pluggable bot adapter; transcript kept in state |
-| 5 | Edits and copies the finished prompt | Lifts the coach's `master-prompt` block, or assembles one |
+| 1 | **Identify** — naming a problem worth solving | Name the task that keeps eating your week |
+| 2 | **Map** — breaking a process into its real steps | Walk through the workflow and where each step happens |
+| 3 | **Envision** — imagining the ideal version | A draft prompt, built from what you just said |
+| 4 | **Refine** — sharpening vague ideas into specifics | Three short conversations with a coach |
+| 5 | **Deploy** — translating thinking into action | Edit and copy the finished master prompt |
+
+> **Status.** The activity was originally built as an Articulate Rise custom block, split across
+> nine pasteable files. That delivery is retired: it is now a plain static site, and the accordion
+> is being replaced by a timeline. The state engine underneath is unchanged.
 
 ---
 
-## Putting it in Rise
+## Running it
 
-Run `npm run build` and paste the files from `dist/` — one per block, no editing inside Rise:
+```bash
+npm start     # http://127.0.0.1:8080
+npm test      # five suites, 150 assertions
+```
 
-| Paste this file | Into the block that should be |
+A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
+`localStorage` and the activity would save nothing.
+
+| Path | What it serves |
 |---|---|
-| `dist/1-intro.html` | The hook, the outcome, and the worked example |
-| `dist/2-problem.html` | Name the repetitive task |
-| `dist/3-coach-workflow.html` | Chat: describe the workflow, the coach numbers it |
-| `dist/4-coach-tools.html` | Chat: where each of those steps happens |
-| `dist/5-draft.html` | The draft prompt, built from blocks 2 to 4 |
-| `dist/6-coach-handoff.html` | Chat: which step should the AI take over |
-| `dist/7-coach-standards.html` | Chat: what good looks like, what stays yours |
-| `dist/8-coach-guardrails.html` | Chat: house rules, then hands back the prompt |
-| `dist/9-artifact.html` | The finished master prompt |
+| `/` | the whole activity |
+| `/role/<name>` | one slice of it, for working on a stage in isolation |
+| `/frames/<a,b,c>` | several slices side by side on one origin, sharing state |
 
-Three alternatives if nine blocks is more than you want: `dist/alt-workflow-form.html` replaces
-blocks 3 and 4 with the original fill-in-the-cards form in a single block,
-`dist/alt-capture-combined.html` puts the intro and blocks 2-5 together, and
-`dist/alt-single-block.html` is the whole activity in one.
+### Layout
 
-Each file is the whole activity with its `blockRole` already set, so you never hunt for a config
-line in Rise's code editor. Put your own Rise text blocks between them. Edit `index.html` and re-run
-the build to regenerate them all; `npm test` runs the built files through the full lesson so a broken
-build can't ship quietly.
+```
+index.html          markup only
+css/tokens.css      palette, type scale, motion  (the only place colours are defined)
+css/activity.css    components
+js/activity.js      the whole app: state, prompt generation, coach, DOM wiring
+js/vendor/gsap.min.js
+test/               five Playwright suites
+personas/           30 scripted run-throughs for manual testing
+```
 
-### The manual route
+`css/tokens.css` carries the ELC564 style guide's motion conventions — `--bw-duration-micro` for
+hover and press, `--bw-duration-system` for state changes, one shared easing curve so the whole
+thing reads as one hand rather than several — plus a `prefers-reduced-motion` block that flattens
+every CSS transition at once.
 
-1. Add a **Multimedia → Embed** block (or any custom-code block your Rise plan exposes).
-2. Paste the entire contents of `index.html`.
-3. Save and preview.
+### Slices
 
-Notes that matter in Rise specifically:
-
-- **Styles are namespaced.** Every rule is scoped under `.bw`, so the activity can't restyle the
-  lesson around it and Rise's own CSS can't bleed in.
-- **No fixed widths.** The layout is flex/grid throughout and reflows from 360px up.
-- **Height.** Rise sizes the block from its content. If your host needs telling, the page posts
-  `{ type: "bw:height", height }` to its parent on every resize — wire that up on the host side
-  if you need it, ignore it otherwise.
-- **Progress is per-browser.** State lives in `localStorage`, not in Rise, so it does not travel
-  to an LMS gradebook and does not follow a learner to another device. If you need completion
-  tracking, gate the Rise lesson on something else.
+`CONFIG.blockRole` still selects a slice of the activity, and the tests use it to drive one stage
+at a time. `"all"` is the whole thing and is what ships. The rest — `"problem"`, `"coach-workflow"`,
+`"coach-tools"`, `"draft"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`,
+`"artifact"` — each render one piece. They exist because the activity was once nine separate
+embeds; they survive because the Map and Refine stages are several conversations each, and those
+conversations are defined by these roles.
 
 ---
-
-## Splitting it across several Rise blocks
-
-The activity is built to be pasted into several Rise custom blocks in one lesson, with your own
-teaching content between them. Each paste is the same file with one line changed:
-
-| Block | `blockRole` | What it is |
-|---|---|---|
-| 1 | `"intro"` | The hook, the outcome and the worked example. No steps, no progress rail, no state |
-| 2 | `"problem"` | Name the repetitive task |
-| 3 | `"coach-workflow"` | Chat: walk me through the workflow — the coach numbers it |
-| 4 | `"coach-tools"` | Chat: where does each of those steps happen? |
-| 5 | `"draft"` | The auto-built draft prompt |
-| 6 | `"coach-handoff"` | Chat: which step should the AI take over? |
-| 7 | `"coach-standards"` | Chat: what does a good result look like, and what stays yours? |
-| 8 | `"coach-guardrails"` | Chat: context and house rules — closes by handing back the prompt |
-| 9 | `"artifact"` | The finished master prompt, editable and copyable |
-
-Every block waits on what it actually needs and opens itself when that arrives: block 3 on the task
-being named, block 4 on the steps being mapped, block 5, the later chats and the artifact on both.
-Use any of the last three chats, in that order — you don't need all three. `"workflow"` replaces
-blocks 3 and 4 with the original card form, `"capture"` bundles blocks 1-5 into one, and the default
-`"all"` keeps the whole activity in a single block.
-
-**Five chats, one shared master prompt.** Each has its own transcript, its own heading, and its own
-one or two questions; each writes its own slice of the data. Blocks 3 and 4 take the workflow down
-(see below); blocks 6-8 sharpen it. Chat 7 opens by quoting what chat 6 captured, chat 8 by quoting
-chat 7, so it reads as one coach picking up a new thread rather than strangers asking overlapping
-questions. All of them stay live and editable — a learner can scroll back and revise, and the change
-flows forward.
-
-### Blocks 3 and 4: the workflow is captured by conversation
-
-There is no form to fill in. The learner describes their process the way they'd say it out loud
-(*"I pull the numbers, then draft each account update, then reformat the deck"*) and the coach turns
-it into a numbered list and reads it back. Typed numbered lists, one-per-line lists and run-on
-sentences all land in the same `steps` array, because that array is what the master prompt is built
-from and nothing else.
-
-- **Corrections are by number.** *"Step 2 should be draft from the CRM notes"* rewrites that step
-  and leaves the rest alone. *"Yes, but step 2 is wrong"* is read as an edit, not as agreement.
-- **A step remembered late lands where they said it goes.** *"Oh and then I email it"* appends;
-  *"before that I export the numbers"* goes to the top.
-- **One step is not a workflow.** A single-step answer gets asked what comes before and after.
-- **Block 4 pairs tools to numbers.** *"1 Tableau, 2 Word, 3 PowerPoint"* pairs exactly; a bare list
-  that matches the step count zips in order; one tool named alone goes on every step. When the
-  counts don't line up it asks once rather than guessing, and only after that does it match in
-  order — flagging that it guessed, so the learner can fix it by number.
-- **The two blocks co-own the `steps` array.** Block 3 writes what each step *is*, block 4 writes
-  where it *happens*. Each writes only its own half, so re-describing the workflow can't wipe the
-  tools and vice versa.
-
-Parsing runs on the learner's message in both scripted and live mode: a live coach writes better
-replies than the script does, but it can't write into the steps array.
-
-Because every chat unlocks at once, a later one can write its opening before the learner has
-answered the earlier one. While a chat is still untouched its greeting stays current: the moment the
-upstream answer lands, it rewrites to reference it. Once the learner has replied, the transcript is
-history and stays put.
-
-Ownership is per answer key, not per field, which is what stops the blocks trampling each other.
-Editing the problem statement in block 1 can't wipe the conversation in block 3, and restarting one
-chat clears only its own answers.
-
-### Keeping the blocks in step
-
-State lives in `localStorage`, and three mechanisms keep it current — **the `storage` event is the
-least of them.** Two separate runs on a published Review 360 lesson showed the same asymmetry: the
-upper block recorded events (3, then 2) while the lower block recorded zero both times. Upward
-propagation works; downward is in doubt, and downward is how this activity's data flows. So:
-
-- **A poll every `syncPollMs`** (1.2s), which is what makes the split correct rather than lucky.
-- **A sync the moment a block scrolls into view.** Below the fold is where browsers throttle timers
-  and where the learner is heading next. `IntersectionObserver` with an implicit root is clipped by
-  the parent frame — verified, not assumed.
-- **The `storage` event**, when it happens to arrive.
-
-The suite proves each of these carries the flow on its own, and a negative control with all three
-disabled confirms the sync genuinely breaks — so none of those tests can be passing for an
-unrelated reason.
-
-**Check the split works in your account before building on it.** A Rise lesson is one scrolling page
-and its embed blocks are iframes; whether they share a storage origin is version- and
-plan-dependent. `tools/rise-storage-probe.html` answers it in about a minute. Read the *marks*, not
-the event counter. If it reports BLOCKED or each block only ever sees its own mark, stay on the
-single-block `"all"` setup.
-
-One consequence: state is keyed to the domain the lesson is served from, so preview, a review link,
-and the published or SCORM copy each keep their own. Progress does not follow a learner between them.
-
----
-
 ## The two coach modes
 
 Step 4 is the part that makes the prompt personal, and it runs one of two ways.
@@ -175,7 +86,7 @@ Set one value:
 botEndpoint: "https://your-worker.example.com/coach",
 ```
 
-**Do not put a provider API key in this file.** A Rise custom block is public to every learner,
+**Do not put a provider API key in this file.** The page is public to every learner,
 and devtools will show them anything the page holds. Stand up a small server-side proxy that
 holds the key and forwards the request.
 
@@ -284,8 +195,6 @@ and being willing to rotate the key and republish if it leaks. For a course coho
 reasonable trade. For anything with real money behind it, put the endpoint behind a login your
 LMS already enforces.
 
----
-
 ## Configuration
 
 Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
@@ -299,50 +208,13 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
 | `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
-| `blockRole` | `"all"` | Which slice this block renders: `"all"`, `"intro"`, `"problem"`, `"coach-workflow"`, `"coach-tools"`, `"workflow"`, `"draft"`, `"capture"`, `"coach-handoff"`, `"coach-standards"`, `"coach-guardrails"`, `"artifact"`. See above. |
-| `syncPollMs` | `1200` | How often a split block re-checks storage for a sibling's work. Only used when `blockRole` isn't `"all"`. |
-| `followSystemDarkMode` | `false` | Off on purpose: a Rise lesson is light, and following the learner's OS dark mode drops a dark panel into a white page. Turn on only if your host is dark. |
+| `blockRole` | `"all"` | Which slice to render. `"all"` is the whole activity and is what ships; see **Slices** above. |
+| `syncPollMs` | `1200` | How often a slice re-checks storage for another slice's work. Unused when `blockRole` is `"all"`. |
+| `followSystemDarkMode` | `false` | Off on purpose: the activity is light, and following the learner's OS dark mode drops a dark panel into a white page. |
 
 `BOT_SYSTEM_PROMPT`, directly below `CONFIG`, is what a live coach is told to do — including the
 instruction to emit its final prompt in a fenced ` ```master-prompt ` block. **Keep that
 instruction if you rewrite the prompt**; it's how Step 5 finds the finished artifact.
-
----
-
-## Deploying to Review 360
-
-The activity is built to survive a Rise iframe it does not control, which is what a published
-Review 360 link gives you:
-
-- **It stays light.** OS dark mode is ignored unless `followSystemDarkMode` is on, so the block
-  never renders dark inside a white lesson.
-- **Copying works without permissions.** The copy button tries the synchronous `execCommand` path
-  first, because that runs inside the click's activation window and works in frames never granted
-  `clipboard-write`. If every path fails it selects the prompt and tells the learner to press
-  Ctrl+C, so the deliverable is never trapped in the page.
-- **No modals.** Destructive actions confirm on the button itself with a second press, so a frame
-  without `allow-modals` can't turn "Start over" into a dead button.
-- **Pure ASCII.** The file contains no bytes above 127 - typography is HTML entities and `\u`
-  escapes - so it can't be mangled by a host page serving a different charset.
-
-Two things to verify on the real published link, because a Review 360 link is a different domain
-and pipeline from preview:
-
-1. **Re-run `tools/rise-storage-probe.html` there** if you're using the multi-block layout. The
-   split depends on blocks sharing a storage origin, and that verdict doesn't automatically carry
-   over from preview. Read the *marks*, not the event counter — a `storage events` reading of 0 on
-   the lower block is expected (it has been seen on every run so far) and harmless, because the
-   activity does not depend on events.
-2. **Check the block height.** Rise decides how tall an embed is. The chat scrolls internally, but
-   the capture block grows with each workflow card - make sure a learner with five steps isn't
-   clipped.
-
-Also specific to Review 360: it collects reviewer comments, not activity data. Nothing a learner
-writes comes back to you - the master prompt exists only in their browser until they copy it out.
-And because storage is keyed to the serving domain, progress doesn't follow a learner between
-preview, the review link, and any later LMS copy.
-
----
 
 ## Answer quality
 
@@ -368,8 +240,6 @@ Thinness is judged by length, hedging phrases, and whether anything concrete app
 heuristics tuned against the three personas in `personas/`. They will occasionally push back on a
 short but good answer, and occasionally let a fluent but empty one through. A live coach judges it
 properly; the heuristics are the floor that holds when the endpoint is down.
-
----
 
 ## How the data flows
 
@@ -406,49 +276,30 @@ validates loses its checkmark until it does.
 ## Development
 
 ```bash
-npm run preview  # build, then the whole nine-block lesson at http://127.0.0.1:8080
-npm run build    # regenerate dist/ after editing index.html
-npm run serve    # serve an already-built dist/ without rebuilding
-npm test         # all eleven suites, 317 assertions
+npm start     # the activity at http://127.0.0.1:8080
+npm test      # all five suites
 ```
 
-### Previewing the lesson before it goes into Rise
+Every suite fails on any uncaught page error or unexpected console error, so a runtime exception
+anywhere in the flow shows up as a test failure.
 
-`npm run preview` builds everything and serves two views of the same built files.
-
-**`/` &mdash; the plain preview.** All nine blocks stacked in order, each loading its built file
-verbatim, with grey bands standing in for your own Rise text between them. It is the assembled
-lesson, not a mock-up of one &mdash; the blocks share state through `localStorage` exactly as they
-will in a published lesson, so filling in block 2 unlocks block 3 in front of you.
-
-**`/builder.html` &mdash; the lesson builder.** The same blocks, but yours to arrange: draft the
-Rise copy that introduces each one, choose which block follows it, drag the rows into order, and
-export the result as Markdown or JSON. Storyboard and working preview in one page, which is the
-point &mdash; a planning doc can't show you the block, and a preview can't hold your copy.
-
-Two pieces of state, deliberately kept apart. Your outline lives under `bw_builder_outline`; the
-learner's answers live under `brainstorm_workflow_data` with the blocks. **Clear learner data**
-resets the second so you can walk the lesson again without touching a word you wrote; **Reset
-outline** does the opposite. Nothing you type is ever parsed as markup, so draft copy containing
-`<` or `&` is safe &mdash; and dragging a row inserts it at the target, shifting the rest, rather
-than trading two rows.
-
-- **Serve it, don't open it.** Chromium gives a `file://` page no `localStorage`, and without that
-  the blocks cannot see each other. The bar at the top says which of the two you're looking at.
-- **Blocks size themselves.** Each one posts its height as it grows, so a long chat doesn't end up
-  behind an inner scrollbar the way a fixed-height frame would.
-- **Start over** clears the whole lesson. It reloads first and clears after, because every block
-  flushes its state on the way out and would otherwise write it straight back.
-- Individual blocks are on the same server by filename &mdash; `/3-coach-workflow.html` &mdash; and
-  so is `/rise-storage-probe.html` for checking whether a host shares storage at all.
-- `node preview.mjs --inline` emits `dist/preview-standalone.html`, one self-contained file with
-  every block embedded, for hosting the preview somewhere that has no sibling files to link to.
-
-`blocks.mjs` is the single list of what blocks exist. `build.mjs` emits a file per entry,
-`preview.mjs` stacks the lesson ones in order, and `builder.mjs` offers all of them in its
-dropdown &mdash; so a block added there appears in all three without anyone remembering to update
-the other two. That is the drift the earlier standalone builder had: its dropdown still described a
-six-step lesson months after the activity had nine blocks.
+- `test/scripted-coach.test.mjs` — the offline coach end to end: validation, the card builder,
+  prompt generation, the conversation, V2 capture, persistence and reset.
+- `test/live-endpoint.test.mjs` — the same flow against a stub endpoint: the wire format, the three
+  response shapes, timeouts, failures, retry, and the fallback when the coach never answers.
+- `test/capture-chat.test.mjs` — the Map stage's two conversations: that a run-on sentence, a typed
+  numbered list and a one-per-line list all land in the same steps array, that a correction by
+  number rewrites only that step, that "yes that looks right" is agreement while "yes, but step 2 is
+  wrong" is an edit, that a step remembered late lands where the learner said it goes, and that a
+  tool count that doesn't match the step count is asked about before it is guessed at.
+- `test/answer-quality.test.mjs` — that a vague answer is pushed on once and then accepted, that
+  thin sections are marked and warned about, that good answers produce neither, that a sweeping
+  handoff plus a carve-out is reconciled explicitly, and that the task section names the step in
+  instruction voice with the complaint dropped.
+- `test/hardening.test.mjs` — the failure modes that survived the move off Rise: that the page
+  declares its own encoding, that dark mode stays off by default and still works when opted in,
+  that copying survives a missing clipboard API and leaves the text selected when it can't copy at
+  all, and that one press of Start over never erases anything.
 
 ### Test personas
 
@@ -466,52 +317,3 @@ headlessly by `node personas/run.mjs` and written up by `node personas/report.mj
 
 Tests need Playwright (`npm i -D playwright`, or a global install — the helper finds either).
 
-- `test/scripted-coach.test.mjs` — the full walkthrough on the built-in coach: gating and
-  validation, the card builder, prompt generation, the conversation, V2 capture, persistence
-  across reloads, user-edit precedence, clipboard, reset, and no horizontal overflow at 360px.
-- `test/live-endpoint.test.mjs` — the adapter against a stub coach: request shape, every accepted
-  response shape, and the failure modes (HTTP error, timeout, unreachable host, unrecognized
-  payload) including that a learner can still finish with the coach down.
-
-- `test/multi-block.test.mjs` — the full five-block lesson as five iframes on one page: that each
-  block shows only its own slice and topic, that the three chats are genuinely separate transcripts
-  that pool their answers into one prompt, that a later chat quotes what an earlier one captured,
-  that no block clobbers another in either direction, that restarting one chat leaves the others
-  intact, and that reload and Start over behave across all five. Also runs the whole flow with
-  `storage` events swallowed; a below-the-fold block that syncs only when scrolled into view; and a
-  negative control confirming the sync really does break with every mechanism switched off.
-- `test/probe.test.mjs` — checks the storage probe itself reports SHARED between same-origin
-  iframes and BLOCKED inside a sandboxed one, so its verdict in Rise can be trusted.
-- `test/answer-quality.test.mjs` — the four defects persona testing found and their fixes: that a
-  vague answer is pushed back on exactly once and then accepted, that a specific one never is, that
-  thin sections are marked and the block warns about them, that good answers produce neither, that a
-  sweeping handoff plus a carve-out is reconciled explicitly, and that the task section names the
-  step in instruction voice with the complaint dropped.
-- `test/dist.test.mjs` — rebuilds `dist/` and runs the real nine-block lesson using those files
-  verbatim, so the artifacts that actually go into Rise are the ones under test.
-- `test/split-capture.test.mjs` — the capture form as three separate blocks: that each renders one
-  step, that block 2 waits on the task being named and block 3 on the workflow being mapped, that
-  each unlocks live when its prerequisite arrives, and that editing one cannot wipe another.
-- `test/capture-chat.test.mjs` — blocks 3 and 4, the workflow captured by conversation: that a
-  run-on sentence, a typed numbered list and a one-per-line list all land in the same steps array,
-  that a correction by number rewrites only that step, that "yes that looks right" is read as
-  agreement while "yes, but step 2 is wrong" is read as an edit, that a step remembered late lands
-  where the learner said it goes, that a tool count that doesn't match the step count is asked
-  about before it is guessed at, and that restarting one chat clears only the half it took down.
-- `test/builder.test.mjs` — the lesson builder: that it opens on the shipped nine with the real
-  blocks embedded, that draft copy containing `</textarea>` survives a reload byte for byte and
-  never reaches the page as markup, that dragging a row inserts rather than swaps, that swapping
-  the block under a piece of copy loads that block, that removing takes two presses, that the
-  exports describe the lesson as arranged, and that clearing the learner data leaves the outline
-  untouched (and the reverse).
-- `test/preview.test.mjs` — the preview page: that all nine blocks load their built files, that the
-  page reports honestly whether storage is shared, that frames size themselves rather than sitting
-  at a fixed height, that the full lesson runs end to end inside it, and that Start over really
-  starts over rather than being undone by the save-on-exit flush.
-- `test/rise-hardening.test.mjs` — the iframe failure modes above: that the file is pure ASCII and
-  modal-free, that dark mode stays off by default and still works when opted in, that copying
-  survives a missing clipboard API and leaves the text selected when it can't copy at all, and
-  that one press of Start over never erases anything.
-
-Every suite fails on any uncaught page error or unexpected console error, so a runtime exception
-anywhere in the flow shows up as a test failure.

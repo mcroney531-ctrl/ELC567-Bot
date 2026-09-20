@@ -3,13 +3,13 @@
  * gating, the workflow builder, prompt generation, the conversation,
  * V2 capture, persistence, copy, reset, and mobile layout.
  */
-import { serveHtml, readActivity, makeReporter, waitBots as wait, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, waitBots as wait, loadChromium } from './helpers.mjs';
 
 const chromium = await loadChromium();
 
 const PORT = 8899;
 const FILE = 'http://127.0.0.1:' + PORT + '/';
-const server = await serveHtml(readActivity(), PORT);
+const server = await serveSite(PORT);
 const report = makeReporter('scripted coach');
 const check = report.check;
 

@@ -4,18 +4,17 @@
  * unreachable host, unrecognized payload) a learner can hit mid-activity.
  */
 import { server, state } from './coach-stub.mjs';
-import { serveHtml, withConfig, makeReporter, waitBots as wait, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, waitBots as wait, loadChromium } from './helpers.mjs';
 
 const chromium = await loadChromium();
 
-// Page variant pointed at the stub, with a short timeout so the hang test is quick.
-const html = withConfig({
+// Pointed at the stub, with a short timeout so the hang test is quick.
+await new Promise(r => server.listen(8900, r));
+const statics = await serveSite(8901, {
   botEndpoint: '"http://127.0.0.1:8900/coach"',
   botHeaders: '{ "x-course-key": "elc567" }',
   botTimeoutMs: '1500'
 });
-await new Promise(r => server.listen(8900, r));
-const statics = await serveHtml(html, 8901);
 
 const report = makeReporter('live endpoint');
 const check = report.check;

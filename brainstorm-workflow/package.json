@@ -3,12 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Guided AI-integration brainstorm activity for Articulate Rise custom blocks.",
+  "description": "Guided AI-integration brainstorm activity - a five-stage interactive timeline.",
   "scripts": {
-    "build": "node build.mjs && node preview.mjs && node builder.mjs",
+    "start": "node test/serve.mjs",
     "serve": "node test/serve.mjs",
-    "test": "node test/scripted-coach.test.mjs && node test/live-endpoint.test.mjs && node test/probe.test.mjs && node test/multi-block.test.mjs && node test/split-capture.test.mjs && node test/capture-chat.test.mjs && node test/rise-hardening.test.mjs && node test/answer-quality.test.mjs && node test/dist.test.mjs && node test/preview.test.mjs && node test/builder.test.mjs",
-    "preview": "npm run build && node test/serve.mjs"
+    "test": "node test/scripted-coach.test.mjs && node test/live-endpoint.test.mjs && node test/capture-chat.test.mjs && node test/answer-quality.test.mjs && node test/hardening.test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

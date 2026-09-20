@@ -5,7 +5,7 @@
  *   3. conversational replies were pasted in verbatim as instructions
  * Each is checked here so it can't come back quietly.
  */
-import { serveHtml, withConfig, makeReporter, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, loadChromium } from './helpers.mjs';
 
 const chromium = await loadChromium();
 const report = makeReporter('answer quality');
@@ -30,12 +30,12 @@ let server;
 
 async function open(role, state) {
   if (server) server.close();
-  server = await serveHtml(withConfig({ blockRole: `"${role}"` }), 8145);
+  server = await serveSite(8145);
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   report.watch(page);
   await page.addInitScript(s => localStorage.setItem('brainstorm_workflow_data', s), state);
-  await page.goto('http://127.0.0.1:8145/');
+  await page.goto('http://127.0.0.1:8145/role/' + role);
   await page.waitForTimeout(1100);
   return { ctx, page };
 }
