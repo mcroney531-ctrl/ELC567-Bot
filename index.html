@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Workflow Brainstorm &mdash; Build Your Master Prompt</title>
+<title>Brainstorm an AI-Powered Workflow</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/activity.css">
 <link rel="stylesheet" href="css/timeline.css">
@@ -16,20 +16,41 @@
 <section class="bw-map" id="bw-map">
 
   <header class="bw-hero">
-    <p class="bw-eyebrow">Workflow Brainstorm</p>
-    <h1>We all have that ONE THING.</h1>
+    <h1>Brainstorm an AI-Powered Workflow</h1>
+
+    <h2 class="bw-intro-h">Course Overview</h2>
     <p class="bw-lede">
-      The task you do every week that eats an hour and teaches you nothing new. The one you'd hand
-      off tomorrow if you had someone to hand it to.
+      This activity helps learners identify potential areas in their normal work where AI could
+      assist them. You'll map exactly how you solve a real problem today and work through what an
+      AI-assisted version looks like&mdash;one step at a time, with clarity about what AI handles
+      and what you keep.
     </p>
     <p class="bw-lede">
-      You do have someone. You just haven't briefed them properly.
+      The activity is structured around three phases: defining your problem and workflow, refining
+      your approach through conversation, and exporting a production-ready prompt you can use
+      immediately.
     </p>
-    <div class="bw-outcome">
-      <strong>What you'll walk out with:</strong> a master prompt &mdash; a specific, reusable brief you can
-      paste into Claude, ChatGPT, or Copilot and put to work on that task immediately. Five steps,
-      about fifteen minutes.
-    </div>
+
+    <h2 class="bw-intro-h">Learning Objectives</h2>
+    <p class="bw-lede">After completing this activity, you will be able to:</p>
+    <ul class="bw-objectives">
+      <li>Identify workflow steps suitable for AI assistance by distinguishing between procedural
+        and decision-making tasks</li>
+      <li>Document a workflow systematically, including the tools and data involved at each step</li>
+      <li>Specify what you want AI to handle and what you prefer to retain in your process</li>
+      <li>Generate a structured prompt that you can use immediately with an LLM to begin
+        implementation</li>
+    </ul>
+  </header>
+
+  <!-- The spine. Stations are built by js/activity.js from STATIONS so the art
+       and the copy have one home; this is only where they land. -->
+  <nav class="bw-spine" id="bw-spine" aria-label="Activity stages">
+    <div class="bw-rail" aria-hidden="true"><div class="bw-rail-fill" id="bw-rail-fill"></div></div>
+    <ol class="bw-stations" id="bw-stations" role="list"></ol>
+  </nav>
+
+  <p class="bw-map-hint" id="bw-map-hint"></p>
 
     <details class="bw-example">
       <summary>See the whole thing done first</summary>
@@ -93,18 +114,6 @@ write [MISSING: metric name] and keep going.</pre>
         </div>
       </div>
     </details>
-  </header>
-
-  <!-- ================= PROGRESS ================= -->
-
-  <!-- The spine. Stations are built by js/activity.js from STATIONS so the art
-       and the copy have one home; this is only where they land. -->
-  <nav class="bw-spine" id="bw-spine" aria-label="Activity stages">
-    <div class="bw-rail" aria-hidden="true"><div class="bw-rail-fill" id="bw-rail-fill"></div></div>
-    <ol class="bw-stations" id="bw-stations" role="list"></ol>
-  </nav>
-
-  <p class="bw-map-hint" id="bw-map-hint"></p>
 
 </section>
 

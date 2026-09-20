@@ -21,6 +21,10 @@
 .bw:not([data-view]) .bw-map-hint,
 .bw:not([data-view]) .bw-stage-bar { display: none; }
 
+/* The map leads with the overview, so give the spine room to read as the
+   next thing rather than as a footer to it. */
+.bw-spine { margin-top: 30px; }
+
 /* ---- the spine ----
    The grid lives on .bw-spine rather than on the list, so the rail can be a
    grid item too and sit on the same row as the markers. The list and each
