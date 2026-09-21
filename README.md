@@ -26,7 +26,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # six suites, 213 assertions
+npm test      # six suites, 240 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -44,7 +44,8 @@ A server rather than opening `index.html` directly, because Chromium gives a `fi
 index.html          markup only
 css/tokens.css      palette, type scale, motion  (the only place colours are defined)
 css/activity.css    components
-css/timeline.css    the journey map - every visual rule for it lives here
+css/timeline.css    views and chrome: which view shows, the start button, the back bars
+css/home.css        the journey map - the whole dark AI Workflow Builder system
 js/activity.js      the whole app: state, prompt generation, coach, DOM wiring, the map
 js/vendor/gsap.min.js
 test/               six Playwright suites
@@ -71,29 +72,54 @@ clears it, so a reset really does go back to the beginning.
 
 ### The journey map
 
-The map is home. Five stations sit on a spine, alternating above and below it; clicking an
-available one enters that stage's workspace, which is the same step panel the accordion used to
-expand. Finishing a stage continues straight into the next one inside the workspace &mdash; the map
-is base camp, not a turnstile between every stage &mdash; and there is always a way back to it.
+Home implements the locked *AI Workflow Builder* direction: five staggered stations on one glacier
+connector over a dark slate environment. 01/03/05 above the line, 02/04 below, and a single
+continuous path that passes through all five waypoints &mdash; the waypoints sit at alternating
+heights, so the wave is the composition rather than decoration laid over it.
 
-Nothing in the map reads or writes learner data. It renders `workflowData.progress` and calls
-`openStep()`, exactly as the accordion header did, which is why gating, validation, persistence and
-the coach were untouched by the change.
+Two ideas are kept strictly apart, because the spec is emphatic about it:
 
-Three station states, one hook each: `data-state` is `locked`, `available` or `done`, and
-`data-current` marks where to pick up. Completion lines are computed from structured state and
-never from anything the learner typed free-hand, so a demo run full of junk still reads as a
-finished journey &mdash; Map counts its steps and says *"Complete &middot; 3 steps mapped"*. A
-stored `done` that no longer validates is not taken at its word.
+- **Stage identity** answers *which step is this*. It lives in `[data-accent]` and never changes:
+  Identify blue, Map teal, Envision amber, Refine violet, Deploy cyan.
+- **State** answers *what can the learner do with it right now*. It lives in `[data-state]`.
 
-**The art is meant to be replaced.** Five stroked marks live in one `ART` map in `js/activity.js`,
-every visual rule lives in `css/timeline.css`, and the interaction layer only writes `data-state`
-and `data-current` and reads nothing back. The cards can be redrawn completely without the
-navigation noticing. GSAP handles entering a stage &mdash; the chosen card grows while the rest of
-the journey recedes, then the workspace resolves in &mdash; using scale, position and opacity only.
-`prefers-reduced-motion` skips the animation and navigates straight through.
+State treatment layers on top of identity; it never replaces it. The connector stays one neutral
+colour &mdash; no rainbow segments, and no progress fill either, since state belongs to the nodes
+and the cards rather than to the line.
 
-Below 720px the spine stands up: rail on the left, stations stacked full width.
+| State | Card | Waypoint |
+|---|---|---|
+| `locked` | dimmed and desaturated, lock in place of the stage icon, name still readable, not enterable | glacier circle with its number |
+| `available` | stage identity readable again, calm green edge, no pulse | calm green circle with its number |
+| `current` | same green family, stronger, with a restrained glow pulse; `aria-current="step"` | brighter green circle, pulsing |
+| `completed` | interior goes back to looking locked, only the outer stroke stays vividly in the stage's own colour, a circled check overlays the dimmed icon, and it stays enterable | star in that stage's deepened colour &mdash; never one gold for all |
+
+The four states are derived from `workflowData.progress` and nothing else. `entered` is what
+separates available from current: a stage the learner has opened and not yet finished is in
+progress, whichever one `progress.current` happens to point at. Without it a fresh map would show
+stage 1 as current before anyone had touched it. Saves written before the four-state map have no
+`entered`, so what they finished is treated as entered on load.
+
+Because continuing walks straight from one stage into the next, `available` is what a stage looks
+like *before it is opened* &mdash; mostly stage 1, and anything reached by returning to home early.
+All eight progression scenarios from the spec are rendered and asserted in the test suite by
+seeding progress directly, so the states fall out of the model rather than out of the route taken.
+
+Completion lines are computed from structured state and never from anything the learner typed
+free-hand, so a demo run full of junk still reads as a finished journey &mdash; Map counts its
+steps and says *"Complete &middot; 3 steps mapped"*. A stored `done` that no longer validates is
+not taken at its word.
+
+The legend beneath the spine explains the lifecycle using the same state hooks as the stations
+above it.
+
+**Motion.** Entering a stage grows the chosen card while the rest of the journey recedes, then the
+workspace resolves in &mdash; scale, position and opacity only, no camera. The current station
+pulses on a 2.6s ease-in-out glow modulation. `prefers-reduced-motion` drops every animation and
+swaps the pulse for a static heavier ring, so the distinction survives without the movement.
+
+Below 760px the spine stands up: one straight neutral connector on the left, stations stacked full
+width in order, artwork and copy on a row.
 
 ### Slices
 

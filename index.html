@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/activity.css">
 <link rel="stylesheet" href="css/timeline.css">
+<link rel="stylesheet" href="css/home.css">
 </head>
 <body>
 
@@ -124,14 +125,51 @@ write [MISSING: metric name] and keep going.</pre>
     <span class="bw-stage-where">Journey map</span>
   </div>
 
+  <header class="bw-map-head">
+    <p class="bw-map-eyebrow">AI Workflow Builder</p>
+    <h2 class="bw-map-title">Turn Ideas Into Impact</h2>
+    <p class="bw-map-sub">
+      A guided 5-step experience to help you design, refine, and deploy effective AI workflows
+      for real work.
+    </p>
+  </header>
+
   <!-- The spine. Stations are built by js/activity.js from STATIONS so the art
-       and the copy have one home; this is only where they land. -->
+       and the copy have one home; this is only where they land. The rail is one
+       path drawn through the five waypoints - see drawRail(). -->
   <nav class="bw-spine" id="bw-spine" aria-label="Activity stages">
-    <div class="bw-rail" aria-hidden="true"><div class="bw-rail-fill" id="bw-rail-fill"></div></div>
+    <svg class="bw-rail" id="bw-rail" viewBox="0 0 100 12" preserveAspectRatio="none"
+         aria-hidden="true" focusable="false"></svg>
     <ol class="bw-stations" id="bw-stations" role="list"></ol>
   </nav>
 
   <p class="bw-map-hint" id="bw-map-hint"></p>
+
+  <!-- The legend, built from the same state hooks as the stations above it. -->
+  <section class="bw-legend" aria-label="What each stage state means">
+    <div class="bw-legend-lede">
+      <h3>Step State Progression</h3>
+      <p>How a stage changes as you move through the workflow.</p>
+    </div>
+    <ol class="bw-legend-strip" role="list">
+      <li class="bw-legend-item" data-state="locked" role="listitem">
+        <span class="bw-legend-dot"></span>
+        <span><strong>Locked</strong><em>Not yet available</em></span>
+      </li>
+      <li class="bw-legend-item" data-state="available" role="listitem">
+        <span class="bw-legend-dot"></span>
+        <span><strong>Available</strong><em>Ready to start</em></span>
+      </li>
+      <li class="bw-legend-item" data-state="current" role="listitem">
+        <span class="bw-legend-dot"></span>
+        <span><strong>Current</strong><em>In progress</em></span>
+      </li>
+      <li class="bw-legend-item" data-state="completed" role="listitem">
+        <span class="bw-legend-dot"></span>
+        <span><strong>Completed</strong><em>Finished, still open</em></span>
+      </li>
+    </ol>
+  </section>
 
 
 </section>

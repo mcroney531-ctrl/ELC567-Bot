@@ -192,7 +192,7 @@
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
       pushedBack: {},
-      progress: { current: 1, unlocked: 1, done: {} }
+      progress: { current: 1, unlocked: 1, done: {}, entered: {} }
     };
   }
 
@@ -225,6 +225,14 @@
       if (!fresh.pushedBack || typeof fresh.pushedBack !== "object") fresh.pushedBack = {};
       if (!fresh.progress || typeof fresh.progress !== "object") fresh.progress = defaultData().progress;
       if (!fresh.progress.done || typeof fresh.progress.done !== "object") fresh.progress.done = {};
+      // Saves written before the four-state map have no `entered`. Treat what
+      // they finished as entered, and leave the rest to be opened normally.
+      if (!fresh.progress.entered || typeof fresh.progress.entered !== "object") {
+        fresh.progress.entered = {};
+        Object.keys(fresh.progress.done).forEach(function (k) {
+          if (fresh.progress.done[k]) fresh.progress.entered[k] = true;
+        });
+      }
       return fresh;
     } catch (e) { return null; }   /* corrupt payload - start clean */
   }
@@ -306,7 +314,9 @@
 
     base.progress = base.progress || defaultData().progress;
     base.progress.done = base.progress.done || {};
+    base.progress.entered = base.progress.entered || {};
     ROLE.steps.forEach(function (n) {
+      if (workflowData.progress.entered[n]) base.progress.entered[n] = true;
       if (workflowData.progress.done[n]) base.progress.done[n] = true;
       // A chat block shares its step with the other chats in that step, so it
       // may raise the tick but must never take a sibling's back down.
@@ -1810,6 +1820,8 @@
     if (n > workflowData.progress.unlocked) return;
     var moving = TIMELINE && view === "stage" && workflowData.progress.current !== n;
     workflowData.progress.current = n;
+    // Opening a stage is what makes it "in progress" rather than merely open.
+    workflowData.progress.entered[n] = true;
     render();
     // Continuing from one stage to the next happens inside the workspace: the
     // map is home, not a turnstile between every stage.
@@ -2471,41 +2483,68 @@
     } catch (e) { /* private mode; they just see the landing again */ }
   }
 
-  /* Placeholder marks, one per stage - deliberately plain, deliberately easy to
-     throw away. Stroked in currentColor so the state treatment owns the colour. */
+  /* Placeholder marks, one per stage. Stroked in currentColor so the stage
+     identity colour and the state treatment both come from CSS. */
   var ART = {
-    identify: '<path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
-    map: '<circle cx="5" cy="7" r="2"/><circle cx="19" cy="17" r="2"/><path d="M7 7h5a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h7"/>',
+    identify: '<circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 21 21"/>',
+    map: '<circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h5a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h7"/>',
     envision: '<path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 1.9v.2h5.2v-.2c0-.7.3-1.4.9-1.9A6 6 0 0 0 12 3Z"/>',
     refine: '<path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/>',
-    deploy: '<path d="M4.5 12.5 20 4l-4 16-4.2-6.1L4.5 12.5Z"/><path d="M11.8 13.9 20 4"/>'
+    deploy: '<path d="M5 13.5 19.5 4.5 15 20l-3.9-5.4L5 13.5Z"/><path d="M11.1 14.6 19.5 4.5"/>'
   };
 
-  /* One entry per stage. `done` returns the completion line, and returns it from
-     structured state rather than from anything the learner typed free-hand, so a
-     demo run full of junk still reads as a finished journey. */
+  var LOCK_ART = '<rect x="5" y="10.5" width="14" height="10" rx="2.4"/>' +
+                 '<path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/>';
+  var STAR_ART = '<path d="M12 4.2l2.36 4.9 5.39.72-3.93 3.74.98 5.34L12 16.34l-4.8 2.56.98-5.34L4.25 9.82l5.39-.72z"/>';
+
+  /* One entry per stage. Stage identity (which step this is) and state (what
+     the learner can do with it) are separate: identity lives in `accent`, state
+     comes from statusOf(). `done` returns the completion line, and returns it
+     from structured state rather than from anything typed free-hand, so a demo
+     run full of junk still reads as a finished journey. */
   var STATIONS = [
-    { step: 1, name: "Identify", art: "identify", place: "above",
-      blurb: "Name a problem worth solving",
-      done: function () { return "Task defined"; } },
-    { step: 2, name: "Map", art: "map", place: "below",
-      blurb: "Break it into the real steps",
+    { step: 1, name: "Identify", accent: "identify", art: "identify", place: "above",
+      blurb: "Define the problem worth solving.",
+      done: function () { return "Complete · Task defined"; } },
+    { step: 2, name: "Map", accent: "map", art: "map", place: "below",
+      blurb: "Break the process into real steps.",
       done: function () {
         var k = filledSteps().length;
-        return k + (k === 1 ? " step" : " steps") + " mapped";
+        return "Complete · " + k + (k === 1 ? " step" : " steps") + " mapped";
       } },
-    { step: 3, name: "Envision", art: "envision", place: "above",
-      blurb: "Picture the version worth having",
-      done: function () { return "Ideal outcome defined"; } },
-    { step: 4, name: "Refine", art: "refine", place: "below",
-      blurb: "Sharpen the vague parts",
-      done: function () { return "Coach review finished"; } },
-    { step: 5, name: "Deploy", art: "deploy", place: "above",
-      blurb: "Put it to work",
-      done: function () { return "Master prompt ready"; } }
+    { step: 3, name: "Envision", accent: "envision", art: "envision", place: "above",
+      blurb: "Imagine the ideal version.",
+      done: function () { return "Complete · Ideal outcome defined"; } },
+    { step: 4, name: "Refine", accent: "refine", art: "refine", place: "below",
+      blurb: "Sharpen ideas into specifics.",
+      done: function () { return "Complete · Coach review finished"; } },
+    { step: 5, name: "Deploy", accent: "deploy", art: "deploy", place: "above",
+      blurb: "Turn it into action.",
+      done: function () { return "Complete · Master prompt ready"; } }
   ];
 
+  /* The four presentation states, derived from progress and nothing else.
+     locked -> available -> current -> completed.
+
+     "Entered" is what separates available from current: a stage the learner has
+     opened and not yet finished is in progress, whichever one progress.current
+     happens to point at. Without it a fresh map would show stage 1 as current
+     before anyone had touched it. */
+  function statusOf(n) {
+    var p = workflowData.progress;
+    if (p.done[n]) return "completed";
+    if (n > p.unlocked) return "locked";
+    if (p.entered[n] && n === p.current) return "current";
+    return "available";
+  }
+
   var stationNodes = [];
+
+  function svgTag(inner, cls) {
+    return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      inner + '</svg>';
+  }
 
   function buildMap() {
     var host = document.getElementById("bw-stations");
@@ -2517,100 +2556,135 @@
       li.setAttribute("role", "listitem");
       li.setAttribute("data-stage", String(s.step));
       li.setAttribute("data-place", s.place);
+      li.setAttribute("data-accent", s.accent);
 
+      /* -- the card -- */
       var card = document.createElement("button");
       card.type = "button";
       card.className = "bw-station-card";
 
-      var art = document.createElement("figure");
-      art.className = "bw-station-art";
-      art.innerHTML =                                    // static, from ART above
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
-        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ART[s.art] + '</svg>';
-      var tick = document.createElement("span");
-      tick.className = "bw-station-check";
-      tick.setAttribute("aria-hidden", "true");
-      tick.textContent = "\u2713";
-      art.appendChild(tick);
+      var num = el2("span", "bw-card-num", pad2(s.step));
 
-      var body = document.createElement("span");
-      body.className = "bw-station-body";
-      var index = document.createElement("span");
-      index.className = "bw-station-index";
-      index.textContent = "Stage " + s.step;
-      var name = document.createElement("span");
-      name.className = "bw-station-name";
-      name.textContent = s.name;
-      var status = document.createElement("span");
-      status.className = "bw-station-status";
-      body.appendChild(index); body.appendChild(name); body.appendChild(status);
+      var tile = el2("span", "bw-card-tile");
+      tile.innerHTML = svgTag(ART[s.art], "bw-card-art") +      // static, from ART
+                       svgTag(LOCK_ART, "bw-card-lock") +
+                       '<span class="bw-card-check" aria-hidden="true">' +
+                         svgTag('<path d="M6 12.5l4 4 8-9"/>', "bw-card-tick") +
+                       '</span>';
 
-      card.appendChild(art);
+      var body = el2("span", "bw-card-body");
+      var name = el2("span", "bw-card-name", s.name);
+      var status = el2("span", "bw-card-status");
+      body.appendChild(name);
+      body.appendChild(status);
+
+      var go = el2("span", "bw-card-go");
+      go.setAttribute("aria-hidden", "true");
+      go.innerHTML = svgTag('<path d="M9 5l7 7-7 7"/>', "bw-card-chev");
+
+      card.appendChild(num);
+      card.appendChild(tile);
       card.appendChild(body);
+      card.appendChild(go);
       card.addEventListener("click", function () {
-        if (li.getAttribute("data-state") === "locked") return;
+        if (statusOf(s.step) === "locked") return;
         enterStage(s.step, card);
       });
 
-      var stem = document.createElement("span");
-      stem.className = "bw-station-stem";
-      stem.setAttribute("aria-hidden", "true");
-      var dot = document.createElement("span");
-      dot.className = "bw-station-dot";
-      dot.setAttribute("aria-hidden", "true");
+      /* -- stem and waypoint, moving together so the dot stays on the line -- */
+      var node = el2("span", "bw-station-node");
+      node.setAttribute("aria-hidden", "true");
+      var stem = el2("span", "bw-station-stem");
+      var way = el2("span", "bw-station-way");
+      var wayNum = el2("span", "bw-way-num", String(s.step));
+      way.appendChild(wayNum);
+      way.innerHTML += svgTag(STAR_ART, "bw-way-star");
+      node.appendChild(stem);
+      node.appendChild(way);
 
-      li.appendChild(card); li.appendChild(stem); li.appendChild(dot);
+      li.appendChild(card);
+      li.appendChild(node);
       host.appendChild(li);
       return { def: s, li: li, card: card, status: status };
     });
+    drawRail();
+  }
+
+  function el2(tag, cls, text) {
+    var n = document.createElement(tag);
+    n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  /* One continuous glacier line, drawn once. It passes exactly through the five
+     waypoints, which sit at alternating heights - the wave is the composition,
+     not decoration on top of it. The line stays one neutral colour: state
+     belongs to the nodes and the cards, never to the connector. */
+  var RAIL_Y = { odd: 7.2, even: 4.8 };
+
+  function drawRail() {
+    var svg = document.getElementById("bw-rail");
+    if (!svg) return;
+    var xs = [10, 30, 50, 70, 90];
+    var y = function (i) { return i % 2 === 0 ? RAIL_Y.odd : RAIL_Y.even; };
+    var d = "M 0 " + y(0) + " L " + xs[0] + " " + y(0);
+    for (var i = 1; i < xs.length; i++) {
+      var x0 = xs[i - 1], x1 = xs[i], span = (x1 - x0) * 0.32;
+      d += " C " + (x0 + span) + " " + y(i - 1) + ", " + (x1 - span) + " " + y(i) +
+           ", " + x1 + " " + y(i);
+    }
+    d += " L 100 " + y(xs.length - 1);
+    svg.innerHTML =
+      '<path class="bw-rail-glow" d="' + d + '" />' +
+      '<path class="bw-rail-line" d="' + d + '" />';
   }
 
   function renderMap() {
     if (!TIMELINE || !stationNodes.length) return;
-    var progress = workflowData.progress;
+    var p = workflowData.progress;
     var resume = 1;
-    while (resume < 5 && progress.done[resume]) resume++;
+    while (resume < 5 && p.done[resume]) resume++;
 
-    var doneCount = 0;
     stationNodes.forEach(function (node) {
       var n = node.def.step;
-      var isDone = !!progress.done[n];
-      var locked = n > progress.unlocked;
-      var state = isDone ? "done" : (locked ? "locked" : "available");
-      if (isDone) doneCount++;
+      var state = statusOf(n);
 
       node.li.setAttribute("data-state", state);
-      node.li.setAttribute("data-current", (!isDone && n === resume && !locked) ? "true" : "false");
-      node.card.disabled = locked;
+      node.card.disabled = state === "locked";
+      if (state === "current") node.card.setAttribute("aria-current", "step");
+      else node.card.removeAttribute("aria-current");
 
-      node.status.textContent = isDone
-        ? "Complete · " + node.def.done()
-        : (locked ? lockedBecause(n) : node.def.blurb);
+      node.status.textContent = state === "completed" ? node.def.done()
+        : state === "current" ? "In progress"
+        : state === "locked" ? lockedBecause(n)
+        : node.def.blurb;
+
       node.card.setAttribute("aria-label",
-        "Stage " + n + ", " + node.def.name + ". " + node.status.textContent +
-        (locked ? "" : ". Open this stage."));
+        "Stage " + n + ", " + node.def.name + ". " + STATE_WORD[state] + ". " +
+        node.status.textContent + (state === "locked" ? "" : " Open this stage."));
     });
-
-    // The connector greens up to the last completed station, not past it.
-    var fill = document.getElementById("bw-rail-fill");
-    if (fill) {
-      var pct = doneCount > 1 ? ((doneCount - 1) / 4) * 100 : 0;
-      fill.style.width = pct + "%";
-      fill.style.height = pct + "%";          // the vertical rail uses height
-    }
 
     var hint = document.getElementById("bw-map-hint");
     if (hint) {
+      var doneCount = [1, 2, 3, 4, 5].filter(function (n) { return p.done[n]; }).length;
       hint.textContent = doneCount === 5
         ? "Every stage complete. Open Deploy to copy your master prompt again."
         : "Pick up at " + STATIONS[resume - 1].name + ". Stages open as you finish the one before.";
     }
   }
 
+  var STATE_WORD = {
+    locked: "Locked", available: "Ready to start",
+    current: "In progress", completed: "Completed"
+  };
+
   /* Why a station is shut, said in terms of the stage before it. */
   function lockedBecause(n) {
     var before = STATIONS[n - 2];
-    return before ? "Finish " + before.name + " first" : "Locked";
+    return before ? "Finish " + before.name + " first" : "Not yet available";
   }
 
   /* ---- moving between the map and a stage ---- */

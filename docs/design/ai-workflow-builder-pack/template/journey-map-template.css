@@ -1,0 +1,130 @@
+:root {
+  --bg-0: #0b1c2a;
+  --bg-1: #132a3d;
+  --line-glacier: #dff2ff;
+  --line-glacier-glow: rgba(185, 225, 255, 0.6);
+  --green-live: #3af0ab;
+  --green-live-strong: #2cff8c;
+  --identify: #4aa2ff;
+  --map: #53dfd7;
+  --envision: #ffb23d;
+  --refine: #ca62ff;
+  --deploy: #63d7ff;
+}
+
+.journey-map {
+  position: relative;
+  color: white;
+  background: radial-gradient(circle at top left, #183250 0%, var(--bg-0) 60%, #08131d 100%);
+  padding: 40px;
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.journey-header .eyebrow {
+  letter-spacing: 0.35em;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.journey-header h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(2rem, 4vw, 4rem);
+}
+
+.journey-stage-grid {
+  position: relative;
+  min-height: 540px;
+  margin-top: 28px;
+}
+
+.timeline-path {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 50%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line-glacier);
+  box-shadow: 0 0 16px var(--line-glacier-glow), 0 0 36px rgba(180, 225, 255, 0.35);
+}
+
+.stage-card {
+  position: absolute;
+  width: 280px;
+  height: 200px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(34, 58, 86, 0.92), rgba(20, 38, 58, 0.9));
+  border: 2px solid rgba(190, 220, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 48px rgba(0,0,0,0.28);
+}
+
+.stage-card.available {
+  box-shadow: 0 0 0 1px rgba(58, 240, 171, 0.4), 0 0 26px rgba(58, 240, 171, 0.32);
+}
+
+.stage-card.current {
+  box-shadow: 0 0 0 2px rgba(44, 255, 140, 0.55), 0 0 34px rgba(44, 255, 140, 0.42);
+  animation: currentPulse 2.6s ease-in-out infinite;
+}
+
+.stage-card.completed {
+  filter: saturate(0.65) brightness(0.85);
+}
+
+.stage-card.completed .completion-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.stage-card .step-num {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.stage-card .icon-tile {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 100px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.08);
+}
+
+.stage-card .card-copy {
+  position: absolute;
+  bottom: 24px;
+  left: 28px;
+  right: 72px;
+}
+
+.stage-card .card-arrow {
+  position: absolute;
+  top: 78px;
+  right: 22px;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(220,230,255,0.25);
+  background: rgba(255,255,255,0.08);
+  color: white;
+}
+
+@keyframes currentPulse {
+  0%, 100% { transform: translateZ(0) scale(1); }
+  50% { transform: translateZ(0) scale(1.01); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-card.current {
+    animation: none;
+  }
+}

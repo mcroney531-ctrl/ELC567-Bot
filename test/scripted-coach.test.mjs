@@ -169,7 +169,8 @@ try {
   await page.fill('#bw-problem', 'too short');
   await toMap();
   check('stage 1 un-ticks when broken', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'false');
-  check('and the map says so', await page.locator('.bw-station[data-stage="1"]').getAttribute('data-state') === 'available',
+  // Entered and no longer finished, which is "current" rather than "available".
+  check('and the map says so', await page.locator('.bw-station[data-stage="1"]').getAttribute('data-state') === 'current',
     await page.locator('.bw-station[data-stage="1"]').getAttribute('data-state'));
   await enter(1);
   await page.fill('#bw-problem', 'Every Monday I spend two hours building status updates for eleven clients.');

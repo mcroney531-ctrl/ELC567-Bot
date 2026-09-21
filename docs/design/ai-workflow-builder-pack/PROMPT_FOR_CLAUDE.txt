@@ -1,0 +1,18 @@
+Implement the AI Workflow Builder journey-map home screen using the attached implementation pack as the source of truth.
+
+Read README_START_HERE.md first, then IMPLEMENTATION_GUIDE.md and STATE_BEHAVIOR_SPEC.md. Inspect /reference for the locked composition and behavior, and use /assets as isolated visual targets.
+
+Do not redesign the workflow or invent a new navigation system. Build reusable state machinery first, then match the approved visual system.
+
+Non-negotiables:
+- five-step staggered timeline: 01/03/05 above, 02/04 below
+- one continuous silver/glacier squiggly connector
+- Locked -> Available -> Current -> Completed lifecycle
+- Available = calm green
+- Current = stronger green with restrained pulse
+- Completed = locked-like interior + native stage-color outer stroke + large circled check overlay + matching stage-colored completed timeline star
+- completed stages remain revisitable
+- timeline is home/base-camp, not a mandatory screen between every step
+- use reusable/data-driven components rather than hard-coded screenshots
+
+Start with the implementation sequence and show the resulting component/state architecture before micro-polish.

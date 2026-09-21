@@ -1,0 +1,402 @@
+/* ==========================================================================
+   Home - the journey map
+   --------------------------------------------------------------------------
+   Implements the locked AI Workflow Builder direction: five staggered stations
+   on one glacier connector, over a dark slate environment.
+
+   Two ideas are kept strictly apart, because the spec is emphatic about it:
+
+     stage identity  - which step this is. Lives in [data-accent] and never
+                       changes, whatever state the step is in.
+     state           - what the learner can do with it right now. Lives in
+                       [data-state]: locked, available, current, completed.
+
+   State treatment layers on top of identity; it never replaces it. The
+   connector stays one neutral colour - no rainbow segments, no progress fill.
+
+   js/activity.js writes [data-state] and reads nothing back, so everything
+   here can be redrawn without touching the navigation.
+   ========================================================================== */
+
+.bw-map {
+  /* ---- environment ---- */
+  --home-bg-0: #0b1c2a;
+  --home-bg-1: #183250;
+  --home-bg-2: #08131d;
+  --home-surface: rgba(34, 58, 86, .88);
+  --home-surface-2: rgba(20, 38, 58, .9);
+  --home-glacier: #dff2ff;
+  --home-glacier-glow: rgba(185, 225, 255, .55);
+  --home-text: #f7faff;
+  --home-text-2: #b9cbe0;
+  --home-locked: #8ea4bf;
+
+  /* ---- readiness ---- */
+  --home-green: #3af0ab;
+  --home-green-strong: #2cff8c;
+  --home-green-glow: rgba(44, 255, 140, .42);
+
+  /* ---- stage identity, and the cooled version used once finished ---- */
+  --id-identify: #4aa2ff;  --done-identify: #166cc8;
+  --id-map: #53dfd7;       --done-map: #118f88;
+  --id-envision: #ffb23d;  --done-envision: #b86b08;
+  --id-refine: #ca62ff;    --done-refine: #7e38b6;
+  --id-deploy: #63d7ff;    --done-deploy: #278aae;
+
+  position: relative;
+  padding: 26px 22px 22px;
+  border-radius: 26px;
+  overflow: hidden;
+  color: var(--home-text);
+  background:
+    radial-gradient(1200px 520px at 12% -10%, var(--home-bg-1) 0%, transparent 62%),
+    linear-gradient(160deg, var(--home-bg-0) 0%, var(--home-bg-2) 100%);
+}
+
+
+/* ---- the page around it ----
+   Home is a screen, not a card sitting on a lighter page, so the light ground
+   and its gutter step out of the way while the map is showing. The footer
+   keeps its own light treatment below; carrying the dark system through the
+   landing and the stage workspaces is a separate decision. */
+.bw[data-view="map"] { background: #08131d; padding: 0; }
+.bw[data-view="map"] .bw-map { border-radius: 0; padding: 24px clamp(16px, 4vw, 40px) 26px; }
+.bw[data-view="map"] .bw-foot {
+  margin: 0; padding: 14px clamp(16px, 4vw, 40px);
+  border-top: 1px solid rgba(190, 220, 255, .14);
+  color: rgba(185, 203, 224, .7);
+}
+.bw[data-view="map"] .bw-foot .bw-saved { color: rgba(185, 203, 224, .6); }
+.bw[data-view="map"] .bw-foot .bw-btn {
+  color: var(--home-text, #f7faff);
+  border-color: rgba(190, 220, 255, .24);
+  background: rgba(255, 255, 255, .06);
+}
+
+/* Each station names its own identity once; the rest of the file reads it. */
+.bw-station[data-accent="identify"] { --accent: var(--id-identify); --accent-done: var(--done-identify); }
+.bw-station[data-accent="map"]      { --accent: var(--id-map);      --accent-done: var(--done-map); }
+.bw-station[data-accent="envision"] { --accent: var(--id-envision); --accent-done: var(--done-envision); }
+.bw-station[data-accent="refine"]   { --accent: var(--id-refine);   --accent-done: var(--done-refine); }
+.bw-station[data-accent="deploy"]   { --accent: var(--id-deploy);   --accent-done: var(--done-deploy); }
+
+/* ---- restrained circuitry, purely decorative ---- */
+.bw-map::before,
+.bw-map::after {
+  content: ""; position: absolute; pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(146, 196, 255, .5) 1.2px, transparent 1.4px);
+  background-size: 13px 13px;
+  opacity: .28;
+}
+.bw-map::before { width: 108px; height: 78px; right: 26px; top: 30px; }
+.bw-map::after  { width: 92px;  height: 64px; left: 18px;  bottom: 74px; opacity: .18; }
+
+/* ---- the bar at the top of home ---- */
+.bw-map .bw-stage-bar { position: relative; z-index: 2; margin-bottom: 4px; }
+.bw-map .bw-back { color: var(--home-text); border-color: rgba(190, 220, 255, .28); background: rgba(255,255,255,.06); }
+.bw-map .bw-back:hover { border-color: var(--home-glacier); color: #fff; }
+.bw-map .bw-stage-where { color: rgba(185, 203, 224, .8); }
+
+/* ---- heading ---- */
+.bw-map-head { position: relative; z-index: 2; max-width: 44rem; }
+.bw-map-eyebrow {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .34em;
+  text-transform: uppercase; color: rgba(223, 242, 255, .82);
+}
+.bw .bw-map-title {
+  margin: 8px 0 8px; font-size: clamp(1.5rem, 1.1rem + 1.9vw, 2.25rem);
+  font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--home-text);
+}
+.bw-map-sub { font-size: .9375rem; line-height: 1.5; color: var(--home-text-2); }
+
+/* ==========================  the spine  ========================== */
+
+.bw-spine {
+  position: relative; z-index: 2;
+  margin: 26px 0 4px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: 1fr 68px 1fr;
+  align-items: center;
+}
+.bw-stations { display: contents; list-style: none; margin: 0; padding: 0; }
+.bw-station { display: contents; }
+
+/* One path, one colour, drawn through all five waypoints. */
+.bw-rail {
+  grid-row: 2; grid-column: 1 / -1;
+  width: 100%; height: 68px;
+  overflow: visible;
+}
+.bw-rail path { fill: none; vector-effect: non-scaling-stroke; }
+.bw-rail .bw-rail-line { stroke: var(--home-glacier); stroke-width: 3; }
+.bw-rail .bw-rail-glow { stroke: var(--home-glacier-glow); stroke-width: 9; opacity: .55; }
+
+/* The stem and the waypoint move together, so the marker always sits on the
+   line even though the line rises and falls between stations. */
+.bw-station-node {
+  grid-row: 2; position: relative;
+  width: 100%; height: 68px;
+  justify-self: center;
+}
+.bw-station:nth-child(odd)  { --wy: 7.2px; }
+.bw-station:nth-child(even) { --wy: -7.2px; }
+
+.bw-station-stem {
+  position: absolute; left: 50%; width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(var(--home-glacier), rgba(223, 242, 255, .25));
+}
+.bw-station[data-place="above"] .bw-station-stem { top: 0; height: calc(50% + var(--wy)); }
+.bw-station[data-place="below"] .bw-station-stem { bottom: 0; height: calc(50% - var(--wy)); }
+
+.bw-station-way {
+  position: absolute; left: 50%; top: calc(50% + var(--wy));
+  transform: translate(-50%, -50%);
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #10273c;
+  border: 3px solid var(--home-glacier);
+  box-shadow: 0 0 14px var(--home-glacier-glow);
+  font-size: .8125rem; font-weight: 700; color: var(--home-text);
+}
+.bw-way-num { line-height: 1; }
+.bw-way-star { display: none; width: 18px; height: 18px; fill: currentColor; stroke: none; }
+
+/* ==========================  the card  ========================== */
+
+.bw-station-card {
+  position: relative;
+  grid-column: auto;
+  justify-self: center;
+  width: 100%; max-width: 232px;
+  padding: 16px 14px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  border-radius: 24px;
+  border: 2px solid rgba(190, 220, 255, .26);
+  background: linear-gradient(180deg, var(--home-surface), var(--home-surface-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 18px 44px rgba(0, 0, 0, .3);
+  font: inherit; color: var(--home-text); text-align: center; cursor: pointer;
+  transition: transform var(--bw-duration-micro) var(--bw-ease-out),
+              border-color var(--bw-duration-micro) var(--bw-ease-standard),
+              box-shadow var(--bw-duration-micro) var(--bw-ease-standard);
+}
+
+.bw-station:nth-child(1) .bw-station-card, .bw-station:nth-child(1) .bw-station-node { grid-column: 1; }
+.bw-station:nth-child(2) .bw-station-card, .bw-station:nth-child(2) .bw-station-node { grid-column: 2; }
+.bw-station:nth-child(3) .bw-station-card, .bw-station:nth-child(3) .bw-station-node { grid-column: 3; }
+.bw-station:nth-child(4) .bw-station-card, .bw-station:nth-child(4) .bw-station-node { grid-column: 4; }
+.bw-station:nth-child(5) .bw-station-card, .bw-station:nth-child(5) .bw-station-node { grid-column: 5; }
+.bw-station[data-place="above"] .bw-station-card { grid-row: 1; align-self: end; margin-bottom: 0; }
+.bw-station[data-place="below"] .bw-station-card { grid-row: 3; align-self: start; }
+
+.bw-card-num {
+  position: absolute; top: 12px; left: 15px;
+  font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em;
+  color: rgba(223, 242, 255, .72);
+}
+.bw-card-go {
+  position: absolute; top: 50%; right: 11px; transform: translateY(-50%);
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 1px solid rgba(220, 230, 255, .26);
+  background: rgba(255, 255, 255, .08);
+  color: rgba(247, 250, 255, .88);
+}
+.bw-card-chev { width: 15px; height: 15px; }
+
+.bw-card-tile {
+  position: relative;
+  width: 74px; height: 62px; border-radius: 18px;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(190, 220, 255, .16);
+  color: var(--accent);
+}
+.bw-card-art { width: 28px; height: 28px; }
+.bw-card-lock, .bw-card-check { display: none; }
+
+.bw-card-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bw-card-name { font-size: .9375rem; font-weight: 700; letter-spacing: -.01em; }
+.bw-card-status {
+  font-size: .75rem; line-height: 1.3; color: var(--home-text-2);
+  text-wrap: balance;
+}
+
+/* ---------------------------  locked  --------------------------- */
+.bw-station[data-state="locked"] .bw-station-card {
+  cursor: not-allowed;
+  border-color: rgba(142, 164, 191, .22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  filter: saturate(.35) brightness(.86);
+}
+.bw-station[data-state="locked"] .bw-card-tile { color: var(--home-locked); }
+.bw-station[data-state="locked"] .bw-card-art { display: none; }
+.bw-station[data-state="locked"] .bw-card-lock { display: block; width: 26px; height: 26px; }
+.bw-station[data-state="locked"] .bw-card-name,
+.bw-station[data-state="locked"] .bw-card-status { color: rgba(185, 203, 224, .72); }
+.bw-station[data-state="locked"] .bw-card-go { opacity: .32; }
+
+/* --------------------  available: calm green  -------------------- */
+.bw-station[data-state="available"] .bw-station-card {
+  border-color: rgba(58, 240, 171, .5);
+  box-shadow: 0 0 0 1px rgba(58, 240, 171, .28), 0 0 22px rgba(58, 240, 171, .2),
+              0 18px 44px rgba(0, 0, 0, .3);
+}
+.bw-station[data-state="available"] .bw-station-way,
+.bw-station[data-state="current"] .bw-station-way {
+  border-color: var(--home-green);
+  box-shadow: 0 0 14px rgba(58, 240, 171, .5);
+}
+
+/* ---------------  current: same family, more of it  -------------- */
+.bw-station[data-state="current"] .bw-station-card {
+  border-color: var(--home-green-strong);
+  box-shadow: 0 0 0 2px rgba(44, 255, 140, .5), 0 0 34px var(--home-green-glow),
+              0 18px 44px rgba(0, 0, 0, .3);
+  animation: bw-current-pulse 2.6s ease-in-out infinite;
+}
+.bw-station[data-state="current"] .bw-station-way {
+  border-color: var(--home-green-strong);
+  box-shadow: 0 0 18px var(--home-green-glow);
+  animation: bw-way-pulse 2.6s ease-in-out infinite;
+}
+.bw-station[data-state="current"] .bw-card-status { color: var(--home-green); font-weight: 600; }
+
+/* Scale only, and barely: this has to read as alive, not as arcade signage. */
+@keyframes bw-current-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(44, 255, 140, .5), 0 0 26px rgba(44, 255, 140, .3),
+                          0 18px 44px rgba(0, 0, 0, .3); }
+  50%      { box-shadow: 0 0 0 2px rgba(44, 255, 140, .7), 0 0 40px var(--home-green-glow),
+                          0 18px 44px rgba(0, 0, 0, .3); }
+}
+@keyframes bw-way-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(44, 255, 140, .45); }
+  50%      { box-shadow: 0 0 24px rgba(44, 255, 140, .75); }
+}
+
+/* ------------  completed: cooled, settled, still open  ----------- */
+/* The interior goes back to looking locked. Only the outer stroke keeps the
+   stage's own colour, and a circled check sits over the dimmed tile. */
+.bw-station[data-state="completed"] .bw-station-card {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 26px color-mix(in srgb, var(--accent) 42%, transparent),
+              0 18px 44px rgba(0, 0, 0, .32);
+  filter: saturate(.6) brightness(.9);
+}
+.bw-station[data-state="completed"] .bw-card-tile { color: var(--home-locked); }
+.bw-station[data-state="completed"] .bw-card-art { opacity: .3; }
+.bw-station[data-state="completed"] .bw-card-check {
+  display: grid; place-items: center;
+  position: absolute; inset: 0;
+}
+.bw-card-check::before {
+  content: ""; position: absolute;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2.5px solid var(--accent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 55%, transparent),
+              inset 0 0 12px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.bw-card-tick { position: relative; width: 22px; height: 22px; color: #fff; stroke-width: 2.6; }
+.bw-station[data-state="completed"] .bw-card-name { color: rgba(247, 250, 255, .82); }
+.bw-station[data-state="completed"] .bw-card-status { color: rgba(185, 203, 224, .78); }
+
+/* Waypoint becomes a star in the stage's own deepened colour - never all gold. */
+.bw-station[data-state="completed"] .bw-station-way {
+  border-color: var(--accent);
+  background: var(--accent-done);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 50%, transparent);
+  color: #fff;
+}
+.bw-station[data-state="completed"] .bw-way-num { display: none; }
+.bw-station[data-state="completed"] .bw-way-star { display: block; }
+
+/* ---- hover / focus, for anything enterable ---- */
+.bw-station:not([data-state="locked"]) .bw-station-card:hover { transform: translateY(-3px); }
+.bw-station-card:focus-visible { outline: 2px solid var(--home-glacier); outline-offset: 3px; }
+
+.bw-map-hint {
+  position: relative; z-index: 2;
+  margin-top: 16px; text-align: center;
+  font-size: .8125rem; color: rgba(185, 203, 224, .78);
+}
+
+/* ==========================  legend  ========================== */
+
+.bw-legend {
+  position: relative; z-index: 2;
+  margin-top: 20px; padding: 14px 16px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(190, 220, 255, .16);
+  background: rgba(16, 33, 50, .6);
+}
+.bw-legend-lede { flex: 0 0 auto; max-width: 15rem; }
+.bw .bw-legend-lede h3 { font-size: .9375rem; font-weight: 700; color: var(--home-text); }
+.bw-legend-lede p { margin-top: 2px; font-size: .75rem; color: var(--home-text-2); }
+.bw-legend-strip {
+  flex: 1 1 22rem; list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 8px 18px;
+}
+.bw-legend-item { display: flex; align-items: center; gap: 9px; font-size: .75rem; }
+.bw-legend-item strong { display: block; font-size: .8125rem; color: var(--home-text); }
+.bw-legend-item em { font-style: normal; color: rgba(185, 203, 224, .8); }
+.bw-legend-dot {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  background: #10273c; border: 2.5px solid var(--home-glacier);
+}
+.bw-legend-item[data-state="available"] .bw-legend-dot { border-color: var(--home-green); }
+.bw-legend-item[data-state="current"] .bw-legend-dot {
+  border-color: var(--home-green-strong); box-shadow: 0 0 12px var(--home-green-glow);
+  animation: bw-way-pulse 2.6s ease-in-out infinite;
+}
+.bw-legend-item[data-state="completed"] .bw-legend-dot {
+  border-color: var(--id-envision); background: var(--done-envision);
+}
+
+/* ---- motion off: keep every distinction, drop the movement ---- */
+@media (prefers-reduced-motion: reduce) {
+  .bw-station[data-state="current"] .bw-station-card,
+  .bw-station[data-state="current"] .bw-station-way,
+  .bw-legend-item[data-state="current"] .bw-legend-dot { animation: none; }
+  .bw-station[data-state="current"] .bw-station-card {
+    box-shadow: 0 0 0 3px var(--home-green-strong), 0 0 34px var(--home-green-glow),
+                0 18px 44px rgba(0, 0, 0, .3);
+  }
+}
+
+/* ==========================  narrow  ========================== */
+@media (max-width: 760px) {
+  .bw-map { padding: 20px 14px 18px; border-radius: 20px; }
+  .bw-spine { display: block; margin-top: 20px; }
+  .bw-rail { display: none; }
+  .bw-stations {
+    display: flex; flex-direction: column; gap: 12px;
+    position: relative; padding-left: 34px;
+  }
+  /* One straight vertical connector, still one neutral colour. */
+  .bw-stations::before {
+    content: ""; position: absolute; left: 16px; top: 14px; bottom: 14px;
+    width: 3px; border-radius: 999px;
+    background: var(--home-glacier); box-shadow: 0 0 12px var(--home-glacier-glow);
+  }
+  .bw-station { display: flex; align-items: center; position: relative; width: 100%; }
+  .bw-station-node {
+    position: absolute; left: -34px; top: 50%; width: 34px; height: 34px;
+    transform: translateY(-50%);
+  }
+  .bw-station-stem { display: none; }
+  .bw-station-way { top: 50%; left: 17px; }
+  .bw-station-card {
+    flex: 1 1 auto; max-width: none;
+    flex-direction: row; align-items: center; text-align: left;
+    gap: 12px; padding: 12px 44px 12px 46px;
+  }
+  .bw-card-num { top: 50%; left: 14px; transform: translateY(-50%); font-size: 1rem; }
+  .bw-card-tile { width: 52px; height: 48px; border-radius: 14px; }
+  .bw-card-art { width: 22px; height: 22px; }
+  .bw-card-check::before { width: 32px; height: 32px; }
+  .bw-card-tick { width: 18px; height: 18px; }
+  .bw-legend { flex-direction: column; align-items: flex-start; }
+}
