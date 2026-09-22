@@ -49,8 +49,14 @@ try {
 
   // Stage 1 opens on its lesson: artwork and prose, and nothing to fill in.
   check('stage 1 opens on the lesson', await page.locator('#bw-lesson-body').isVisible());
-  check('the lesson has artwork', await page.locator('#bw-lesson-art svg').count() === 1);
-  check('the lesson has copy', (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80);
+  check('the lesson has a heading and copy',
+    (await page.locator('#bw-lesson-title').textContent()).trim().length > 0 &&
+    (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80);
+  // The stage's illustration belongs to the context panel on the left; the
+  // instructional column never repeats it.
+  check('the illustration is not repeated in the workspace',
+    await page.locator('.bw-ls-work svg').count() === 0,
+    'svgs=' + await page.locator('.bw-ls-work svg').count());
   check('nothing to fill in on the lesson', !(await page.locator('#bw-problem').isVisible()));
   check('and no chat underneath it', !(await page.locator('#bw-chat-panel').isVisible()));
 

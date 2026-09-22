@@ -3166,7 +3166,7 @@
     placeWorkspaceExtras(panel);
   }
 
-  /* A stage with a written lesson shows artwork and prose; one without still
+  /* A stage with a written lesson shows a heading and prose; one without still
      shows its original panel, so nothing is lost while the rest are written. */
   function renderLesson(n) {
     var lesson = stageLesson(n);
@@ -3180,12 +3180,6 @@
     if (progress) progress.hidden = !!lesson;
     if (!lesson) return;
 
-    var art = document.getElementById("bw-lesson-art");
-    if (art) {
-      art.innerHTML =                                  // static, from STAGE_ART
-        '<svg viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
-        STAGE_ART[lesson.art] + '</svg>';
-    }
     var copy = document.getElementById("bw-lesson-copy");
     if (copy) {
       copy.textContent = "";
@@ -3303,9 +3297,11 @@
      and Continue goes straight onward. */
   var STAGE_COACH = { 1: true, 4: true };
 
-  /* The instructional screen for a stage: artwork and prose, and nothing to
-     fill in - everything the learner types happens with the coach afterwards.
-     Placeholder copy; a stage without an entry still shows its old panel. */
+  /* The instructional screen for a stage: prose, and nothing to fill in -
+     everything the learner types happens with the coach afterwards. The
+     illustration is the context panel's, on the left, so a lesson carries no
+     art of its own. Placeholder copy; a stage without an entry still shows
+     its old panel. */
   var LOREM = [
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor " +
     "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud " +
@@ -3316,7 +3312,7 @@
   ];
 
   var STAGE_LESSON = {
-    1: { art: "identify", paras: LOREM }
+    1: { paras: LOREM }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }

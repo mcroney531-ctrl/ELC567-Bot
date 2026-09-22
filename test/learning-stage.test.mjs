@@ -107,8 +107,12 @@ try {
 
   // ---- a lesson stage is artwork and prose, and nothing to fill in ----
   check('the lesson is on screen', await page.locator('#bw-lesson-body').isVisible());
-  check('with artwork', await page.locator('#bw-lesson-art svg').count() === 1);
+  check('with a heading', (await page.locator('#bw-lesson-title').textContent()).trim().length > 0);
   check('and prose', (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80);
+  check('the stage illustration stays in the context panel',
+    await page.locator('#bw-ls-art svg').count() === 1 &&
+    await page.locator('.bw-ls-work svg').count() === 0,
+    'work svgs=' + await page.locator('.bw-ls-work svg').count());
   check('nothing to fill in', !(await page.locator('#bw-problem').isVisible()));
   check('no examples panel to work from', !(await page.locator('#bw-examples').isVisible()));
   check('and no info strip', !(await page.locator('#bw-info-strip').isVisible()));

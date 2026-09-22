@@ -266,9 +266,9 @@ try {
   check('stage 1 opens on a lesson, not a chat',
     await page.locator('#bw-lesson-body').isVisible() &&
     !(await page.locator('#bw-chat-panel').isVisible()));
-  check('the lesson is artwork and prose only',
-    await page.locator('#bw-lesson-art svg').count() === 1 &&
+  check('the lesson is a heading and prose only',
     (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80 &&
+    await page.locator('.bw-ls-work svg').count() === 0 &&
     await page.locator('#bw-lesson-body input, #bw-lesson-body textarea').count() === 0);
 
   await page.click('#bw-lesson-next');

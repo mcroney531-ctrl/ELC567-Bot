@@ -332,28 +332,12 @@
 }
 
 /* ---- the instructional screen ----
-   Artwork and prose. Nothing to fill in here: everything the learner types
+   A heading and prose, and that is the whole column. The stage's illustration
+   is on the left, in the context panel, so this side never repeats it - and
+   there is nothing to fill in here either: everything the learner types
    happens with the coach on the next screen. */
 .bw-lesson-body { margin-top: 20px; }
-.bw-lesson-art {
-  margin: 0 0 20px; display: grid; place-items: center;
-  padding: 26px; border-radius: 18px;
-  background: color-mix(in srgb, var(--accent, #3e8bff) 7%, var(--ls-card));
-  border: 1px solid color-mix(in srgb, var(--accent, #3e8bff) 16%, var(--ls-line));
-}
-.bw-lesson-art svg { width: min(220px, 60%); height: auto; }
-.bw-lesson-art .a-soft  { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
-.bw-lesson-art .a-soft2 { fill: color-mix(in srgb, var(--accent) 9%, transparent); }
-.bw-lesson-art .a-fill  { fill: color-mix(in srgb, var(--accent) 78%, #0b2038); }
-.bw-lesson-art .a-line  { stroke: var(--accent); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
-.bw-lesson-art .a-thick { stroke-width: 5.5; }
-
 .bw-lesson-copy { max-width: 62ch; }
 .bw-lesson-para { font-size: .9375rem; line-height: 1.6; color: var(--ls-muted); }
-.bw-lesson-para + .bw-lesson-para { margin-top: 12px; }
-.bw-lesson-actions { margin-top: 22px; }
-
-@media (max-width: 720px) {
-  .bw-lesson-art { padding: 18px; }
-  .bw-lesson-art svg { width: min(160px, 62%); }
-}
+.bw-lesson-para + .bw-lesson-para { margin-top: 14px; }
+.bw-lesson-actions { margin-top: 26px; }
