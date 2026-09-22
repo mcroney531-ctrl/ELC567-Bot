@@ -1,0 +1,332 @@
+/* ==========================================================================
+   Learning stage - the inside of a step
+   --------------------------------------------------------------------------
+   Dark shell, light workspace. The learner has moved from the control room to
+   a working surface, so the chrome stays related to home while the place they
+   actually read and type is bright and quiet.
+
+   One rule governs the colour here: the page does not change with the stage.
+   The shell stays slate, the workspace stays off-white, the context panel
+   stays neutral. Progression lives in the top mini nodes, and stage identity
+   shows up only in the number, the illustration and the progress fill.
+   ========================================================================== */
+
+.bw-stage {
+  --ls-shell: #0e1b29;
+  --ls-shell-2: #14263a;
+  --ls-bar: #101d2d;
+  --ls-work: #f7f9fc;
+  --ls-panel: #eff4fa;
+  --ls-card: #ffffff;
+  --ls-line: #dde6f1;
+  --ls-muted: #6a7c95;
+  --ls-strong: #15304e;
+  --ls-glacier: #ddf0ff;
+  --ls-glacier-glow: rgba(181, 223, 255, .55);
+  --ls-green: #38e39c;
+  --ls-green-strong: #28f28e;
+
+  --id-identify: #3e8bff;  --done-identify: #1863b8;
+  --id-map: #41d6d4;       --done-map: #10877f;
+  --id-envision: #ffaa3e;  --done-envision: #b56708;
+  --id-refine: #c85bff;    --done-refine: #7b34b0;
+  --id-deploy: #61d6ff;    --done-deploy: #2486ab;
+}
+
+/* Anything carrying an identity names it once; the rest of the file reads it. */
+[data-accent="identify"] { --accent: var(--id-identify); --accent-done: var(--done-identify); }
+[data-accent="map"]      { --accent: var(--id-map);      --accent-done: var(--done-map); }
+[data-accent="envision"] { --accent: var(--id-envision); --accent-done: var(--done-envision); }
+[data-accent="refine"]   { --accent: var(--id-refine);   --accent-done: var(--done-refine); }
+[data-accent="deploy"]   { --accent: var(--id-deploy);   --accent-done: var(--done-deploy); }
+
+/* The stage screen owns the whole frame, like home does. */
+.bw[data-view="stage"] { background: var(--ls-shell); padding: 0; max-width: none; }
+.bw[data-view="stage"] .bw-foot {
+  margin: 0; padding: 13px clamp(14px, 3vw, 28px);
+  background: var(--ls-bar); border-top: 1px solid rgba(190, 220, 255, .12);
+  color: rgba(185, 203, 224, .85);
+}
+.bw[data-view="stage"] .bw-foot .bw-saved { color: rgba(185, 203, 224, .72); }
+.bw[data-view="stage"] .bw-foot .bw-btn {
+  color: #f7faff; border-color: rgba(190, 220, 255, .22); background: rgba(255,255,255,.06);
+}
+
+/* ==========================  dark shell bar  ========================== */
+
+.bw-ls-top {
+  display: flex; align-items: center; gap: clamp(14px, 3vw, 38px);
+  padding: 12px clamp(14px, 3vw, 28px);
+  background: var(--ls-bar);
+  border-bottom: 1px solid rgba(190, 220, 255, .1);
+}
+.bw-ls-brand { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.bw-ls-mark {
+  width: 24px; height: 24px; border-radius: 7px;
+  background: linear-gradient(140deg, var(--ls-glacier), #7fb7e8);
+  box-shadow: 0 0 12px var(--ls-glacier-glow);
+}
+.bw-ls-brandname {
+  font-size: .8125rem; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: #f7faff;
+}
+.bw-ls-back {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid rgba(190, 220, 255, .24); border-radius: 999px;
+  background: rgba(255, 255, 255, .06); color: #e8f2ff;
+  padding: 6px 13px; font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer;
+}
+.bw-ls-back:hover { border-color: var(--ls-glacier); color: #fff; }
+.bw-ls-back:focus-visible { outline: 2px solid var(--ls-glacier); outline-offset: 2px; }
+
+/* ----------------------  the mini node strip  ---------------------- */
+
+.bw-mini { flex: 1 1 auto; min-width: 0; }
+.bw-mini-list {
+  list-style: none; margin: 0 auto; padding: 0; max-width: 620px;
+  display: flex; align-items: flex-start; justify-content: center;
+}
+.bw-mini-item {
+  position: relative; flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+/* One neutral connector, drawn behind the nodes. It never takes state colour. */
+.bw-mini-item + .bw-mini-item::before {
+  content: ""; position: absolute; top: 17px; right: 50%; left: -50%;
+  height: 2px; background: rgba(221, 240, 255, .28);
+}
+.bw-mini-node {
+  position: relative; z-index: 1;
+  width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid rgba(221, 240, 255, .55);
+  background: #1b3048; color: var(--ls-glacier);
+  font: inherit; cursor: pointer; padding: 0;
+  transition: transform var(--bw-duration-micro) var(--bw-ease-out),
+              border-color var(--bw-duration-micro) var(--bw-ease-standard),
+              box-shadow var(--bw-duration-micro) var(--bw-ease-standard);
+}
+.bw-mini-icon { width: 17px; height: 17px; }
+.bw-mini-lock, .bw-mini-star { display: none; width: 17px; height: 17px; }
+.bw-mini-star { fill: currentColor; stroke: none; }
+.bw-mini-label {
+  font-size: .6875rem; font-weight: 600; letter-spacing: .01em;
+  color: rgba(185, 203, 224, .75); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.bw-mini-node:focus-visible { outline: 2px solid var(--ls-glacier); outline-offset: 3px; }
+.bw-mini-item:not([data-state="locked"]) .bw-mini-node:hover { transform: translateY(-2px); }
+
+/* locked: glacier neutral, lock in place of the stage icon */
+.bw-mini-item[data-state="locked"] .bw-mini-node {
+  border-color: rgba(142, 164, 191, .4); background: #182a3d;
+  color: rgba(185, 203, 224, .6); cursor: not-allowed;
+}
+.bw-mini-item[data-state="locked"] .bw-mini-icon { display: none; }
+.bw-mini-item[data-state="locked"] .bw-mini-lock { display: block; }
+.bw-mini-item[data-state="locked"] .bw-mini-label { color: rgba(185, 203, 224, .45); }
+
+/* available: calm green, static */
+.bw-mini-item[data-state="available"] .bw-mini-node {
+  border-color: var(--ls-green); color: var(--ls-green);
+  box-shadow: 0 0 12px rgba(56, 227, 156, .3);
+}
+
+/* current: same family, stronger, and it breathes */
+.bw-mini-item[data-state="current"] .bw-mini-node {
+  border-color: var(--ls-green-strong); color: var(--ls-green-strong);
+  box-shadow: 0 0 16px rgba(40, 242, 142, .45);
+  animation: bw-mini-pulse 2.6s ease-in-out infinite;
+}
+.bw-mini-item[data-state="current"] .bw-mini-label { color: #d8fff0; }
+@keyframes bw-mini-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(40, 242, 142, .35); }
+  50%      { box-shadow: 0 0 24px rgba(40, 242, 142, .7); }
+}
+
+/* completed: the stage's own star, never a generic check */
+.bw-mini-item[data-state="completed"] .bw-mini-node {
+  border-color: var(--accent); background: var(--accent-done); color: #fff;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.bw-mini-item[data-state="completed"] .bw-mini-icon { display: none; }
+.bw-mini-item[data-state="completed"] .bw-mini-star { display: block; }
+.bw-mini-item[data-state="completed"] .bw-mini-label { color: rgba(232, 242, 255, .8); }
+
+/* Which stage is on screen is its own fact, separate from its state. */
+.bw-mini-item[data-open="true"] .bw-mini-label { font-weight: 700; color: #f7faff; }
+.bw-mini-item[data-open="true"] .bw-mini-node::after {
+  content: ""; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%);
+  width: 20px; height: 2.5px; border-radius: 999px; background: currentColor;
+}
+
+/* ==========================  light body  ========================== */
+
+.bw-ls-body {
+  display: grid; grid-template-columns: minmax(230px, 31%) 1fr;
+  gap: 0; margin: clamp(10px, 2vw, 18px);
+  border-radius: 20px; overflow: hidden;
+  background: var(--ls-work);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+}
+
+/* ---- left: orientation, and nothing else ---- */
+.bw-ls-context {
+  padding: 26px 22px 22px;
+  background: var(--ls-panel);
+  border-right: 1px solid var(--ls-line);
+  display: flex; flex-direction: column;
+}
+.bw-ls-eyebrow {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ls-muted);
+}
+.bw-ls-num {
+  margin-top: 6px; font-size: 2.75rem; font-weight: 800; line-height: 1;
+  letter-spacing: -.03em; color: var(--accent);
+}
+.bw .bw-ls-name {
+  margin-top: 2px; font-size: 1.75rem; font-weight: 800; letter-spacing: -.025em;
+  color: var(--ls-strong);
+}
+.bw-ls-framing {
+  margin-top: 10px; font-size: .9375rem; line-height: 1.45; color: var(--ls-muted);
+  text-wrap: balance;
+}
+
+.bw-ls-art {
+  margin: 20px 0 0; position: relative;
+  display: grid; place-items: center;
+  min-height: 130px;
+}
+.bw-ls-art svg { width: min(180px, 100%); height: auto; }
+.bw-ls-art .a-soft  { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
+.bw-ls-art .a-soft2 { fill: color-mix(in srgb, var(--accent) 9%, transparent); }
+.bw-ls-art .a-fill  { fill: color-mix(in srgb, var(--accent) 78%, #0b2038); }
+.bw-ls-art .a-line  { stroke: var(--accent); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.bw-ls-art .a-thick { stroke-width: 5.5; }
+
+.bw-ls-meta { margin-top: auto; padding-top: 22px; }
+.bw-ls-bar {
+  height: 4px; border-radius: 999px; background: var(--ls-line); overflow: hidden;
+}
+.bw-ls-bar-fill {
+  display: block; height: 100%; width: 20%; border-radius: 999px;
+  background: var(--accent);
+  transition: width var(--bw-duration-system) var(--bw-ease-standard);
+}
+.bw-ls-step { margin-top: 8px; font-size: .75rem; font-weight: 600; color: var(--ls-muted); }
+.bw-ls-quote {
+  margin-top: 12px; font-size: .875rem; line-height: 1.4; font-style: italic;
+  color: var(--ls-muted); text-wrap: balance;
+}
+
+/* ---- right: the workbench ---- */
+.bw-ls-work { padding: 26px clamp(18px, 3vw, 30px) 24px; min-width: 0; background: var(--ls-work); }
+
+.bw-lesson-label {
+  font-size: .6875rem; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ls-muted);
+}
+.bw .bw-lesson-title {
+  margin-top: 5px; font-size: clamp(1.25rem, 1.05rem + .8vw, 1.75rem);
+  font-weight: 800; letter-spacing: -.025em; color: var(--ls-strong);
+}
+.bw-lesson-sub { margin-top: 6px; font-size: .9375rem; color: var(--ls-muted); }
+
+/* Step-of lives in the context panel, so the workspace does not need a second
+   progress read-out. The elements stay in the DOM; only the display goes. */
+.bw[data-view="stage"] .bw-progress { display: none; }
+
+/* Save draft on the left, Continue on the right, on one row - which is why the
+   examples and the info strip are moved above this row rather than after it. */
+.bw[data-view="stage"] .bw-actions { flex-wrap: nowrap; gap: 12px; margin-top: 20px; }
+.bw[data-view="stage"] .bw-actions .bw-btn[data-next] { flex: 0 0 auto; }
+
+/* The CTA is the one place stage identity belongs in the workspace. */
+.bw[data-view="stage"] .bw-actions .bw-btn[data-next],
+.bw[data-view="stage"] #bw-copy-final {
+  background: var(--accent, #3e8bff); border-color: var(--accent, #3e8bff);
+  color: #fff; box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--accent, #3e8bff) 60%, transparent);
+}
+.bw[data-view="stage"] .bw-actions .bw-btn[data-next]:hover:not(:disabled),
+.bw[data-view="stage"] #bw-copy-final:hover:not(:disabled) { filter: brightness(1.06); }
+
+/* The activity's own panels live here. They keep their markup; only the
+   surface around them changes. */
+.bw[data-view="stage"] .bw-steps { margin-top: 18px; gap: 0; }
+.bw[data-view="stage"] .bw-step {
+  background: transparent; border: 0; box-shadow: none; border-radius: 0;
+}
+/* The lesson header above replaces it, so the accordion header would only be
+   a second copy of the same title. */
+.bw[data-view="stage"] .bw-step-head { display: none; }
+.bw[data-view="stage"] .bw-step-panel { padding: 0; border-top: 0; }
+.bw[data-view="stage"] .bw-step-intro { padding-top: 0; color: var(--ls-muted); }
+.bw[data-view="stage"] .bw-progress { margin: 16px 0 0; }
+.bw[data-view="stage"] .bw-progress-track { background: var(--ls-line); }
+
+/* ---- examples ---- */
+.bw-examples { margin-top: 22px; }
+.bw .bw-examples-head { font-size: 1rem; font-weight: 700; color: var(--ls-strong); }
+.bw-examples-sub { margin-top: 2px; font-size: .875rem; color: var(--ls-muted); }
+.bw-examples-list {
+  list-style: none; margin: 12px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(184px, 1fr)); gap: 10px;
+}
+.bw-starter {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 13px; border-radius: 14px;
+  background: var(--ls-card); border: 1px solid var(--ls-line);
+}
+.bw-starter-title { font-size: .875rem; font-weight: 700; color: var(--ls-strong); }
+.bw-starter-quote { font-size: .8125rem; line-height: 1.4; color: var(--ls-muted); }
+
+.bw-info-strip {
+  margin-top: 18px; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--accent, #3e8bff) 8%, var(--ls-card));
+  border: 1px solid color-mix(in srgb, var(--accent, #3e8bff) 22%, var(--ls-line));
+  font-size: .875rem; line-height: 1.45; color: var(--ls-strong);
+}
+
+.bw-save-draft { color: var(--ls-muted); }
+.bw[data-view="stage"] .bw-save-draft { border-color: transparent; }
+.bw[data-view="stage"] .bw-save-draft:hover { color: var(--ls-strong); }
+
+/* ==========================  motion off  ========================== */
+@media (prefers-reduced-motion: reduce) {
+  .bw-mini-item[data-state="current"] .bw-mini-node {
+    animation: none;
+    border-width: 3px;
+    box-shadow: 0 0 18px rgba(40, 242, 142, .5);
+  }
+}
+
+/* ==========================  narrower  ========================== */
+@media (max-width: 900px) {
+  .bw-ls-body { grid-template-columns: minmax(190px, 34%) 1fr; }
+  .bw-ls-context { padding: 20px 16px 18px; }
+  .bw-ls-num { font-size: 2.25rem; }
+  .bw .bw-ls-name { font-size: 1.375rem; }
+}
+
+@media (max-width: 720px) {
+  /* The bar stops being one line here, so wrapping comes back on. */
+  .bw-ls-top { gap: 10px; padding: 10px 14px; flex-wrap: wrap; }
+  .bw-ls-brand { flex: 1 1 100%; justify-content: space-between; }
+  .bw-ls-brandname { font-size: .6875rem; }
+  .bw-mini { flex-basis: 100%; overflow-x: auto; }
+  .bw-mini-list { min-width: 340px; }
+  .bw-mini-label { font-size: .625rem; }
+
+  /* Context above the workbench, still first, still brief. */
+  .bw-ls-body { grid-template-columns: 1fr; }
+  .bw-ls-context {
+    border-right: 0; border-bottom: 1px solid var(--ls-line);
+    padding-bottom: 16px;
+  }
+  .bw-ls-art { min-height: 0; margin-top: 14px; }
+  .bw-ls-art svg { width: min(130px, 46%); }
+  .bw-ls-meta { margin-top: 16px; padding-top: 0; }
+  .bw-ls-work { padding: 20px 16px 20px; }
+}

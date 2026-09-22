@@ -1,0 +1,166 @@
+:root {
+  --shell-bg: #0f1d2d;
+  --shell-bg-2: #15273b;
+  --line-neutral: #def0ff;
+  --line-neutral-glow: rgba(181, 223, 255, 0.5);
+  --surface-left: #eef4fa;
+  --surface-main: #f7f9fc;
+  --surface-card: #ffffff;
+  --border-soft: #dce6f1;
+  --text-strong: #15304e;
+  --text-muted: #6b7d95;
+  --green-available: #37e19b;
+  --green-current: #24f08e;
+  --identify: #3e8bff;
+  --map: #41d6d4;
+  --envision: #ffab3c;
+  --refine: #c85bff;
+  --deploy: #61d6ff;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #eef2f7; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+
+.learning-stage-page {
+  max-width: 1400px;
+  margin: 24px auto;
+  background: linear-gradient(180deg, var(--shell-bg-2), var(--shell-bg));
+  border-radius: 24px;
+  overflow: hidden;
+  color: white;
+  box-shadow: 0 28px 80px rgba(6, 18, 32, 0.28);
+}
+
+.learning-stage-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  background: rgba(6, 18, 32, 0.28);
+  border-bottom: 1px solid rgba(196, 220, 255, 0.08);
+}
+
+.mini-node-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+}
+
+.mini-node {
+  appearance: none;
+  border: 1px solid rgba(196, 220, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+  border-radius: 999px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-node.locked { opacity: 0.62; }
+.mini-node.available { box-shadow: 0 0 0 1px rgba(55, 225, 155, 0.32), 0 0 18px rgba(55, 225, 155, 0.22); }
+.mini-node.current { box-shadow: 0 0 0 1px rgba(36, 240, 142, 0.45), 0 0 22px rgba(36, 240, 142, 0.28); animation: currentPulse 2.6s ease-in-out infinite; }
+.mini-node.completed.accent-identify { box-shadow: 0 0 0 1px rgba(62,139,255,0.42), 0 0 18px rgba(62,139,255,0.22); }
+.mini-node.completed.accent-map { box-shadow: 0 0 0 1px rgba(65,214,212,0.42), 0 0 18px rgba(65,214,212,0.22); }
+.mini-node.completed.accent-envision { box-shadow: 0 0 0 1px rgba(255,171,60,0.42), 0 0 18px rgba(255,171,60,0.22); }
+.mini-node.completed.accent-refine { box-shadow: 0 0 0 1px rgba(200,91,255,0.42), 0 0 18px rgba(200,91,255,0.22); }
+.mini-node.completed.accent-deploy { box-shadow: 0 0 0 1px rgba(97,214,255,0.42), 0 0 18px rgba(97,214,255,0.22); }
+
+.learning-stage-body {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 0;
+}
+
+.stage-context-panel {
+  background: var(--surface-left);
+  color: var(--text-strong);
+  padding: 28px;
+  border-right: 1px solid var(--border-soft);
+}
+
+.stage-number {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--identify);
+}
+
+.stage-illustration {
+  margin: 24px 0;
+  height: 240px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #f8fbff, #eaf3ff);
+  border: 1px solid var(--border-soft);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+.lesson-workspace {
+  background: var(--surface-main);
+  color: var(--text-strong);
+  padding: 30px 34px;
+}
+
+.prompt-card, .example-card, .info-strip {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+}
+
+.prompt-card { padding: 18px; margin-top: 20px; }
+.prompt-card textarea {
+  width: 100%;
+  margin-top: 12px;
+  resize: vertical;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 14px;
+  background: #fcfdff;
+}
+
+.examples-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.example-card, .info-strip { padding: 16px; }
+.info-strip { margin-top: 16px; }
+.workspace-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+.primary-button, .ghost-button, .back-button, .resources-button {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+}
+.primary-button { background: #1e6dff; color: white; }
+.ghost-button { background: white; color: var(--text-strong); border: 1px solid var(--border-soft); }
+.back-button, .resources-button { background: rgba(255,255,255,0.06); color: white; }
+
+@keyframes currentPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@media (max-width: 980px) {
+  .learning-stage-body {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-context-panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-node.current { animation: none; }
+}

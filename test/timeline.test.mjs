@@ -103,8 +103,9 @@ try {
   check('and it is the right one',
     await page.locator('.bw-step:visible').getAttribute('data-step') === '1');
   check('the workspace says where you are',
-    (await page.locator('#bw-stage-where').textContent()) === 'Stage 1 of 5 · Identify',
-    await page.locator('#bw-stage-where').textContent());
+    (await page.locator('#bw-ls-step').textContent()) === 'Step 1 of 5',
+    await page.locator('#bw-ls-step').textContent());
+  check('and names the stage', (await page.locator('#bw-ls-name').textContent()) === 'Identify');
   check('the workspace does not repeat the whole timeline',
     !(await page.locator('.bw-spine').isVisible()));
   check('there is a way back', await page.locator('#bw-to-map').isVisible());
@@ -129,9 +130,9 @@ try {
     await page.locator('#bw-stage').isVisible() && !(await page.locator('#bw-map').isVisible()));
   check('and lands on the next stage',
     await page.locator('.bw-step:visible').getAttribute('data-step') === '2');
-  check('the indicator moved with it',
-    (await page.locator('#bw-stage-where').textContent()) === 'Stage 2 of 5 · Map',
-    await page.locator('#bw-stage-where').textContent());
+  check('the context panel moved with it',
+    (await page.locator('#bw-ls-name').textContent()) === 'Map',
+    await page.locator('#bw-ls-name').textContent());
 
   // ------------------------------------------------------ the completed state
   await toMap();

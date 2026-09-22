@@ -59,8 +59,18 @@
    and its gutter step out of the way while the map is showing. The footer
    keeps its own light treatment below; carrying the dark system through the
    landing and the stage workspaces is a separate decision. */
-.bw[data-view="map"] { background: #08131d; padding: 0; }
+.bw[data-view="map"] { background: #08131d; padding: 0; max-width: none; }
 .bw[data-view="map"] .bw-map { border-radius: 0; padding: 24px clamp(16px, 4vw, 40px) 26px; }
+/* The journey still reads best at a contained width even when the screen does not. */
+.bw[data-view="map"] .bw-stage-bar,
+.bw[data-view="map"] .bw-map-head,
+.bw[data-view="map"] .bw-spine,
+.bw[data-view="map"] .bw-map-hint,
+.bw[data-view="map"] .bw-legend,
+.bw[data-view="map"] .bw-foot > * { max-width: 1120px; }
+.bw[data-view="map"] .bw-spine,
+.bw[data-view="map"] .bw-legend,
+.bw[data-view="map"] .bw-map-hint { margin-left: auto; margin-right: auto; }
 .bw[data-view="map"] .bw-foot {
   margin: 0; padding: 14px clamp(16px, 4vw, 40px);
   border-top: 1px solid rgba(190, 220, 255, .14);

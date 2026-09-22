@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="css/activity.css">
 <link rel="stylesheet" href="css/timeline.css">
 <link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/stage.css">
 </head>
 <body>
 
@@ -177,18 +178,49 @@ write [MISSING: metric name] and keep going.</pre>
 <!-- ===================== STAGE WORKSPACE ===================== -->
 <section class="bw-stage" id="bw-stage" hidden>
 
-  <div class="bw-stage-bar">
-    <button type="button" class="bw-btn bw-btn-quiet bw-back" id="bw-to-map">
-      <span aria-hidden="true">&#8592;</span> Journey map
-    </button>
-    <span class="bw-spacer"></span>
-    <span class="bw-stage-where" id="bw-stage-where"></span>
+  <!-- ---- dark shell: the only chrome that carries progression state ---- -->
+  <div class="bw-ls-top">
+    <div class="bw-ls-brand">
+      <span class="bw-ls-mark" aria-hidden="true"></span>
+      <span class="bw-ls-brandname">AI Workflow Builder</span>
+      <button type="button" class="bw-ls-back" id="bw-to-map">
+        <span aria-hidden="true">&#8592;</span> Back to Journey
+      </button>
+    </div>
+    <!-- Mini nodes are built by js/activity.js from the same STATIONS and the
+         same statusOf() the journey map uses, so the two cannot disagree. -->
+    <nav class="bw-mini" aria-label="Stage progress">
+      <ol class="bw-mini-list" id="bw-mini" role="list"></ol>
+    </nav>
   </div>
 
-  <div class="bw-progress">
-    <div class="bw-progress-track"><div class="bw-progress-fill" id="bw-progress-fill"></div></div>
-    <span class="bw-progress-label" id="bw-progress-label">Step 1 of 5</span>
-  </div>
+  <!-- ---- light workspace ---- -->
+  <div class="bw-ls-body">
+
+    <aside class="bw-ls-context" id="bw-ls-context" aria-labelledby="bw-ls-name">
+      <p class="bw-ls-eyebrow" id="bw-ls-eyebrow">Stage 1</p>
+      <p class="bw-ls-num" id="bw-ls-num">01</p>
+      <h2 class="bw-ls-name" id="bw-ls-name">Identify</h2>
+      <p class="bw-ls-framing" id="bw-ls-framing"></p>
+      <figure class="bw-ls-art" id="bw-ls-art" aria-hidden="true"></figure>
+      <div class="bw-ls-meta">
+        <div class="bw-ls-bar"><span class="bw-ls-bar-fill" id="bw-ls-bar-fill"></span></div>
+        <p class="bw-ls-step" id="bw-ls-step">Step 1 of 5</p>
+        <p class="bw-ls-quote" id="bw-ls-quote"></p>
+      </div>
+    </aside>
+
+    <div class="bw-ls-work">
+      <header class="bw-lesson-head">
+        <p class="bw-lesson-label" id="bw-lesson-label">Lesson 1</p>
+        <h3 class="bw-lesson-title" id="bw-lesson-title"></h3>
+        <p class="bw-lesson-sub" id="bw-lesson-sub"></p>
+      </header>
+
+      <div class="bw-progress">
+        <div class="bw-progress-track"><div class="bw-progress-fill" id="bw-progress-fill"></div></div>
+        <span class="bw-progress-label" id="bw-progress-label">Step 1 of 5</span>
+      </div>
 
   <!-- ================= STEPS ================= -->
   <ol class="bw-steps" id="bw-steps">
@@ -366,6 +398,16 @@ write [MISSING: metric name] and keep going.</pre>
   <div class="bw-notice bw-notice-info" id="bw-handoff" hidden></div>
 
   <!-- ================= FOOTER ================= -->
+      <!-- Examples for the active stage, when it has any. -->
+      <section class="bw-examples" id="bw-examples" hidden>
+        <h4 class="bw-examples-head" id="bw-examples-head"></h4>
+        <p class="bw-examples-sub" id="bw-examples-sub"></p>
+        <ul class="bw-examples-list" id="bw-examples-list" role="list"></ul>
+      </section>
+
+      <p class="bw-info-strip" id="bw-info-strip" hidden></p>
+    </div>
+  </div>
 </section>
 
   <div class="bw-foot">

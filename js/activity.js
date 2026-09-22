@@ -1897,7 +1897,8 @@
 
     applyPrereqState();
     renderMap();
-    stageWhere(current);
+    renderMiniBar();
+    renderStageContext();
 
     renderPromptV1();
   }
@@ -2698,11 +2699,6 @@
     if (next === "map") renderMap();
   }
 
-  function stageWhere(n) {
-    var node = document.getElementById("bw-stage-where");
-    if (node) node.textContent = "Stage " + n + " of 5 · " + STATIONS[n - 1].name;
-  }
-
   function motionOff() {
     return prefersReducedMotion() || typeof window.gsap === "undefined";
   }
@@ -2801,6 +2797,7 @@
       return;
     }
     buildMap();
+    wireLearningStage();
     // Someone who has started already gets home, not the pitch they have read.
     setView(hasStarted() ? "map" : "landing");
     var start = document.getElementById("bw-start");
@@ -2815,6 +2812,245 @@
       if (head) head.disabled = true;
     });
     renderMap();
+  }
+
+
+  /* ==========================================================================
+     9. LEARNING STAGE
+     --------------------------------------------------------------------------
+     The inside of a step. Dark shell, light workspace, and a compressed echo of
+     the journey map across the top.
+
+     The mini nodes call the same statusOf() the map does, so the two cannot
+     drift apart: there is one state model and both screens read it. Progression
+     is expressed in the mini nodes only - the shell, the workspace and the
+     context panel stay the same whatever stage is open.
+     ========================================================================== */
+
+  /* Left-panel framing, one per stage. Illustrations are soft process vectors
+     in the direction of the supplied boards - placeholder art, deliberately
+     easy to replace, all of it in one place. */
+  var STAGE_ART = {
+    identify:
+      '<rect x="18" y="26" width="46" height="56" rx="8" class="a-soft"/>' +
+      '<rect x="34" y="18" width="46" height="56" rx="8" class="a-soft2"/>' +
+      '<circle cx="52" cy="48" r="19" class="a-line"/>' +
+      '<path d="M66 62 82 78" class="a-line a-thick"/>',
+    map:
+      '<rect x="14" y="22" width="72" height="56" rx="9" class="a-soft"/>' +
+      '<circle cx="32" cy="38" r="7" class="a-fill"/>' +
+      '<circle cx="66" cy="34" r="7" class="a-fill"/>' +
+      '<circle cx="48" cy="64" r="7" class="a-fill"/>' +
+      '<path d="M37 41 61 37M35 44 44 58M62 40 53 58" class="a-line"/>',
+    envision:
+      '<rect x="20" y="24" width="60" height="52" rx="9" class="a-soft"/>' +
+      '<path d="M50 26a15 15 0 0 0-8.6 27.3c1.4 1 2.1 2.6 2.1 4.3v.6h13v-.6c0-1.7.7-3.3 2.1-4.3A15 15 0 0 0 50 26Z" class="a-line"/>' +
+      '<path d="M44 66h12M45.5 72h9" class="a-line"/>',
+    refine:
+      '<rect x="16" y="24" width="68" height="52" rx="9" class="a-soft"/>' +
+      '<path d="M26 38h22M60 38h14M26 62h14M52 62h22" class="a-line"/>' +
+      '<circle cx="54" cy="38" r="7" class="a-fill"/>' +
+      '<circle cx="46" cy="62" r="7" class="a-fill"/>',
+    deploy:
+      '<rect x="18" y="30" width="48" height="48" rx="8" class="a-soft"/>' +
+      '<path d="M24 62 84 20 66 86l-14-19-28-5Z" class="a-line"/>' +
+      '<path d="M52 67 84 20" class="a-line"/>'
+  };
+
+  /* Stage framing for the left panel. The lesson title in the workspace is read
+     off the step's own heading instead, so there is no second copy of it to
+     fall out of date. */
+  var STAGE_CONTEXT = {
+    1: { framing: "Define the problem worth solving.",
+         quote: "Clarity today. Impact tomorrow." },
+    2: { framing: "Understand the context and the tools involved.",
+         quote: "People, process, and data create the full picture." },
+    3: { framing: "Explore possibilities and define success.",
+         quote: "Bigger possibilities. Real-world impact." },
+    4: { framing: "Design, validate, and plan the workflow.",
+         quote: "Turn ideas into a clear plan." },
+    5: { framing: "Put it into action and drive impact.",
+         quote: "From plan to progress. Keep it going." }
+  };
+
+  /* Starting points, where a stage has them. Stage 1 is the worked sample from
+     the pack; the rest are empty until their lessons are written. */
+  var STAGE_EXAMPLES = {
+    1: {
+      head: "Need a starting point?",
+      sub: "A few examples to get your thinking going.",
+      items: [
+        { title: "Reduce manual work",
+          quote: "I spend hours each week updating the same report by hand." },
+        { title: "Get better insights",
+          quote: "We need faster visibility into what clients are telling us." },
+        { title: "Eliminate repetitive tasks",
+          quote: "My team spends too much time on routine formatting." }
+      ]
+    }
+  };
+
+  var STAGE_INFO = {
+    1: "In this stage you name the task. The steps, the tools and what good looks " +
+       "like come later - one thing at a time."
+  };
+
+  var miniNodes = [];
+
+  function buildMiniBar() {
+    var host = document.getElementById("bw-mini");
+    if (!host) return;
+    host.textContent = "";
+    miniNodes = STATIONS.map(function (s) {
+      var li = document.createElement("li");
+      li.className = "bw-mini-item";
+      li.setAttribute("role", "listitem");
+      li.setAttribute("data-stage", String(s.step));
+      li.setAttribute("data-accent", s.accent);
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bw-mini-node";
+      btn.innerHTML = svgTag(ART[s.art], "bw-mini-icon") +     // static, from ART
+                      svgTag(LOCK_ART, "bw-mini-lock") +
+                      svgTag(STAR_ART, "bw-mini-star");
+      btn.addEventListener("click", function () {
+        if (statusOf(s.step) === "locked") return;
+        openStep(s.step);
+      });
+
+      var label = el2("span", "bw-mini-label", pad2(s.step) + " " + s.name);
+      li.appendChild(btn);
+      li.appendChild(label);
+      host.appendChild(li);
+      return { def: s, li: li, btn: btn };
+    });
+  }
+
+  function renderMiniBar() {
+    if (!TIMELINE || !miniNodes.length) return;
+    var open = workflowData.progress.current;
+    miniNodes.forEach(function (node) {
+      var n = node.def.step;
+      var state = statusOf(n);
+      node.li.setAttribute("data-state", state);
+      // Which stage is on screen is a separate fact from what state it is in.
+      node.li.setAttribute("data-open", n === open ? "true" : "false");
+      node.btn.disabled = state === "locked";
+      if (n === open) node.btn.setAttribute("aria-current", "step");
+      else node.btn.removeAttribute("aria-current");
+      node.btn.setAttribute("aria-label",
+        "Stage " + n + ", " + node.def.name + ". " + STATE_WORD[state] +
+        (n === open ? ". Open now." : (state === "locked" ? "." : ". Go to this stage.")));
+    });
+  }
+
+  /* The context panel and the lesson header, repainted for whichever stage is
+     open. Neutral surface throughout: stage identity shows up in the number,
+     the illustration and the progress fill, never as a wash over the page. */
+  function renderStageContext() {
+    if (!TIMELINE) return;
+    var n = workflowData.progress.current;
+    var def = STATIONS[n - 1];
+    if (!def) return;
+    var ctx = STAGE_CONTEXT[n] || {};
+
+    // Set on the whole stage section: the context panel, the illustration and
+    // the CTA all read the same accent from here.
+    if (el.stage) el.stage.setAttribute("data-accent", def.accent);
+
+    setText("bw-ls-eyebrow", "Stage " + n);
+    setText("bw-ls-num", pad2(n));
+    setText("bw-ls-name", def.name);
+    setText("bw-ls-framing", ctx.framing || def.blurb);
+    setText("bw-ls-step", "Step " + n + " of 5");
+    setText("bw-ls-quote", ctx.quote ? "“" + ctx.quote + "”" : "");
+
+    var art = document.getElementById("bw-ls-art");
+    if (art) {
+      art.setAttribute("data-accent", def.accent);
+      art.innerHTML =                                  // static, from STAGE_ART
+        '<svg viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
+        STAGE_ART[def.art] + '</svg>';
+    }
+    var fill = document.getElementById("bw-ls-bar-fill");
+    if (fill) fill.style.width = (n / 5 * 100) + "%";
+
+    // The lesson title is the step's own heading, so it can never disagree
+    // with the panel underneath it.
+    var panel = el.steps[n - 1];
+    var head = panel && panel.querySelector(".bw-step-head");
+    setText("bw-lesson-label", "Lesson " + n);
+    setText("bw-lesson-title", head ? head.querySelector(".bw-h2").textContent : def.name);
+    setText("bw-lesson-sub", head ? head.querySelector(".bw-step-sub").textContent : "");
+
+    renderExamples(n);
+    var strip = document.getElementById("bw-info-strip");
+    if (strip) {
+      strip.textContent = STAGE_INFO[n] || "";
+      strip.hidden = !STAGE_INFO[n];
+    }
+    placeWorkspaceExtras(panel);
+  }
+
+  function setText(id, text) {
+    var node = document.getElementById(id);
+    if (node) node.textContent = text;
+  }
+
+  function renderExamples(n) {
+    var wrap = document.getElementById("bw-examples");
+    var list = document.getElementById("bw-examples-list");
+    if (!wrap || !list) return;
+    var data = STAGE_EXAMPLES[n];
+    wrap.hidden = !data;
+    if (!data) return;
+    setText("bw-examples-head", data.head);
+    setText("bw-examples-sub", data.sub);
+    list.textContent = "";
+    data.items.forEach(function (item) {
+      var li = document.createElement("li");
+      li.className = "bw-starter";
+      li.setAttribute("role", "listitem");
+      li.appendChild(el2("span", "bw-starter-title", item.title));
+      li.appendChild(el2("span", "bw-starter-quote", "“" + item.quote + "”"));
+      list.appendChild(li);
+    });
+  }
+
+  /* The examples, the info strip and Save draft are single elements that follow
+     whichever stage is open, because the Continue button they sit around lives
+     inside the step panel. Moving a node keeps its listeners, so these stay one
+     of each with one handler each - and since they are singletons, moving them
+     every render leaves nothing behind. */
+  function placeWorkspaceExtras(panel) {
+    var save = document.getElementById("bw-save-draft");
+    var examples = document.getElementById("bw-examples");
+    var info = document.getElementById("bw-info-strip");
+    if (!panel) return;
+    var rows = panel.querySelectorAll(".bw-actions");
+    var row = rows[rows.length - 1];
+    if (save) save.hidden = !row;
+    if (!row) return;
+    var host = row.parentNode;
+    if (examples) host.insertBefore(examples, row);
+    if (info) host.insertBefore(info, row);
+    if (save && save.parentNode !== row) row.insertBefore(save, row.firstChild);
+  }
+
+  function wireLearningStage() {
+    if (!TIMELINE) return;
+    buildMiniBar();
+    var save = document.createElement("button");
+    save.type = "button";
+    save.id = "bw-save-draft";
+    save.className = "bw-btn bw-btn-quiet bw-save-draft";
+    save.textContent = "Save draft";
+    save.addEventListener("click", function () {
+      writeNow();          // the activity autosaves anyway; this makes it visible
+      flashSaved();
+    });
+    document.body.appendChild(save);
   }
 
   /* ==========================================================================

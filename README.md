@@ -26,7 +26,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # six suites, 240 assertions
+npm test      # seven suites, 297 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -46,6 +46,7 @@ css/tokens.css      palette, type scale, motion  (the only place colours are def
 css/activity.css    components
 css/timeline.css    views and chrome: which view shows, the start button, the back bars
 css/home.css        the journey map - the whole dark AI Workflow Builder system
+css/stage.css       the learning stage - dark shell, light workspace, mini-node strip
 js/activity.js      the whole app: state, prompt generation, coach, DOM wiring, the map
 js/vendor/gsap.min.js
 test/               six Playwright suites
@@ -120,6 +121,34 @@ swaps the pulse for a static heavier ring, so the distinction survives without t
 
 Below 760px the spine stands up: one straight neutral connector on the left, stations stacked full
 width in order, artwork and copy on a row.
+
+### The learning stage
+
+The inside of a step: a dark shell bar, then a light rounded body split into a context panel
+(~31%) and the lesson workspace. The learner has moved from the control room to a working surface,
+so the chrome stays related to home while the place they read and type is bright and quiet.
+
+**The page does not change with the stage.** The shell stays slate, the workspace stays off-white,
+the context panel stays neutral &mdash; asserted by comparing the computed backgrounds of all three
+across two different stages. Stage identity is confined to the number, the illustration, the
+progress fill and the Continue button.
+
+**The top mini-node strip calls the same `statusOf()` the journey map does**, so the two screens
+cannot tell a learner different stories &mdash; there is one state model and both read it. Locked
+shows a lock in place of the stage icon and is not enterable; available is calm green and static;
+current is stronger green with a 2.6s glow pulse and `aria-current="step"`; completed is a star in
+that stage's own deepened colour, never a generic check, and stays enterable. Which stage is *open*
+is tracked separately from what state it is in, because they are different facts. Clicking any
+unlocked mini node navigates there.
+
+The lesson title is read off the step's own heading rather than stored again, so the workspace can
+never disagree with the panel beneath it. The examples panel, the info strip and Save draft are
+single elements that move to whichever step panel is open &mdash; Continue lives inside that panel,
+and the pack puts Save draft on the same row as it. Moving a node keeps its listeners, so these
+stay one of each with one handler each.
+
+Below 720px the split stacks with the context above the workspace, and the mini-node strip moves to
+its own line and scrolls horizontally rather than being squeezed away.
 
 ### Slices
 
@@ -372,6 +401,14 @@ anywhere in the flow shows up as a test failure.
   finishing a stage continues into the next without returning home, that completion lines count
   real data, that a stale stored `done` is corrected, and that navigation still works with motion
   turned off and at 360px. It asserts on no colour, size or illustration.
+- `test/learning-stage.test.mjs` — the inside of a step: that the shell is dark and the workspace
+  and context panel are light, that the split is roughly a third to two thirds, that the step's own
+  accordion header is gone and the lesson header reads off it instead, that all four states render
+  in the mini strip, that completed mini nodes use a stage-coloured star rather than one blue check
+  and stay enterable, that the shell/workspace/panel backgrounds are byte-identical across two
+  stages while the stage number's colour does change, that a mini node navigates by mouse and by
+  keyboard with a visible focus ring, that the pulse stops under reduced motion while staying
+  distinguishable, and that the split stacks at 380px with the strip intact.
 - `test/hardening.test.mjs` — the failure modes that survived the move off Rise: that the page
   declares its own encoding, that dark mode stays off by default and still works when opted in,
   that copying survives a missing clipboard API and leaves the text selected when it can't copy at
