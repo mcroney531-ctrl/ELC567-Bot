@@ -51,6 +51,21 @@ async function openCoach(opts = {}) {
   return { ctx, page };
 }
 
+/* Stage 1 with nothing behind it: the lesson screen, then its own coach.
+   Nothing is seeded, because how the problem statement gets written is the
+   thing under test. */
+async function openStage1() {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+  const page = await ctx.newPage();
+  report.watch(page);
+  await page.addInitScript(() => localStorage.setItem('bw_started', '1'));
+  await page.goto(`http://127.0.0.1:${PORT}/`);
+  await page.waitForTimeout(400);
+  await page.click('.bw-station[data-stage="1"] .bw-station-card');
+  await page.waitForTimeout(700);
+  return { ctx, page };
+}
+
 const say = async (page, text, n) => {
   await page.fill('#bw-chat-input', text);
   await page.keyboard.press('Enter');
@@ -244,6 +259,66 @@ try {
   }));
   check('no horizontal page scrolling', await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
+  await ctx.close();
+
+  // ==================== stage 1: lesson, then its own coach ====================
+  ({ ctx, page } = await openStage1());
+  check('stage 1 opens on a lesson, not a chat',
+    await page.locator('#bw-lesson-body').isVisible() &&
+    !(await page.locator('#bw-chat-panel').isVisible()));
+  check('the lesson is artwork and prose only',
+    await page.locator('#bw-lesson-art svg').count() === 1 &&
+    (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80 &&
+    await page.locator('#bw-lesson-body input, #bw-lesson-body textarea').count() === 0);
+
+  await page.click('#bw-lesson-next');
+  await page.waitForTimeout(800);
+  check('continue loads the coach on its own screen',
+    await page.locator('#bw-chat-panel').isVisible() &&
+    !(await page.locator('#bw-lesson-body').isVisible()));
+  check('the rail says what this stage is for',
+    (await page.locator('#bw-focus-text').textContent()).includes('hand off'),
+    await page.locator('#bw-focus-text').textContent());
+  check('and which stage it is',
+    (await page.locator('#bw-coach-chip').textContent()).includes('Identify'),
+    await page.locator('#bw-coach-chip').textContent());
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+    null, { timeout: 12000 });
+
+  // The conversation is how the problem statement gets written.
+  check('nothing written down before they speak',
+    await page.locator('[data-card="problem-summary"]').count() === 0);
+  await say(page, 'nope', 2);
+  check('a non-answer is pushed back on, not banked',
+    !(await page.locator('[data-action="save-and-continue"]').count()));
+  await say(page,
+    'Every Monday I rebuild eleven client status decks by hand and it eats the whole morning.', 3);
+  check('what the coach took down is shown back',
+    (await page.locator('[data-card="problem-summary"]').textContent()).includes('eleven client'),
+    await page.locator('[data-card="problem-summary"]').textContent());
+  check('and the non-answer is not glued to the front of it',
+    !(await page.locator('[data-card="problem-summary"]').textContent()).includes('nope'),
+    await page.locator('[data-card="problem-summary"]').textContent());
+  await say(page, 'They go out before nine, and the tone drifts by the eleventh one.', 4);
+  check('the handoff appears once the coach has enough',
+    await page.locator('[data-action="save-and-continue"]').isVisible());
+
+  // Stage 1's transcript belongs to stage 1.
+  await page.click('[data-action="save-and-continue"]');
+  await page.waitForTimeout(700);
+  check('the handoff moves on to stage 2',
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '2',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
+  check('stage 2 does not inherit stage 1\'s conversation',
+    await page.locator('.bw-msg').count() === 0,
+    'msgs=' + await page.locator('.bw-msg').count());
+  await page.click('.bw-mini-item[data-stage="1"] .bw-mini-node');
+  await page.waitForTimeout(700);
+  check('and stage 1 picks its own back up mid-conversation',
+    await page.locator('#bw-chat-panel').isVisible() &&
+    await page.locator('.bw-msg').count() === 7,
+    'msgs=' + await page.locator('.bw-msg').count());
   await ctx.close();
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);

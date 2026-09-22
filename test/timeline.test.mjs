@@ -4,7 +4,7 @@
  * the art - the cards are meant to be redrawn, so nothing below asserts on a
  * colour, a size, or an illustration.
  */
-import { serveSite, makeReporter, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, loadChromium, waitBots } from './helpers.mjs';
 
 const chromium = await loadChromium();
 const report = makeReporter('journey map');
@@ -26,11 +26,23 @@ const enter = async n => {
 };
 const toMap = async () => { await page.click('#bw-to-map'); await page.waitForTimeout(550); };
 const start = async () => { await page.click('#bw-start'); await page.waitForTimeout(750); };
+/* Stage 1 is a lesson screen and then a coach, so this is the whole of it:
+   read, continue, talk it through, take the handoff. */
+const say = async (text, n) => {
+  await page.fill('#bw-chat-input', text);
+  await page.keyboard.press('Enter');
+  await waitBots(page, n);
+};
 const fillStage1 = async () => {
-  await page.fill('#bw-problem',
-    'Every Monday I rebuild eleven client status decks by hand and it eats the whole morning.');
-  await page.click('[data-next="1"]');
-  await page.waitForTimeout(550);
+  if (await page.locator('#bw-lesson-body').isVisible()) {
+    await page.click('#bw-lesson-next');
+    await page.waitForTimeout(800);
+  }
+  await waitBots(page, 1);
+  await say('Every Monday I rebuild eleven client status decks by hand and it eats the whole morning.', 2);
+  await say('They go out to eleven clients before nine, and the tone drifts by the last one.', 3);
+  await page.click('[data-action="save-and-continue"]');
+  await page.waitForTimeout(650);
 };
 
 try {
@@ -97,11 +109,14 @@ try {
   await enter(1);
   check('entering swaps the map for the workspace',
     !(await page.locator('#bw-map').isVisible()) && await page.locator('#bw-stage').isVisible());
+  // Stage 1 opens on its lesson: artwork and prose, and nothing else on screen.
   check('only the entered stage is on screen',
-    await page.locator('.bw-step:visible').count() === 1,
+    await page.locator('#bw-lesson-body').isVisible() &&
+    await page.locator('.bw-step:visible').count() === 0,
     String(await page.locator('.bw-step:visible').count()));
   check('and it is the right one',
-    await page.locator('.bw-step:visible').getAttribute('data-step') === '1');
+    (await page.locator('.bw-mini-item[data-state="current"]').getAttribute('data-stage')) === '1',
+    await page.locator('.bw-mini-item[data-state="current"]').getAttribute('data-stage'));
   check('the workspace says where you are',
     (await page.locator('#bw-ls-step').textContent()) === 'Step 1 of 5',
     await page.locator('#bw-ls-step').textContent());

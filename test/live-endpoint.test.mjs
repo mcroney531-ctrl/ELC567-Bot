@@ -4,7 +4,7 @@
  * unreachable host, unrecognized payload) a learner can hit mid-activity.
  */
 import { server, state } from './coach-stub.mjs';
-import { serveSite, makeReporter, waitBots as wait, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, waitBots as wait, loadChromium, seedThroughStage3 } from './helpers.mjs';
 
 const chromium = await loadChromium();
 
@@ -29,23 +29,14 @@ async function fillToStep4() {
   const ctx = await browser.newContext();
   page = await ctx.newPage();
   report.watch(page);
+  // What this suite is about is the adapter, not how stage 1 gets filled in,
+  // and stage 1 now has a live coach of its own whose calls would land in the
+  // very request log these checks read. So arrive with it already behind us.
+  await seedThroughStage3(page);
   await page.goto('http://127.0.0.1:8901/');
-  await page.waitForTimeout(250);
-  // In through the landing and the map, the way a learner arrives.
-  await page.click('#bw-start');
-  await page.waitForTimeout(700);
-  await page.click('.bw-station[data-stage="1"] .bw-station-card');
+  await page.waitForTimeout(300);
+  await page.click('.bw-station[data-stage="4"] .bw-station-card');
   await page.waitForTimeout(650);
-  await page.fill('#bw-problem', 'Every Monday I rebuild the same eleven client status updates by hand, and it eats two hours.');
-  await page.click('[data-next="1"]');
-  const c = page.locator('#bw-cards .bw-card');
-  await c.nth(0).locator('input').nth(0).fill('Pull delivery numbers');
-  await c.nth(0).locator('input').nth(1).fill('Asana, Harvest');
-  await c.nth(1).locator('input').nth(0).fill('Draft the update');
-  await c.nth(1).locator('input').nth(1).fill('Google Docs');
-  await page.click('[data-next="2"]');
-  await page.click('[data-next="3"]');
-  await page.waitForTimeout(400);
   // Stage 4 opens on its lesson; Continue hands off to the coach.
   await page.click('[data-next="4"]');
   await page.waitForTimeout(600);

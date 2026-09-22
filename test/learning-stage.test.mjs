@@ -105,14 +105,16 @@ try {
     await page.locator('.bw-ls-context p, .bw-ls-context h2').count() <= 6,
     String(await page.locator('.bw-ls-context p, .bw-ls-context h2').count()));
 
-  // ---- the real activity is still the workspace ----
-  check('the stage\'s own input is here', await page.locator('#bw-problem').isVisible());
-  check('with its examples panel', await page.locator('.bw-starter').count() === 3,
-    'count=' + await page.locator('.bw-starter').count());
-  check('an info strip', await page.locator('#bw-info-strip').isVisible());
-  check('and save draft next to continue', await page.evaluate(() => {
+  // ---- a lesson stage is artwork and prose, and nothing to fill in ----
+  check('the lesson is on screen', await page.locator('#bw-lesson-body').isVisible());
+  check('with artwork', await page.locator('#bw-lesson-art svg').count() === 1);
+  check('and prose', (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80);
+  check('nothing to fill in', !(await page.locator('#bw-problem').isVisible()));
+  check('no examples panel to work from', !(await page.locator('#bw-examples').isVisible()));
+  check('and no info strip', !(await page.locator('#bw-info-strip').isVisible()));
+  check('save draft rides along with continue', await page.evaluate(() => {
     const save = document.querySelector('#bw-save-draft');
-    const next = document.querySelector('[data-next="1"]');
+    const next = document.querySelector('#bw-lesson-next');
     return save && next && save.parentElement === next.parentElement;
   }));
   await page.click('#bw-save-draft');
@@ -137,6 +139,29 @@ try {
       const c = getComputedStyle(document.querySelector('.bw-mini-item:nth-child(2)'), '::before');
       return c.content !== 'none' && !/(56, 227|40, 242)/.test(c.backgroundColor);
     }));
+  await ctx.close();
+
+  // ---- a stage without a written lesson still shows its own panel ----
+  ({ ctx, page } = await openStage({ unlocked: 2, current: 2, open: 2, done: [1], entered: [1, 2] }));
+  check('a stage without a lesson keeps its workspace',
+    await page.locator('#bw-cards').isVisible());
+  check('and its own input, not the lesson',
+    !(await page.locator('#bw-lesson-body').isVisible()));
+  check('save draft sits next to that stage\'s continue', await page.evaluate(() => {
+    const save = document.querySelector('#bw-save-draft');
+    const next = document.querySelector('[data-next="2"]');
+    return save && next && save.parentElement === next.parentElement;
+  }));
+  await ctx.close();
+
+  // Stage 4 is a panel stage with an info strip, which is where that machinery
+  // is still reachable now that stage 1 is a lesson.
+  ({ ctx, page } = await openStage(
+    { unlocked: 4, current: 4, open: 4, done: [1, 2, 3], entered: [1, 2, 3, 4] }));
+  check('a panel stage can carry an info strip',
+    await page.locator('#bw-info-strip').isVisible());
+  check('which says what the coach already has',
+    (await page.locator('#bw-info-strip').textContent()).includes('your steps and your tools'));
   await ctx.close();
 
   // ---------------- the four states, in the compressed strip ----------------
@@ -186,7 +211,9 @@ try {
   await page.click('.bw-mini-item[data-stage="1"] .bw-mini-node');
   await page.waitForTimeout(500);
   check('clicking a completed mini node goes back to that stage',
-    await page.locator('.bw-step:visible').getAttribute('data-step') === '1');
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '1' &&
+    await page.locator('#bw-lesson-body').isVisible(),
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
   check('and the context panel is stage 1 again',
     (await page.locator('#bw-ls-name').textContent()) === 'Identify');
   const chrome1 = await page.evaluate(() => ({
@@ -249,7 +276,8 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
   check('and activate from the keyboard',
-    await page.locator('.bw-step:visible').getAttribute('data-step') === '1');
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '1',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
   await ctx.close();
 
   // ============================ responsive ============================

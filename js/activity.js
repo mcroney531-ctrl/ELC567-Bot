@@ -93,6 +93,9 @@
     // own part of the steps array instead of a slice of botAnswers.
     workflow:   { answers: [], minTurns: 1, owns: "actions" },
     tools:      { answers: [], minTurns: 1, owns: "tools" },
+    identify:   { answers: [],                                                minTurns: 2, owns: "problem" },
+    envision:   { answers: [],                                                minTurns: 1 },
+    deploy:     { answers: [],                                                minTurns: 1 },
     handoff:    { answers: ["handoff"],                                       minTurns: 1 },
     standards:  { answers: ["output", "keep"],                                minTurns: 2 },
     guardrails: { answers: ["context", "notes"],                              minTurns: 1 }
@@ -117,11 +120,24 @@
   var ownsAnswer = function (k) {
     return STAGE ? STAGES[STAGE].answers.indexOf(k) !== -1 : false;
   };
-  /* This block's own transcript. */
+  /* Which conversation is live.
+
+     A slice has exactly one, fixed by its role. The full activity shows one
+     stage at a time, so one chat serves all of them - the transcript it is
+     bound to follows whichever stage is open. */
+  var STAGE_CONVO = { 1: "identify", 2: "workflow", 3: "envision", 4: "all", 5: "deploy" };
+
+  function sKey() {
+    if (!TIMELINE) return STAGE;
+    return STAGE_CONVO[workflowData.progress.current] || "all";
+  }
+  function sMeta() { return STAGES[sKey()] || STAGES.all; }
+
   var convo = function () {
-    if (!STAGE) return [];
-    if (!workflowData.conversations[STAGE]) workflowData.conversations[STAGE] = [];
-    return workflowData.conversations[STAGE];
+    var k = sKey();
+    if (!k) return [];
+    if (!workflowData.conversations[k]) workflowData.conversations[k] = [];
+    return workflowData.conversations[k];
   };
 
   /* System prompt sent to a live endpoint. The fenced block instruction is what
@@ -187,8 +203,10 @@
       v2Source: "",          // "bot" | "template" | "user"
       // One transcript per stage, so several chat blocks are separate
       // conversations that still build one shared master prompt.
-      conversations: { all: [], workflow: [], tools: [], handoff: [], standards: [], guardrails: [] },
-      mockProgress:  { all: 0,  workflow: 0,  tools: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
+      conversations: { all: [], identify: [], workflow: [], tools: [], envision: [],
+                       deploy: [], handoff: [], standards: [], guardrails: [] },
+      mockProgress:  { all: 0,  identify: 0,  workflow: 0,  tools: 0,  envision: 0,
+                       deploy: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
       pushedBack: {},
@@ -743,8 +761,8 @@
     }
 
     // Counts don't line up, so any pairing would be a guess. Ask once.
-    if (!workflowData.pushedBack[STAGE]) {
-      workflowData.pushedBack[STAGE] = true;
+    if (!workflowData.pushedBack[sKey()]) {
+      workflowData.pushedBack[sKey()] = true;
       return { kind: "mismatch", steps: idx.length, tools: tokens.length };
     }
 
@@ -834,6 +852,80 @@
              "I'll pick this back up.";
     }
   };
+
+
+  /* ---- stage 1: the problem, captured in conversation ----
+     Nothing is typed into the lesson any more, so the problem statement comes
+     out of the chat. It accumulates rather than being overwritten: the coach
+     asks for more detail and the learner's next answer adds to what they said,
+     which is what makes the finished prompt specific. */
+
+  function ownsProblem() { return TIMELINE && sMeta().owns === "problem"; }
+
+  var IDENTIFY_PROMPTS = [
+    "Who needs the result?",
+    "What information goes into it?",
+    "Where does the data come from?",
+    "What is the biggest pain point right now?"
+  ];
+
+  function captureProblem(raw) {
+    var text = String(raw || "").trim();
+    if (!text) return { kind: "none" };
+    var have = String(workflowData.problem).trim();
+
+    if (have && CONFIRMS_OK(text)) return { kind: "confirm" };
+
+    var thin = answerQuality(text).thin;
+    if (!have && thin && !workflowData.pushedBack.identify) {
+      workflowData.pushedBack.identify = true;
+      workflowData.problem = text;
+      return { kind: "thin" };
+    }
+    // Adding to it, not replacing it - the second answer is the detail. The
+    // exception is a first answer we already pushed back on: that one was kept
+    // only in case they stopped there, and it must not stay glued to the front
+    // of the real statement.
+    var keep = have && !answerQuality(have).thin;
+    workflowData.problem = keep ? have + " " + text : text;
+    return { kind: keep ? "more" : "first" };
+  }
+
+  function CONFIRMS_OK(t) { return isConfirm(t); }
+
+  function identifyCoachReply() {
+    var out = lastCapture || { kind: "none" };
+    var problem = String(workflowData.problem).trim();
+    if (out.kind === "none") {
+      return "I did not catch a task in that.\n\n**Describe the thing you do over and over** " +
+             "— what it is, how often, and roughly what it costs you. Rough words are fine.";
+    }
+    if (out.kind === "thin") {
+      return "That is the feeling rather than the task, and I cannot build a prompt from a " +
+             "feeling.\n\n**What is the actual thing you do?** Name it, say how often, and say " +
+             "roughly how long it takes.";
+    }
+    if (out.kind === "confirm") {
+      return "Good — that is your problem statement, and everything after this is built on " +
+             "it.\n\nUse **Save and continue** when you are ready.";
+    }
+    if (out.kind === "first") {
+      return [
+        "Good starting point — that is a real, repeatable task.",
+        "",
+        "**To make it more useful, add a bit more detail.** Any of these:",
+        IDENTIFY_PROMPTS.map(function (q) { return "- " + q; }).join("\n")
+      ].join("\n");
+    }
+    return [
+      "That is enough to work from. Here is what I have:",
+      "",
+      "“" + shortQuote(problem, 34) + "”",
+      "",
+      "If that reads right, use **Save and continue**. If something is off, just tell me and " +
+      "I will fold it in."
+    ].join("\n");
+  }
 
   function captureCoachReply() {
     var out = lastCapture || { kind: "none" };
@@ -1310,6 +1402,23 @@
   }
 
   var SCRIPTS = {
+    /* Stage 1. Replies come from identifyCoachReply(); this only has to open. */
+    identify: {
+      opening: function () {
+        return [
+          "Let's start with the big picture.",
+          "",
+          "**What is the task you want to hand off?** Describe it in your own words — what it " +
+          "is, how often you do it, and roughly what it costs you. It does not have to be polished.",
+          "",
+          "*Example: “Every Monday I spend two hours building status updates for eleven " +
+          "clients — same numbers, same sentences, different names.”*"
+        ].join("\n");
+      },
+      turns: [],
+      extra: function () { return identifyCoachReply(); }
+    },
+
     /* The two capture chats. Their replies come from captureCoachReply(), which
        reads back what the parser actually took down - so all these need is an
        opening that asks the right question. */
@@ -1496,15 +1605,16 @@
   // The single-block script opens the same way, so its first turn praises twice too.
   if (MOCK_STAGES[0]) MOCK_STAGES[0].ackParas = 2;
 
-  function activeScript() { return SCRIPTS[STAGE] || SCRIPTS.all; }
+  function activeScript() { return SCRIPTS[sKey()] || SCRIPTS.all; }
 
   function mockCoachReply(userText) {
     // The capture stages have already written the answer down; the script's
     // only job is to read it back.
     if (isCaptureChat) return captureCoachReply();
+    if (ownsProblem()) return identifyCoachReply();
 
     var script = activeScript();
-    var i = workflowData.mockProgress[STAGE] || 0;
+    var i = workflowData.mockProgress[sKey()] || 0;
 
     if (i < script.turns.length) {
       var def = script.turns[i];
@@ -1520,7 +1630,7 @@
 
       var stillThin = answerQuality(text).thin;
       workflowData.botAnswers[def.capture] = text;
-      workflowData.mockProgress[STAGE] = i + 1;
+      workflowData.mockProgress[sKey()] = i + 1;
 
       var reply = def.reply(userText);
       if (stillThin) {
@@ -1766,8 +1876,10 @@
   }
 
   function turnsNeeded() {
+    // In the timeline the open stage decides, because one chat serves them all.
+    if (TIMELINE) return sMeta().minTurns || CONFIG.minChatTurns;
     if (!STAGE || STAGE === "all") return CONFIG.minChatTurns;
-    return STAGES[STAGE].minTurns;
+    return sMeta().minTurns;
   }
 
   function stepValid(n) {
@@ -1821,7 +1933,10 @@
      returning to a stage actually wants. */
   function startPhaseFor(n) {
     if (!TIMELINE) return;
-    var convoLen = (workflowData.conversations[STAGE] || []).length;
+    // One chat serves every stage, so the transcript has to be repainted from
+    // whichever conversation the open stage owns before it goes on screen.
+    renderChatLog();
+    var convoLen = (workflowData.conversations[STAGE_CONVO[n]] || []).length;
     setPhase(stageHasCoach(n) && convoLen > 1 ? "chat" : "lesson");
   }
 
@@ -1848,7 +1963,7 @@
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
     }
-    if (n === 4 || (n === 2 && isCaptureChat)) maybeStartConversation();
+    if (TIMELINE ? stageHasCoach(n) : (n === 4 || (n === 2 && isCaptureChat))) maybeStartConversation();
     if (n === 5) refreshV2(false);
   }
 
@@ -2236,6 +2351,13 @@
      mode only when the learner has actually reached step 4. */
   function maybeStartConversation() {
     if (!STAGE) return;
+    // The timeline opens a conversation for whichever coaching stage is open;
+    // a single-block slice only ever has the one its role names.
+    if (TIMELINE) {
+      if (!stageHasCoach(workflowData.progress.current)) return;
+      startConversation();
+      return;
+    }
     if (!isCaptureChat && !ownsStep(4)) return;
     if (CONFIG.blockRole === "all" && workflowData.progress.current !== 4) return;
     if (!prereqMet()) return;
@@ -2247,9 +2369,14 @@
     if (chatPending) return;
     if (!bot.live) {
       // Scripted coach opens without a round trip, but keep the same beat.
+      var opened = sKey();
       setChatBusy(true);
       setTimeout(function () {
         setChatBusy(false);
+        // They may have left for another stage while this was pending; the
+        // opening belongs to the conversation that asked for it, not to
+        // whichever one is on screen now.
+        if (sKey() !== opened) return;
         appendMessage("bot", activeScript().opening());
         save();
       }, 550);
@@ -2270,6 +2397,13 @@
       captureFromUser(text);
       renderPromptV1();
       if (stepValid(2)) showWarning(2, "");
+    }
+    if (ownsProblem()) {
+      lastCapture = captureProblem(text);
+      if (el.problem) el.problem.value = workflowData.problem;
+      updateProblemCount();
+      renderPromptV1();
+      render();
     }
     appendMessage("user", text);
     if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
@@ -2317,13 +2451,26 @@
   /* One restart, however it is reached - the coach header has its own button. */
   function restartConversation() {
     {
-      workflowData.conversations[STAGE] = [];
-      workflowData.mockProgress[STAGE] = 0;
-      // Only the answers this block is responsible for; a sibling's stay put.
+      var key = sKey();
+      workflowData.conversations[key] = [];
+      workflowData.mockProgress[key] = 0;
+      delete workflowData.pushedBack[key];
+      // Only the answers this conversation is responsible for; others stay put.
       var blankAnswers = defaultData().botAnswers;
-      STAGES[STAGE].answers.forEach(function (k) {
+      sMeta().answers.forEach(function (k) {
         workflowData.botAnswers[k] = blankAnswers[k];
       });
+      if (ownsProblem()) {
+        // This conversation is how the problem statement got written, so
+        // clearing it has to clear what it took down - otherwise the coach
+        // asks for the task again while the old answer quietly survives.
+        workflowData.problem = "";
+        lastCapture = null;
+        if (el.problem) el.problem.value = "";
+        updateProblemCount();
+        renderPromptV1();
+        render();
+      }
       if (isCaptureChat) {
         // Clear only the half this block took down; the other stage keeps its own.
         workflowData.steps = workflowData.steps.map(function (st) {
@@ -3009,6 +3156,7 @@
     setText("bw-lesson-sub", head ? head.querySelector(".bw-step-sub").textContent : "");
 
     if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
+    renderLesson(n);
     renderExamples(n);
     var strip = document.getElementById("bw-info-strip");
     if (strip) {
@@ -3016,6 +3164,38 @@
       strip.hidden = !STAGE_INFO[n];
     }
     placeWorkspaceExtras(panel);
+  }
+
+  /* A stage with a written lesson shows artwork and prose; one without still
+     shows its original panel, so nothing is lost while the rest are written. */
+  function renderLesson(n) {
+    var lesson = stageLesson(n);
+    var body = document.getElementById("bw-lesson-body");
+    var steps = document.querySelector(".bw-steps");
+    var progress = document.querySelector(".bw-ls-work .bw-progress");
+    if (!body) return;
+
+    body.hidden = !lesson;
+    if (steps) steps.hidden = !!lesson;
+    if (progress) progress.hidden = !!lesson;
+    if (!lesson) return;
+
+    var art = document.getElementById("bw-lesson-art");
+    if (art) {
+      art.innerHTML =                                  // static, from STAGE_ART
+        '<svg viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
+        STAGE_ART[lesson.art] + '</svg>';
+    }
+    var copy = document.getElementById("bw-lesson-copy");
+    if (copy) {
+      copy.textContent = "";
+      lesson.paras.forEach(function (t) { copy.appendChild(el2("p", "bw-lesson-para", t)); });
+    }
+    var next = document.getElementById("bw-lesson-next");
+    if (next) {
+      next.textContent = stageHasCoach(n)
+        ? "Continue" : "Next: " + ((STATIONS[n] || {}).name || "finish");
+    }
   }
 
   function setText(id, text) {
@@ -3052,6 +3232,20 @@
     var save = document.getElementById("bw-save-draft");
     var examples = document.getElementById("bw-examples");
     var info = document.getElementById("bw-info-strip");
+    // On a lesson screen there is nothing to give examples of and nothing to
+    // warn about - artwork and prose, and the one row under them. Save draft
+    // still rides along with Continue, because leaving mid-read is a thing
+    // people do and the button is how they know the work is kept.
+    if (stageLesson(workflowData.progress.current)) {
+      if (examples) examples.hidden = true;
+      if (info) info.hidden = true;
+      var lessonRow = document.querySelector(".bw-lesson-actions");
+      if (save && lessonRow) {
+        save.hidden = false;
+        if (save.parentNode !== lessonRow) lessonRow.insertBefore(save, lessonRow.firstChild);
+      }
+      return;
+    }
     if (!panel) return;
     var rows = panel.querySelectorAll(".bw-actions");
     var row = rows[rows.length - 1];
@@ -3066,6 +3260,15 @@
   function wireLearningStage() {
     if (!TIMELINE) return;
     buildMiniBar();
+    var lessonNext = document.getElementById("bw-lesson-next");
+    if (lessonNext) {
+      lessonNext.addEventListener("click", function () {
+        var n = workflowData.progress.current;
+        if (stageHasCoach(n)) continueFromLesson(n);
+        else goNext(n);
+      });
+    }
+
     var save = document.createElement("button");
     save.type = "button";
     save.id = "bw-save-draft";
@@ -3096,11 +3299,30 @@
      coach still attached to it; only the surface around it is new.
      ========================================================================== */
 
-  /* Which stages hand off to a coach, and which conversation they open. Stages
-     absent from here run lesson-only, and Continue goes straight onward. */
-  var STAGE_COACH = { 4: true };
+  /* Which stages hand off to a coach. Stages absent from here run lesson-only,
+     and Continue goes straight onward. */
+  var STAGE_COACH = { 1: true, 4: true };
+
+  /* The instructional screen for a stage: artwork and prose, and nothing to
+     fill in - everything the learner types happens with the coach afterwards.
+     Placeholder copy; a stage without an entry still shows its old panel. */
+  var LOREM = [
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor " +
+    "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud " +
+    "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+    "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat " +
+    "nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui " +
+    "officia deserunt mollit anim id est laborum."
+  ];
+
+  var STAGE_LESSON = {
+    1: { art: "identify", paras: LOREM }
+  };
+
+  function stageLesson(n) { return STAGE_LESSON[n]; }
 
   var COACH_FOCUS = {
+    1: "Name the task you want to hand off, in your own words.",
     4: "Decide what the AI takes on, and what stays with you."
   };
 
@@ -3110,7 +3332,8 @@
     { label: "Talk it through", done: function () { return userTurns() >= 1; } },
     { label: "Answer the coach's questions",
       done: function () { return userTurns() >= turnsNeeded(); } },
-    { label: "Save and continue", done: function () { return !!workflowData.progress.done[4]; } }
+    { label: "Save and continue",
+      done: function () { return !!workflowData.progress.done[workflowData.progress.current]; } }
   ];
 
   var phase = "lesson";
@@ -3202,7 +3425,10 @@
         })
       });
     }
-    if (userTurns() >= turnsNeeded()) {
+    // Enough turns AND enough to show for them: on a stage whose warning box
+    // lives behind the lesson screen, this card is the only gate the learner
+    // ever sees, so it must not offer a move that goNext() would refuse.
+    if (userTurns() >= turnsNeeded() && stepValid(workflowData.progress.current)) {
       cards.push({
         type: "next-step", where: "bottom",
         title: "Next step",

@@ -114,3 +114,36 @@ export function makeReporter(label) {
 
 export const waitBots = (page, n) => page.waitForFunction(
   k => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= k, n, { timeout: 12000 });
+
+/* Seeded state, for suites that are not testing how stage 1 gets filled in.
+   Stages 1-3 are already behind the learner, so the page opens straight into
+   the map with stage 4 unlocked and its conversation untouched. */
+export const SEED_PROBLEM =
+  'Every Monday I rebuild the same eleven client status updates by hand, and it eats two hours.';
+
+export function seedThroughStage3(page, problem = SEED_PROBLEM) {
+  return page.addInitScript(([key, text]) => {
+    localStorage.setItem('bw_started', '1');
+    localStorage.setItem(key, JSON.stringify({
+      version: 2,
+      problem: text,
+      steps: [
+        { action: 'Pull delivery numbers', tools: 'Asana, Harvest' },
+        { action: 'Draft the update', tools: 'Google Docs' }
+      ],
+      toolsAll: ['Asana', 'Harvest', 'Google Docs'],
+      masterPromptV1: '', masterPromptV2: '', v2Source: '',
+      conversations: { all: [], identify: [], workflow: [], tools: [], envision: [],
+                       deploy: [], handoff: [], standards: [], guardrails: [] },
+      mockProgress: { all: 0, identify: 0, workflow: 0, tools: 0, envision: 0,
+                      deploy: 0, handoff: 0, standards: 0, guardrails: 0 },
+      botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
+      pushedBack: {},
+      progress: {
+        current: 4, unlocked: 4,
+        done: { 1: true, 2: true, 3: true },
+        entered: { 1: true, 2: true, 3: true }
+      }
+    }));
+  }, ['brainstorm_workflow_data', problem]);
+}
