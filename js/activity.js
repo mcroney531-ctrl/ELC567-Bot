@@ -1816,6 +1816,15 @@
 
   /* ---- accordion ---- */
 
+  /* Opening a stage lands on its lesson, unless its coach is already part-way
+     through - picking a conversation back up where it was left is what someone
+     returning to a stage actually wants. */
+  function startPhaseFor(n) {
+    if (!TIMELINE) return;
+    var convoLen = (workflowData.conversations[STAGE] || []).length;
+    setPhase(stageHasCoach(n) && convoLen > 1 ? "chat" : "lesson");
+  }
+
   function openStep(n, scroll) {
     if (n > workflowData.progress.unlocked) return;
     var moving = TIMELINE && view === "stage" && workflowData.progress.current !== n;
@@ -1825,6 +1834,7 @@
     render();
     // Continuing from one stage to the next happens inside the workspace: the
     // map is home, not a turnstile between every stage.
+    if (moving) startPhaseFor(n);
     if (moving && !motionOff()) {
       window.gsap.fromTo(el.stage.querySelector('.bw-step[data-state="active"]'),
         { opacity: 0, y: 12 },
@@ -2206,6 +2216,7 @@
       setChatBusy(false);
       appendMessage("bot", reply);
       if (workflowData.v2Source !== "user") refreshV2(false);
+      if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
       if (isCaptureChat) render();
       if (stepValid(4)) showWarning(4, "");
       save();
@@ -2261,6 +2272,7 @@
       if (stepValid(2)) showWarning(2, "");
     }
     appendMessage("user", text);
+    if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
     save();
     askBot(text);
   }
@@ -2299,7 +2311,12 @@
     el.chatInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
-    wireConfirm(el.chatRestart, "Press again to clear it", function () {
+    wireConfirm(el.chatRestart, "Press again to clear it", restartConversation);
+  }
+
+  /* One restart, however it is reached - the coach header has its own button. */
+  function restartConversation() {
+    {
       workflowData.conversations[STAGE] = [];
       workflowData.mockProgress[STAGE] = 0;
       // Only the answers this block is responsible for; a sibling's stay put.
@@ -2320,9 +2337,10 @@
       if (workflowData.v2Source !== "user") { workflowData.masterPromptV2 = ""; workflowData.v2Source = ""; }
       showChatError("");
       renderChatLog();
+      if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
       save();
       startConversation();
-    });
+    }
   }
 
   /* ---- step 5: the deliverable ---- */
@@ -2715,6 +2733,7 @@
     var arrive = function () {
       setView("stage");
       openStep(n, false);
+      startPhaseFor(n);
       if (el.root.scrollIntoView) {
         el.root.scrollIntoView({ behavior: motionOff() ? "auto" : "smooth", block: "start" });
       }
@@ -2798,6 +2817,7 @@
     }
     buildMap();
     wireLearningStage();
+    wireCoachPhase();
     // Someone who has started already gets home, not the pitch they have read.
     setView(hasStarted() ? "map" : "landing");
     var start = document.getElementById("bw-start");
@@ -2892,7 +2912,10 @@
 
   var STAGE_INFO = {
     1: "In this stage you name the task. The steps, the tools and what good looks " +
-       "like come later - one thing at a time."
+       "like come later - one thing at a time.",
+    4: "The coach already has your problem, your steps and your tools. It will ask " +
+       "about the parts a prompt cannot guess: what to hand over, what good looks " +
+       "like, and what must stay with you."
   };
 
   var miniNodes = [];
@@ -2917,6 +2940,7 @@
       btn.addEventListener("click", function () {
         if (statusOf(s.step) === "locked") return;
         openStep(s.step);
+        startPhaseFor(s.step);
       });
 
       var label = el2("span", "bw-mini-label", pad2(s.step) + " " + s.name);
@@ -2984,6 +3008,7 @@
     setText("bw-lesson-title", head ? head.querySelector(".bw-h2").textContent : def.name);
     setText("bw-lesson-sub", head ? head.querySelector(".bw-step-sub").textContent : "");
 
+    if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
     renderExamples(n);
     var strip = document.getElementById("bw-info-strip");
     if (strip) {
@@ -3053,6 +3078,232 @@
     document.body.appendChild(save);
   }
 
+
+  /* ==========================================================================
+     10. COACH PHASE
+     --------------------------------------------------------------------------
+     A stage has two phases: the instructional content, then the coach. Continue
+     moves between them, and the coach's own "Save and continue" moves on to the
+     next stage.
+
+     This is a mode inside the learning stage, not a second app: the same dark
+     shell, the same mini-node strip, the same canonical step state. Nothing
+     here owns a copy of progression truth - it reads statusOf() like everything
+     else does.
+
+     The chat markup itself is not rebuilt. #bw-chat-wrap moves into the coach
+     panel with its listeners and the whole adapter, transcript and scripted
+     coach still attached to it; only the surface around it is new.
+     ========================================================================== */
+
+  /* Which stages hand off to a coach, and which conversation they open. Stages
+     absent from here run lesson-only, and Continue goes straight onward. */
+  var STAGE_COACH = { 4: true };
+
+  var COACH_FOCUS = {
+    4: "Decide what the AI takes on, and what stays with you."
+  };
+
+  /* The rail's within-stage checklist. Each item says how it knows it is done,
+     so the list reports real progress rather than decoration. */
+  var COACH_STEPS = [
+    { label: "Talk it through", done: function () { return userTurns() >= 1; } },
+    { label: "Answer the coach's questions",
+      done: function () { return userTurns() >= turnsNeeded(); } },
+    { label: "Save and continue", done: function () { return !!workflowData.progress.done[4]; } }
+  ];
+
+  var phase = "lesson";
+
+  function stageHasCoach(n) { return !!STAGE_COACH[n]; }
+
+  function setPhase(next) {
+    phase = next;
+    el.root.setAttribute("data-phase", next);
+    var panel = document.getElementById("bw-chat-panel");
+    var work = document.querySelector(".bw-ls-work");
+    var meta = document.querySelector(".bw-ls-meta");
+    var focus = document.getElementById("bw-chat-focus");
+    if (panel) panel.hidden = next !== "chat";
+    if (work) work.hidden = next === "chat";
+    if (meta) meta.hidden = next === "chat";
+    if (focus) focus.hidden = next !== "chat";
+    if (next === "chat") {
+      renderCoachRail();
+      maybeStartConversation();
+      renderCoachCards();
+      scrollChat();
+    }
+  }
+
+  /* The chat lives in the step panel in the markup so a single-stage slice still
+     works without any of this. On the full activity it moves into the coach
+     panel once, at wire time - so the lesson phase is instructional content and
+     nothing else, and the conversation is not half-visible underneath it. */
+  function moveChatIn() {
+    var panel = document.getElementById("bw-chat-panel");
+    if (!panel || !el.chatWrap) return;
+    if (el.chatWrap.parentNode !== panel) panel.appendChild(el.chatWrap);
+    if (el.chatError && el.chatError.parentNode !== panel) panel.appendChild(el.chatError);
+    if (el.chatNote && el.chatNote.parentNode !== panel) panel.appendChild(el.chatNote);
+  }
+
+  function renderCoachRail() {
+    var n = workflowData.progress.current;
+    setText("bw-focus-text", COACH_FOCUS[n] || (STATIONS[n - 1] || {}).blurb || "");
+    var chip = document.getElementById("bw-coach-chip");
+    if (chip) {
+      chip.textContent = pad2(n) + "  Working on: " + (STATIONS[n - 1] || {}).name;
+      chip.setAttribute("data-accent", (STATIONS[n - 1] || {}).accent);
+    }
+    var list = document.getElementById("bw-focus-steps");
+    if (!list) return;
+    list.textContent = "";
+    COACH_STEPS.forEach(function (item, i) {
+      var li = document.createElement("li");
+      li.className = "bw-focus-step";
+      li.setAttribute("role", "listitem");
+      var done = item.done();
+      // The first step that is not done is the one they are on.
+      li.setAttribute("data-state", done ? "done" : "todo");
+      li.appendChild(el2("span", "bw-focus-dot"));
+      li.appendChild(el2("span", "bw-focus-label", item.label));
+      list.appendChild(li);
+    });
+    var firstTodo = list.querySelector('[data-state="todo"]');
+    if (firstTodo) firstTodo.setAttribute("data-state", "now");
+  }
+
+  /* ---- coaching cards ----
+     Rendered from typed data, one renderer for every type, and pinned either
+     above or below the transcript rather than interleaved - the two the coach
+     can back with real state are a summary of what it has, and the handoff to
+     the next stage. The other types render from the same shape the moment the
+     coach has something to say with them. */
+
+  function coachingCards() {
+    var cards = [];
+    var problem = String(workflowData.problem).trim();
+    if (problem) {
+      cards.push({
+        type: "problem-summary", where: "top",
+        title: "Your problem so far",
+        body: shortQuote(problem, 26)
+      });
+    }
+    var steps = filledSteps();
+    if (steps.length) {
+      cards.push({
+        type: "specificity", where: "top",
+        title: "What the coach already has",
+        items: steps.map(function (s, i) {
+          var tools = String(s.tools || "").trim();
+          return (i + 1) + ". " + s.action + (tools ? " — " + tools : "");
+        })
+      });
+    }
+    if (userTurns() >= turnsNeeded()) {
+      cards.push({
+        type: "next-step", where: "bottom",
+        title: "Next step",
+        body: "Ready to move on?",
+        action: { id: "save-and-continue", label: "Save and continue" }
+      });
+    }
+    return cards;
+  }
+
+  function buildCoachingCard(card) {
+    var box = el2("div", "bw-cc bw-cc-" + card.type);
+    box.setAttribute("data-card", card.type);
+    var head = el2("div", "bw-cc-head");
+    head.appendChild(el2("span", "bw-cc-mark"));
+    head.appendChild(el2("strong", "bw-cc-title", card.title));
+    box.appendChild(head);
+    if (card.body) box.appendChild(el2("p", "bw-cc-body", card.body));
+    if (card.items && card.items.length) {
+      var ul = document.createElement("ul");
+      ul.className = "bw-cc-items";
+      card.items.forEach(function (t) {
+        ul.appendChild(el2("li", "bw-cc-item", t));
+      });
+      box.appendChild(ul);
+    }
+    if (card.action) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bw-btn bw-cc-action";
+      btn.textContent = card.action.label;
+      btn.setAttribute("data-action", card.action.id);
+      btn.addEventListener("click", function () {
+        if (card.action.id === "save-and-continue") goNext(workflowData.progress.current);
+      });
+      box.appendChild(btn);
+    }
+    return box;
+  }
+
+  function renderCoachCards() {
+    if (phase !== "chat") return;
+    ["bw-cards-top", "bw-cards-bottom"].forEach(function (id) {
+      var host = document.getElementById(id);
+      if (host) host.textContent = "";
+    });
+    var top = document.getElementById("bw-cards-top");
+    var bottom = document.getElementById("bw-cards-bottom");
+    coachingCards().forEach(function (card) {
+      var host = card.where === "bottom" ? bottom : top;
+      if (host) host.appendChild(buildCoachingCard(card));
+    });
+  }
+
+  /* Continue on a coaching stage hands off to the coach rather than onward. */
+  function continueFromLesson(n) {
+    if (!stageHasCoach(n)) { goNext(n); return; }
+    if (motionOff()) { setPhase("chat"); return; }
+    window.gsap.to(".bw-ls-work", {
+      opacity: 0, y: -8, duration: .2, ease: "power2.in",
+      onComplete: function () {
+        window.gsap.set(".bw-ls-work", { clearProps: "all" });
+        setPhase("chat");
+        window.gsap.fromTo("#bw-chat-panel", { opacity: 0, y: 10 },
+          { opacity: 1, y: 0, duration: .36, ease: "power2.out", clearProps: "all" });
+      }
+    });
+  }
+
+  function wireCoachPhase() {
+    if (!TIMELINE) return;
+    var host = document.getElementById("bw-chat-panel");
+    if (!host) return;
+    /* Context cards pin above the transcript, where they stay put while it
+       scrolls; the handoff card sits just over the composer, which is where
+       someone looks when they think they are done. */
+    var top = el2("div", "bw-cards-rail");
+    top.id = "bw-cards-top";
+    host.appendChild(top);
+
+    moveChatIn();
+
+    var bottom = el2("div", "bw-cards-rail");
+    bottom.id = "bw-cards-bottom";
+    var chat = el.chatWrap && el.chatWrap.querySelector(".bw-chat");
+    var compose = chat && chat.querySelector(".bw-chat-compose");
+    if (chat && compose) chat.insertBefore(bottom, compose);
+    else host.appendChild(bottom);
+
+    var face = document.getElementById("bw-coach-face");
+    if (face) face.appendChild(botAvatar());
+
+    var restart = document.getElementById("bw-coach-restart");
+    if (restart) wireConfirm(restart, "Press again to clear it", restartConversation);
+
+    // The badge says whether this is the live coach or the scripted one, which
+    // belongs beside the coach's name rather than buried in the old meta row.
+    var who = document.querySelector(".bw-coach-name");
+    if (who && el.botBadge) who.appendChild(el.botBadge);
+  }
+
   /* ==========================================================================
      7. INIT
      ========================================================================== */
@@ -3066,7 +3317,12 @@
     });
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function (btn) {
-      btn.addEventListener("click", function () { goNext(parseInt(btn.getAttribute("data-next"), 10)); });
+      btn.addEventListener("click", function () {
+        var n = parseInt(btn.getAttribute("data-next"), 10);
+        // On a coaching stage, Continue moves to the coach rather than onward.
+        if (TIMELINE && stageHasCoach(n) && phase === "lesson") continueFromLesson(n);
+        else goNext(n);
+      });
     });
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function (btn) {

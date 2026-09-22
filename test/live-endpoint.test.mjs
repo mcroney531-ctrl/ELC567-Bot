@@ -45,6 +45,10 @@ async function fillToStep4() {
   await c.nth(1).locator('input').nth(1).fill('Google Docs');
   await page.click('[data-next="2"]');
   await page.click('[data-next="3"]');
+  await page.waitForTimeout(400);
+  // Stage 4 opens on its lesson; Continue hands off to the coach.
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(600);
 }
 
 try {
@@ -94,7 +98,8 @@ try {
 
   // --- 4. anthropic-shaped fenced block flows into V2 ---
   check('fenced block rendered as pre', await bots().last().locator('pre').count() === 1);
-  await page.click('[data-next="4"]');
+  await page.click('[data-action="save-and-continue"]');
+  await page.waitForTimeout(500);
   const v2 = await page.locator('#bw-prompt-v2').inputValue();
   check('V2 lifted from live coach', v2.includes('Live-endpoint context line'), v2.slice(0, 90));
   check('V2 credits the coach', (await page.locator('#bw-v2-source').textContent()).includes('conversation with the coach'));
@@ -136,7 +141,8 @@ try {
   await page.fill('#bw-chat-input', 'Four short paragraphs, under 200 words.');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
-  await page.click('[data-next="4"]');
+  await page.click('[data-action="save-and-continue"]');
+  await page.waitForTimeout(500);
   check('learner reaches step 5 with the coach down',
     await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
   const fallbackV2 = await page.locator('#bw-prompt-v2').inputValue();

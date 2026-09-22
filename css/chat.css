@@ -1,0 +1,273 @@
+/* ==========================================================================
+   The coach phase
+   --------------------------------------------------------------------------
+   A mode inside the learning stage, not a second app: same dark shell, same
+   mini-node strip, same canonical state. What changes is the job - sustained
+   conversation instead of a worksheet - so the rail narrows, the canvas takes
+   the room, and the composer anchors the bottom.
+
+   The conversation canvas stays pale. Stage identity appears only as the accent
+   edge on the coach's messages and on the working-on chip.
+   ========================================================================== */
+
+.bw-chat-panel {
+  --chat-canvas: #f7f9fc;
+  --chat-rail: #edf3f9;
+  --chat-bubble: #ffffff;
+  --chat-bubble-alt: #f2f5f9;
+  --chat-user: #3f5e7d;
+  --chat-user-deep: #35536f;
+  --chat-line: #dce5f0;
+  --chat-ink: #17304c;
+  --chat-muted: #718199;
+
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: var(--chat-canvas);
+  height: min(76vh, 740px);
+}
+
+/* The rail is narrower while the coach has the floor. */
+.bw[data-phase="chat"] .bw-ls-body { grid-template-columns: minmax(180px, 232px) 1fr; }
+.bw[data-phase="chat"] .bw-ls-context { padding: 22px 18px 18px; }
+.bw[data-phase="chat"] .bw-ls-num { font-size: 2rem; }
+.bw[data-phase="chat"] .bw .bw-ls-name,
+.bw[data-phase="chat"] .bw-ls-name { font-size: 1.375rem; }
+.bw[data-phase="chat"] .bw-ls-art { min-height: 0; margin-top: 16px; }
+.bw[data-phase="chat"] .bw-ls-art svg { width: min(150px, 100%); }
+
+/* ---- current focus + the within-stage checklist ---- */
+.bw-chat-focus { margin-top: auto; padding-top: 20px; }
+.bw-focus-head { display: flex; gap: 10px; align-items: flex-start; }
+.bw-focus-mark {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #3e8bff) 16%, transparent);
+  border: 2px solid var(--accent, #3e8bff);
+}
+.bw-focus-head strong { display: block; font-size: .8125rem; color: var(--chat-ink, #17304c); }
+.bw-focus-head em {
+  display: block; margin-top: 2px; font-style: normal;
+  font-size: .75rem; line-height: 1.4; color: #718199;
+}
+.bw-focus-steps { list-style: none; margin: 16px 0 0; padding: 0; }
+.bw-focus-step {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; font-size: .8125rem; color: #718199;
+}
+/* One quiet spine down the checklist. */
+.bw-focus-step + .bw-focus-step::before {
+  content: ""; position: absolute; left: 8px; top: -7px; height: 14px;
+  width: 2px; background: #dce5f0;
+}
+.bw-focus-dot {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid #cfdcea; background: #fff;
+}
+.bw-focus-step[data-state="now"] {
+  color: var(--chat-ink, #17304c); font-weight: 650;
+  background: #fff; border-radius: 10px; padding-left: 8px; padding-right: 8px;
+  margin-left: -8px; box-shadow: 0 2px 8px rgba(23, 48, 76, .06);
+}
+.bw-focus-step[data-state="now"] .bw-focus-dot {
+  border-color: var(--accent, #3e8bff); background: var(--accent, #3e8bff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #3e8bff) 18%, transparent);
+}
+.bw-focus-step[data-state="done"] .bw-focus-dot {
+  border-color: #38e39c; background: #38e39c;
+}
+.bw-focus-step[data-state="done"] { color: #4d6a52; }
+
+/* ==========================  coach header  ========================== */
+
+.bw-coach-head {
+  display: flex; align-items: center; gap: 11px;
+  padding: 14px 18px; background: #fff;
+  border-bottom: 1px solid var(--chat-line);
+}
+.bw-coach-face { flex: 0 0 auto; width: 38px; height: 38px; display: block; }
+.bw-coach-face .bw-avatar { width: 38px; height: 38px; border-radius: 50%; display: block; }
+.bw-coach-who { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bw-coach-name {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .9375rem; font-weight: 700; color: var(--chat-ink);
+}
+.bw-coach-live {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #28f28e; box-shadow: 0 0 0 3px rgba(40, 242, 142, .22);
+}
+.bw-coach-sub { font-size: .75rem; color: var(--chat-muted); }
+.bw-coach-name .bw-badge { font-size: .625rem; padding: 2px 8px; }
+
+.bw-coach-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 13px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #3e8bff) 10%, #fff);
+  border: 1px solid color-mix(in srgb, var(--accent, #3e8bff) 28%, var(--chat-line));
+  font-size: .75rem; font-weight: 650; color: var(--chat-ink); white-space: nowrap;
+}
+.bw-coach-restart { font-size: .75rem; color: var(--chat-muted); }
+
+/* ==========================  the transcript  ========================== */
+
+/* The moved-in chat loses its old framing and becomes the canvas. */
+.bw[data-phase="chat"] #bw-chat-wrap {
+  flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+}
+.bw[data-phase="chat"] .bw-chat-meta { display: none; }
+.bw[data-phase="chat"] .bw-chat {
+  flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+  background: var(--chat-canvas); border: 0; border-radius: 0; box-shadow: none;
+}
+.bw[data-phase="chat"] .bw-chat-log {
+  /* min-height:0 so the flex column can shrink it - anything else pushes the
+     composer off the bottom of the panel. */
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  padding: 18px clamp(14px, 2.4vw, 26px);
+  background: var(--chat-canvas); gap: 14px;
+}
+
+.bw[data-phase="chat"] .bw-msg { max-width: 100%; gap: 10px; }
+
+/* the coach, left, on a soft card with the stage's own edge */
+.bw[data-phase="chat"] .bw-msg-bot .bw-msg-body {
+  max-width: 70ch; background: var(--chat-bubble); color: var(--chat-ink);
+  border: 1px solid var(--chat-line);
+  border-left: 3px solid var(--accent, #3e8bff);
+  border-radius: 18px; border-top-left-radius: 6px;
+  box-shadow: 0 2px 10px rgba(23, 48, 76, .05);
+  padding: 12px 15px;
+}
+.bw[data-phase="chat"] .bw-msg-bot .bw-avatar { width: 30px; height: 30px; }
+
+/* the learner, right, deeper and plainly theirs */
+.bw[data-phase="chat"] .bw-msg-user { justify-content: flex-end; }
+.bw[data-phase="chat"] .bw-msg-user .bw-msg-body {
+  max-width: 62ch;
+  background: var(--chat-user); color: #fff;
+  border: 0; border-radius: 18px; border-bottom-right-radius: 6px;
+  padding: 12px 15px;
+}
+.bw[data-phase="chat"] .bw-msg-user .bw-msg-col { align-items: flex-end; }
+.bw[data-phase="chat"] .bw-msg-time { font-size: .6875rem; color: var(--chat-muted); }
+.bw[data-phase="chat"] .bw-msg-bot pre {
+  background: var(--chat-bubble-alt); border-color: var(--chat-line); color: var(--chat-ink);
+}
+.bw[data-phase="chat"] .bw-typing { background: var(--chat-bubble); border: 1px solid var(--chat-line); }
+
+/* ==========================  coaching cards  ========================== */
+
+.bw-cards-rail { padding: 0 clamp(14px, 2.4vw, 26px); }
+/* Side by side: pinned context should orient the conversation, not crowd it
+   out of the panel. They stack again when there is not the width. */
+#bw-cards-top {
+  padding-top: 16px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;
+}
+#bw-cards-top .bw-cc { margin-bottom: 0; }
+#bw-cards-bottom { padding-top: 4px; padding-bottom: 0; flex: 0 0 auto; background: var(--chat-canvas); }
+.bw-cards-rail:empty { display: none; }
+
+.bw-cc {
+  margin-bottom: 10px; padding: 13px 15px;
+  background: #fff; border: 1px solid var(--chat-line); border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(23, 48, 76, .05);
+}
+.bw-cc-head { display: flex; align-items: center; gap: 10px; }
+.bw-cc-mark {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: 9px;
+  background: color-mix(in srgb, var(--card-tone, #3e8bff) 14%, #fff);
+  border: 1px solid color-mix(in srgb, var(--card-tone, #3e8bff) 32%, transparent);
+}
+.bw .bw-cc-title { font-size: .875rem; font-weight: 700; color: var(--chat-ink); }
+.bw-cc-body { margin-top: 7px; font-size: .8125rem; line-height: 1.45; color: var(--chat-muted); }
+.bw-cc-items { list-style: none; margin: 9px 0 0; padding: 0; }
+.bw-cc-item {
+  position: relative; padding-left: 20px; margin-top: 4px;
+  font-size: .8125rem; line-height: 1.4; color: var(--chat-ink);
+}
+.bw-cc-item::before {
+  content: ""; position: absolute; left: 4px; top: .48em;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--card-tone, #3e8bff); opacity: .55;
+}
+.bw-cc-action {
+  margin-top: 11px; align-self: flex-start;
+  background: var(--card-tone, #3e8bff); border-color: var(--card-tone, #3e8bff); color: #fff;
+}
+.bw-cc-action:hover:not(:disabled) { filter: brightness(1.06); }
+
+/* One tone per card type, so the kind of help is legible before it is read. */
+.bw-cc-problem-summary { --card-tone: #3e8bff; }
+.bw-cc-specificity     { --card-tone: #ffaa3e; }
+.bw-cc-example         { --card-tone: #41d6d4; }
+.bw-cc-refinement      { --card-tone: #c85bff; }
+.bw-cc-next-step       { --card-tone: #38b878; }
+.bw-cc-next-step {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px;
+}
+.bw-cc-next-step .bw-cc-head { flex: 0 0 auto; }
+.bw-cc-next-step .bw-cc-body { margin-top: 0; flex: 1 1 8rem; }
+.bw-cc-next-step .bw-cc-action { margin-top: 0; margin-left: auto; }
+
+/* ==========================  composer  ========================== */
+
+.bw[data-phase="chat"] .bw-chat-compose {
+  flex: 0 0 auto;
+  margin: 0; padding: 13px clamp(14px, 2.4vw, 26px) 15px;
+  background: var(--chat-canvas); border-top: 1px solid var(--chat-line);
+  gap: 10px; align-items: flex-end;
+}
+.bw[data-phase="chat"] #bw-chat-input {
+  border-radius: 24px; padding: 12px 18px;
+  background: #fff; border: 1px solid var(--chat-line); color: var(--chat-ink);
+  box-shadow: 0 2px 10px rgba(23, 48, 76, .05);
+}
+.bw[data-phase="chat"] #bw-chat-input:focus {
+  border-color: var(--accent, #3e8bff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #3e8bff) 16%, transparent);
+}
+.bw[data-phase="chat"] #bw-chat-send {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--accent, #3e8bff); border-color: var(--accent, #3e8bff); color: #fff;
+}
+.bw[data-phase="chat"] .bw-chat-note {
+  padding: 0 clamp(14px, 2.4vw, 26px) 12px; margin: 0;
+  font-size: .6875rem; color: var(--chat-muted);
+}
+.bw[data-phase="chat"] #bw-chat-error { margin: 0 clamp(14px, 2.4vw, 26px) 12px; }
+
+/* ==========================  narrow  ========================== */
+@media (max-width: 900px) {
+  .bw[data-phase="chat"] .bw-ls-body { grid-template-columns: minmax(160px, 200px) 1fr; }
+}
+
+@media (max-width: 720px) {
+  /* The rail becomes a compact stage summary above the conversation. */
+  .bw[data-phase="chat"] .bw-ls-body { grid-template-columns: 1fr; }
+  .bw[data-phase="chat"] .bw-ls-context {
+    display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; align-items: center;
+    padding: 14px 16px;
+  }
+  .bw[data-phase="chat"] .bw-ls-eyebrow { grid-column: 2; }
+  .bw[data-phase="chat"] .bw-ls-num { grid-row: 1 / span 2; grid-column: 1; font-size: 1.75rem; margin: 0; }
+  .bw[data-phase="chat"] .bw-ls-name { grid-column: 2; font-size: 1.125rem; }
+  .bw[data-phase="chat"] .bw-ls-framing,
+  .bw[data-phase="chat"] .bw-ls-art { display: none; }
+  /* On a phone the conversation is the screen, so the rail gives up everything
+     except who you are talking about and how far through the stage you are. */
+  .bw-chat-focus { grid-column: 1 / -1; margin-top: 9px; padding-top: 9px;
+                   border-top: 1px solid var(--chat-line); }
+  .bw-focus-head em { display: none; }
+  .bw-focus-head strong { font-size: .75rem; }
+  .bw-focus-mark { width: 16px; height: 16px; }
+  .bw-focus-steps { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 7px; }
+  .bw-focus-step { padding: 3px 0; font-size: .75rem; gap: 7px; }
+  .bw-focus-step[data-state="now"] { padding: 3px 8px; box-shadow: none; }
+  .bw-focus-dot { width: 14px; height: 14px; }
+  .bw-focus-step + .bw-focus-step::before { display: none; }
+
+  .bw-chat-panel { max-height: none; }
+  .bw-coach-head { padding: 11px 14px; gap: 9px; }
+  .bw-coach-sub, .bw-coach-restart { display: none; }
+  .bw[data-phase="chat"] .bw-msg-bot .bw-msg-body,
+  .bw[data-phase="chat"] .bw-msg-user .bw-msg-body { max-width: 88%; }
+}

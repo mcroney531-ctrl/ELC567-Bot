@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="css/timeline.css">
 <link rel="stylesheet" href="css/home.css">
 <link rel="stylesheet" href="css/stage.css">
+<link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
 
@@ -208,6 +209,18 @@ write [MISSING: metric name] and keep going.</pre>
         <p class="bw-ls-step" id="bw-ls-step">Step 1 of 5</p>
         <p class="bw-ls-quote" id="bw-ls-quote"></p>
       </div>
+
+      <!-- Shown in the coach phase instead of the meta block above. -->
+      <div class="bw-chat-focus" id="bw-chat-focus" hidden>
+        <div class="bw-focus-head">
+          <span class="bw-focus-mark" aria-hidden="true"></span>
+          <span>
+            <strong>Current focus</strong>
+            <em id="bw-focus-text"></em>
+          </span>
+        </div>
+        <ol class="bw-focus-steps" id="bw-focus-steps" role="list"></ol>
+      </div>
     </aside>
 
     <div class="bw-ls-work">
@@ -350,7 +363,7 @@ write [MISSING: metric name] and keep going.</pre>
         <div class="bw-notice bw-notice-warn" id="bw-warn-4" hidden></div>
         <div class="bw-actions">
           <span class="bw-spacer"></span>
-          <button type="button" class="bw-btn" data-next="4">Next: your final prompt</button>
+          <button type="button" class="bw-btn" data-next="4">Talk it through with the coach</button>
         </div>
       </div>
     </li>
@@ -406,6 +419,22 @@ write [MISSING: metric name] and keep going.</pre>
       </section>
 
       <p class="bw-info-strip" id="bw-info-strip" hidden></p>
+    </div>
+
+    <!-- ---- the coach phase ---- -->
+    <div class="bw-chat-panel" id="bw-chat-panel" hidden>
+      <header class="bw-coach-head">
+        <span class="bw-coach-face" id="bw-coach-face" aria-hidden="true"></span>
+        <span class="bw-coach-who">
+          <span class="bw-coach-name">AI Workflow Coach<span class="bw-coach-live" aria-hidden="true"></span></span>
+          <span class="bw-coach-sub" id="bw-coach-sub">Your guide for turning ideas into real workflows.</span>
+        </span>
+        <span class="bw-spacer"></span>
+        <span class="bw-coach-chip" id="bw-coach-chip"></span>
+        <button type="button" class="bw-btn bw-btn-quiet bw-coach-restart" id="bw-coach-restart">Restart</button>
+      </header>
+      <!-- #bw-chat-wrap is moved in here by js/activity.js: it keeps its markup,
+           its listeners and every bit of the coach logic already wired to it. -->
     </div>
   </div>
 </section>

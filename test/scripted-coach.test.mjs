@@ -82,6 +82,14 @@ try {
   check('V1 lists 4 steps', /1\..*\n2\..*\n3\..*\n4\./s.test(v1), v1.slice(0, 300));
   check('V1 dedupes tools across steps', /Asana, Harvest, Gmail, Google Docs, Slack/.test(v1), v1);
   await page.click('[data-next="3"]');
+  await page.waitForTimeout(500);
+
+  // Stage 4 opens on its lesson; Continue hands off to the coach.
+  check('a coaching stage opens on its lesson, not the chat',
+    !(await page.locator('#bw-chat-panel').isVisible()));
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(700);
+  check('continue hands off to the coach', await page.locator('#bw-chat-panel').isVisible());
 
   check('badge shows guided coach', (await page.locator('#bw-bot-badge').textContent()).includes('Guided'));
   await waitBots(1);
@@ -118,7 +126,11 @@ try {
   const lastText = await lastBot.textContent();
   check('block carries all sections', ['CONTEXT','WHAT I NEED YOU TO DO','WHAT STAYS WITH ME','OUTPUT I EXPECT','THINGS YOU NEED TO KNOW'].every(h => lastText.includes(h)));
 
-  await page.click('[data-next="4"]');
+  // The coach's own next-step card is what moves the learner onward now.
+  check('the coach offers the handoff once it has enough',
+    await page.locator('[data-action="save-and-continue"]').isVisible());
+  await page.click('[data-action="save-and-continue"]');
+  await page.waitForTimeout(600);
   check('step5 open', await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
 
   const v2 = await page.locator('#bw-prompt-v2').inputValue();
@@ -180,8 +192,12 @@ try {
   // restart conversation
   await toMap();
   await enter(4);
-  await page.click('#bw-chat-restart');
-  await page.click('#bw-chat-restart');   // inline confirm: second press commits
+  await page.waitForTimeout(400);
+  // Returning to a stage mid-conversation picks the conversation back up.
+  check('re-entering a coaching stage resumes the conversation',
+    await page.locator('#bw-chat-panel').isVisible());
+  await page.click('#bw-coach-restart');
+  await page.click('#bw-coach-restart');   // inline confirm: second press commits
   await waitBots(1);
   check('restart clears to one opening message', await page.locator('.bw-msg').count() === 1,
     'msgs=' + await page.locator('.bw-msg').count());

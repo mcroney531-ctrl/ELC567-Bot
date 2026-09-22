@@ -26,7 +26,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # seven suites, 297 assertions
+npm test      # eight suites, 348 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -47,6 +47,7 @@ css/activity.css    components
 css/timeline.css    views and chrome: which view shows, the start button, the back bars
 css/home.css        the journey map - the whole dark AI Workflow Builder system
 css/stage.css       the learning stage - dark shell, light workspace, mini-node strip
+css/chat.css        the coach phase - the conversational mode inside a stage
 js/activity.js      the whole app: state, prompt generation, coach, DOM wiring, the map
 js/vendor/gsap.min.js
 test/               six Playwright suites
@@ -149,6 +150,34 @@ stay one of each with one handler each.
 
 Below 720px the split stacks with the context above the workspace, and the mini-node strip moves to
 its own line and scrolls horizontally rather than being squeezed away.
+
+### The coach phase
+
+A stage has two phases. **Lesson** is the instructional content; **Continue** hands off to the
+**coach**; the coach's own *Save and continue* moves on to the next stage. `STAGE_COACH` says which
+stages have a coach &mdash; stages absent from it run lesson-only and Continue goes straight onward.
+Coming back to a stage mid-conversation resumes the conversation rather than replaying the lesson.
+
+It is a mode inside the learning stage, not a second app: same dark shell, same mini-node strip,
+same canonical state, no second navigation system. The conversation canvas stays pale; stage
+identity appears only as the accent edge on the coach's messages, the working-on chip and the send
+button.
+
+**The chat itself is not rebuilt.** `#bw-chat-wrap` moves into the coach panel once, at wire time,
+carrying its listeners and the whole adapter, transcript and scripted coach with it. Only the
+surface around it is new &mdash; which is also why the lesson phase shows instructional content and
+nothing else, rather than the conversation half-visible underneath.
+
+**Coaching cards** render from one typed shape (`type`, `title`, `body`, `items`, `action`) through
+one renderer, with five tones. Two are backed by real state today: *Your problem so far* and *What
+the coach already has* pin above the transcript from the learner's own problem statement and mapped
+steps, and a *Next step* card appears above the composer once the stage's turn requirement is met
+&mdash; that card's button is the handoff onward. The other three types render from the same shape
+the moment the coach has something to say with them.
+
+The rail narrows to ~220px and swaps the lesson meta block for a current-focus line and a
+within-stage checklist. Each checklist item declares how it knows it is done, so the list reports
+real progress rather than decoration.
 
 ### Slices
 
@@ -409,6 +438,13 @@ anywhere in the flow shows up as a test failure.
   stages while the stage number's colour does change, that a mini node navigates by mouse and by
   keyboard with a visible focus ring, that the pulse stops under reduced motion while staying
   distinguishable, and that the split stacks at 380px with the strip intact.
+- `test/chat-stage.test.mjs` — the coach phase: that a coaching stage opens on its lesson with the
+  conversation not half-visible underneath, that Continue opens the coach without advancing the
+  stage, that the shell and the mini-node strip survive with no second navigation system, that the
+  canvas stays light, that the learner sits right and the coach left on plainly different surfaces
+  with neither running the full width, that the context cards are drawn from real state, that the
+  handoff card appears only once the coach has enough and then moves the learner on, that coming
+  back mid-conversation resumes it, and that the rail collapses to a compact summary at 390px.
 - `test/hardening.test.mjs` — the failure modes that survived the move off Rise: that the page
   declares its own encoding, that dark mode stays off by default and still works when opted in,
   that copying survives a missing clipboard API and leaves the text selected when it can't copy at
