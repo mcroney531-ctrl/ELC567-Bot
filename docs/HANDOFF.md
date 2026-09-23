@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # eight Playwright suites, 396 assertions, ~3 min
+npm test      # eight Playwright suites, 397 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -122,6 +122,10 @@ the footer, then centres it. It runs on `setView("map")` and on resize. Conseque
 - There is **no narrow layout for home**. A phone gets the same picture, smaller; on a
   portrait phone it is letterboxed and small, and landscape is much better. This was
   the user's call, on 2026-09-23.
+- On home, `setView()` sets `data-bw-view="map"` on `<html>`, and `home.css` uses it
+  to make the browser's page dark and margin-free. The map fills the window, the
+  frame is centred in it both ways (letterboxed), and the footer sits at the bottom.
+  No white page shows and nothing scrolls. The other views leave the page alone.
 - Nothing inside the frame may size itself off the viewport (`vw`, `vh`, or media
   queries), because the viewport is not what it is drawn in.
 - **Never `clearProps: "all"` on `#bw-map`.** It wipes the inline height and
@@ -367,14 +371,14 @@ out without asking. If you touch shared code, keep the `TIMELINE` guards.
 
 ## 7. Tests
 
-Eight Playwright suites, **396 assertions**, all passing.
+Eight Playwright suites, **397 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
 | Suite | Asserts | Covers |
 |---|---|---|
 | `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
-| `timeline.test.mjs` | 86 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `timeline.test.mjs` | 87 | Journey map: five stations, four states, navigation rules, the connector, responsive |
 | `learning-stage.test.mjs` | 69 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
 | `chat-stage.test.mjs` | 61 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |

@@ -56,7 +56,7 @@
    --map-scale and --map-x; nothing inside may size itself off the viewport,
    because the viewport is not what it is drawn in. */
 .bw-map-frame {
-  position: absolute; top: 0; left: var(--map-x, 0px);
+  position: absolute; top: var(--map-y, 0px); left: var(--map-x, 0px);
   width: 1280px; height: 720px;
   transform: scale(var(--map-scale, 1)); transform-origin: 0 0;
   padding: 22px 40px 20px;
@@ -68,6 +68,12 @@
     linear-gradient(160deg, var(--home-bg-0) 0%, var(--home-bg-2) 100%);
 }
 
+
+/* The browser's own page, on home only: dark and edge to edge, so the space the
+   frame does not fill is letterbox rather than a white page. activity.js sets
+   the attribute; the other views keep the page as it was. */
+html[data-bw-view="map"],
+html[data-bw-view="map"] body { margin: 0; background: #050c18; }
 
 /* ---- the page around it ----
    Home is a screen, not a card sitting on a lighter page, so the light ground

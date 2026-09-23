@@ -2866,12 +2866,17 @@
     el.landing.hidden = next !== "landing";
     el.map.hidden = next !== "map";
     el.stage.hidden = next !== "stage";
+    // The page itself has to go dark on home, or whatever the frame does not
+    // fill shows the browser's white page underneath.
+    document.documentElement.setAttribute("data-bw-view", next);
     if (next === "map") { renderMap(); fitMap(); }
   }
 
   /* Home is one fixed 16:9 composition, scaled whole to the space it is given -
      the width of the page, and the height of the window less the footer - and
-     centred in it. The same picture at every size, never a reflowed one.
+     centred in it both ways, so the map fills the window and the footer sits
+     at the bottom of the screen. The same picture at every size, never a
+     reflowed one.
      Measured here rather than in CSS because the frame has to know both
      dimensions at once, and a hidden map measures zero wide. */
   var MAP_W = 1280, MAP_H = 720;
@@ -2880,12 +2885,16 @@
     if (!TIMELINE || view !== "map" || !el.map) return;
     var foot = document.querySelector(".bw-foot");
     var w = el.map.clientWidth;
-    var h = Math.max(200, window.innerHeight - (foot ? foot.offsetHeight : 0));
+    // Rounded up: offsetHeight rounds a 63.1px footer down, and that fraction
+    // of a pixel is enough to give the page a scrollbar.
+    var h = Math.max(200, Math.floor(window.innerHeight -
+      (foot ? Math.ceil(foot.getBoundingClientRect().height) : 0)));
     if (!w) return;
     var scale = Math.min(w / MAP_W, h / MAP_H);
-    el.map.style.height = Math.round(MAP_H * scale) + "px";
+    el.map.style.height = h + "px";
     el.map.style.setProperty("--map-scale", String(scale));
     el.map.style.setProperty("--map-x", Math.round((w - MAP_W * scale) / 2) + "px");
+    el.map.style.setProperty("--map-y", Math.round((h - MAP_H * scale) / 2) + "px");
   }
 
   var fitQueued = false;

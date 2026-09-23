@@ -314,6 +314,14 @@ try {
            Math.abs(frame.width / frame.height - 16 / 9) < 0.02 &&
            frame.left >= 0 && frame.right <= document.documentElement.clientWidth + 1;
   }));
+  check('home fills the phone: no page to scroll, and no white page showing',
+    await page.evaluate(() => {
+      const bg = getComputedStyle(document.body).backgroundColor;
+      return document.documentElement.scrollHeight <= window.innerHeight + 1 &&
+             bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(255, 255, 255)';
+    }),
+    await page.evaluate(() => document.documentElement.scrollHeight + ' ' +
+      getComputedStyle(document.body).backgroundColor));
   check('no horizontal overflow on the map at 360px', await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
   check('all five stations are still there',
