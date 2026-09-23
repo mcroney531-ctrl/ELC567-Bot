@@ -2741,8 +2741,10 @@
       var body = el2("span", "bw-card-body");
       var name = el2("span", "bw-card-name", s.name);
       var status = el2("span", "bw-card-status");
+      var blurb = el2("span", "bw-card-blurb", s.blurb);
       body.appendChild(name);
       body.appendChild(status);
+      body.appendChild(blurb);
 
       var go = el2("span", "bw-card-go");
       go.setAttribute("aria-hidden", "true");
@@ -2789,7 +2791,7 @@
      waypoints, which sit at alternating heights - the wave is the composition,
      not decoration on top of it. The line stays one neutral colour: state
      belongs to the nodes and the cards, never to the connector. */
-  var RAIL_Y = { odd: 7.2, even: 4.8 };
+  var RAIL_Y = { odd: 8.4, even: 3.6 };
 
   function drawRail() {
     var svg = document.getElementById("bw-rail");
@@ -2823,14 +2825,17 @@
       if (state === "current") node.card.setAttribute("aria-current", "step");
       else node.card.removeAttribute("aria-current");
 
+      // The card says what the stage is for underneath, so the status line is
+      // only ever the state. Why a stage is shut is in the label and the hint.
       node.status.textContent = state === "completed" ? node.def.done()
-        : state === "current" ? "In progress"
-        : state === "locked" ? lockedBecause(n)
-        : node.def.blurb;
+        : state === "locked" ? "Upcoming"
+        : STATE_WORD[state];
 
       node.card.setAttribute("aria-label",
-        "Stage " + n + ", " + node.def.name + ". " + STATE_WORD[state] + ". " +
-        node.status.textContent + (state === "locked" ? "" : " Open this stage."));
+        "Stage " + n + ", " + node.def.name + ". " + node.def.blurb + " " +
+        (state === "locked" ? "Locked. " + lockedBecause(n) + "."
+          : state === "completed" ? node.status.textContent + ". Open this stage."
+          : STATE_WORD[state] + ". Open this stage."));
     });
 
     var hint = document.getElementById("bw-map-hint");

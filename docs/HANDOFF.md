@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # eight Playwright suites, 393 assertions, ~3 min
+npm test      # eight Playwright suites, 396 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -103,6 +103,17 @@ placement above/below the spine, blurb, and its deterministic completion line.
 
 Completion copy is **always computed from structured state, never from typed text**. This
 is deliberate and tested.
+
+Each home card shows three lines: the name, a status line and the stage's blurb. The status
+line only ever shows state: `Upcoming` (locked), `Ready to start`, `In progress`, or the
+completion line. Why a locked stage is shut ("Finish Map first") lives in the card's
+`aria-label` and the hint line under the map, not on the card.
+
+**Home's look** follows an inspo image the user supplied on 2026-09-23: frosted-glass
+cards, a glowing wavy spine, and circuit-board scenery. The scenery is three inline
+`svg.bw-circ` blocks at the top of `#bw-map`, all decorative and `aria-hidden`. The wave
+depth is set in two places that must agree: `RAIL_Y` in `drawRail()` and `--wy` in
+`css/home.css`. The comment beside `--wy` has the arithmetic.
 
 ### Two phases inside a stage
 `phase` is `"lesson"` or `"chat"`, mirrored onto `el.root` as `[data-phase]`.
@@ -343,14 +354,14 @@ out without asking. If you touch shared code, keep the `TIMELINE` guards.
 
 ## 7. Tests
 
-Eight Playwright suites, **393 assertions**, all passing.
+Eight Playwright suites, **396 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
 | Suite | Asserts | Covers |
 |---|---|---|
 | `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
-| `timeline.test.mjs` | 83 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `timeline.test.mjs` | 86 | Journey map: five stations, four states, navigation rules, the connector, responsive |
 | `learning-stage.test.mjs` | 69 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
 | `chat-stage.test.mjs` | 61 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |

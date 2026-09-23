@@ -90,10 +90,16 @@ try {
     await page.locator('.bw-station[data-state="current"]').count() === 0);
   check('stages 2 to 5 are locked',
     (await Promise.all([2, 3, 4, 5].map(stateOf))).join(',') === 'locked,locked,locked,locked');
-  check('a locked station says which stage opens it',
-    (await statusOf(3)) === 'Finish Map first', await statusOf(3));
-  check('an available station describes itself',
-    (await statusOf(1)) === 'Define the problem worth solving.', await statusOf(1));
+  check('a locked station reads as upcoming',
+    (await statusOf(3)) === 'Upcoming', await statusOf(3));
+  check('and still tells assistive tech which stage opens it',
+    (await station(3).locator('.bw-station-card').getAttribute('aria-label')).includes('Finish Map first'),
+    await station(3).locator('.bw-station-card').getAttribute('aria-label'));
+  check('an available station says it is ready',
+    (await statusOf(1)) === 'Ready to start', await statusOf(1));
+  check('every station describes itself, whatever its state',
+    (await page.locator('.bw-card-blurb').allTextContents())[0] === 'Define the problem worth solving.' &&
+    (await page.locator('.bw-card-blurb').allTextContents()).every(t => t.trim().length > 8));
   check('a locked station keeps its name visible',
     (await page.locator('.bw-card-name').nth(3).textContent()) === 'Refine');
   check('and shows a lock rather than its icon', await page.evaluate(() => {
@@ -308,6 +314,9 @@ try {
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
   check('all five stations are still there',
     await page.locator('.bw-station-card').count() === 5);
+  check('the legend stays compact when it stacks', await page.evaluate(() =>
+    document.querySelector('.bw-legend-strip').getBoundingClientRect().height < 200),
+    String(await page.evaluate(() => document.querySelector('.bw-legend-strip').getBoundingClientRect().height)));
 
   /* ---------------- every scenario the pack asks for, rendered ----------------
      Driven by seeding progress directly, because the point is that the four
