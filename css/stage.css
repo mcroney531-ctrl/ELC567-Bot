@@ -206,6 +206,15 @@
 .bw-ls-art .a-line  { stroke: var(--accent); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
 .bw-ls-art .a-thick { stroke-width: 5.5; }
 
+/* The lesson's explainer card, in the icon's place. Drawn at no more than its
+   own pixel width: it is raster art with small type, and upscaling blurs it. */
+.bw-ls-lesson-art { margin: 20px 0 0; display: grid; place-items: center; }
+.bw-ls-lesson-art img {
+  display: block; width: min(240px, 100%); height: auto;
+  border-radius: 16px; border: 1px solid var(--ls-line);
+  box-shadow: 0 8px 24px rgba(15, 30, 60, .08);
+}
+
 .bw-ls-meta { margin-top: auto; padding-top: 22px; }
 .bw-ls-bar {
   height: 4px; border-radius: 999px; background: var(--ls-line); overflow: hidden;
@@ -327,6 +336,8 @@
   }
   .bw-ls-art { min-height: 0; margin-top: 14px; }
   .bw-ls-art svg { width: min(130px, 46%); }
+  .bw-ls-lesson-art { margin-top: 14px; }
+  .bw-ls-lesson-art img { width: min(200px, 60%); }
   .bw-ls-meta { margin-top: 16px; padding-top: 0; }
   .bw-ls-work { padding: 20px 16px 20px; }
 }

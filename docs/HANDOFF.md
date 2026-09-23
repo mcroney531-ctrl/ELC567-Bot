@@ -1,7 +1,7 @@
 # Handoff — AI Workflow Builder (ELC567-Bot)
 
 Written for a Claude session starting cold on this repository with no prior context.
-Current as of commit `94b55f6` on `main`.
+Kept current on `main`; `git log -- docs/HANDOFF.md` shows when it last changed.
 
 Everything below is verifiable from the code. Where something is a judgement call, an
 open question, or a known wart, it says so.
@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # eight Playwright suites, 388 assertions, ~3 min
+npm test      # eight Playwright suites, 393 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -46,6 +46,8 @@ css/
   home.css              the dark journey map
   stage.css             the learning stage (dark shell, light workspace)
   chat.css              the coach phase
+img/
+  explainer/            ten explainer cards (268x543 PNG) from the user's artwork package
 js/
   activity.js           the entire application, one IIFE
   vendor/gsap.min.js    vendored from the user's ELC564-StyleGuide repo
@@ -341,7 +343,7 @@ out without asking. If you touch shared code, keep the `TIMELINE` guards.
 
 ## 7. Tests
 
-Eight Playwright suites, **388 assertions**. All passing at `94b55f6`.
+Eight Playwright suites, **393 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
@@ -349,8 +351,8 @@ grepping for `check(` undercounts, because some assertions span lines.)
 |---|---|---|
 | `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
 | `timeline.test.mjs` | 83 | Journey map: five stations, four states, navigation rules, the connector, responsive |
-| `learning-stage.test.mjs` | 65 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
-| `chat-stage.test.mjs` | 60 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
+| `learning-stage.test.mjs` | 69 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
+| `chat-stage.test.mjs` | 61 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `answer-quality.test.mjs` | 21 | Thin-answer heuristics and push-backs |
@@ -432,9 +434,10 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 1. **Lessons for stages 2, 3 and 5.** `STAGE_LESSON` has only stage 1. The others still
    show their original panels. Adding one is a one-line entry plus prose:
    ```js
-   var STAGE_LESSON = { 1: { paras: LOREM } };
+   var STAGE_LESSON = { 1: { paras: LOREM, card: "plan" } };
    ```
-   All the machinery (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is
+   `card` is optional and names an entry in `EXPLAINER_CARDS` (path + alt text). Ask
+   the user which card goes with which lesson rather than guessing. All the machinery (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is
    already general.
 
 2. **Real lesson copy.** Stage 1's is lorem ipsum, explicitly a placeholder the user will
@@ -459,6 +462,21 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
    written for stage 1's textarea, which is gone. The machinery still works for any panel
    stage. Left in place deliberately rather than deleted or relocated — it is the user's
    copy.
+
+### Lesson artwork
+While a lesson is on screen, its explainer card (`img/explainer/`) replaces the SVG
+stage icon in the left context panel. In the coach phase, and on stages with no lesson,
+the icon comes back, so there is one picture at a time. `showLessonCard()` does the
+swap with `hidden` and is called from both `renderLesson()` and `setPhase()`. The
+cards contain words, so their alt text is those words; the SVG icon stays
+`aria-hidden`. The cards are raster art with small type, so they are never drawn wider
+than their native 268 px.
+
+The user's package (`ai_workflow_vector_assets_package.zip`) also had three icon
+sets: soft vector, connected app and minimal process. **Those were not committed.** The
+package cut every board on the explainer board's five-column grid, but those boards
+use other layouts, so about a dozen tiles are clipped at the edges. Re-cut them from
+the boards before using any of them.
 
 ### Copy and naming inconsistencies flagged to the user, not yet resolved
 - The landing says **"Brainstorm an AI-Powered Workflow"**; home says **"AI Workflow

@@ -3178,6 +3178,7 @@
     body.hidden = !lesson;
     if (steps) steps.hidden = !!lesson;
     if (progress) progress.hidden = !!lesson;
+    showLessonCard();
     if (!lesson) return;
 
     var copy = document.getElementById("bw-lesson-copy");
@@ -3189,6 +3190,25 @@
     if (next) {
       next.textContent = stageHasCoach(n)
         ? "Continue" : "Next: " + ((STATIONS[n] || {}).name || "finish");
+    }
+  }
+
+  /* The card is the lesson's picture and the icon is the coach's, so which one
+     shows follows the phase as well as the stage. Toggled with `hidden`
+     because `.bw [hidden]` would beat any CSS that tried to show it. */
+  function showLessonCard() {
+    var fig = document.getElementById("bw-ls-lesson-art");
+    var icon = document.getElementById("bw-ls-art");
+    if (!fig || !icon || !TIMELINE) return;
+    var lesson = stageLesson(workflowData.progress.current);
+    var card = phase === "lesson" && lesson && EXPLAINER_CARDS[lesson.card];
+    fig.hidden = !card;
+    icon.hidden = !!card;
+    if (!card) return;
+    var img = document.getElementById("bw-ls-lesson-img");
+    if (img && img.getAttribute("src") !== card.src) {
+      img.setAttribute("src", card.src);
+      img.setAttribute("alt", card.alt);
     }
   }
 
@@ -3298,10 +3318,11 @@
   var STAGE_COACH = { 1: true, 4: true };
 
   /* The instructional screen for a stage: prose, and nothing to fill in -
-     everything the learner types happens with the coach afterwards. The
-     illustration is the context panel's, on the left, so a lesson carries no
-     art of its own. Placeholder copy; a stage without an entry still shows
-     its old panel. */
+     everything the learner types happens with the coach afterwards. Pictures
+     stay on the left: a lesson's `card` is an explainer card that stands in
+     for the context panel's icon while the lesson is up, so the stage still
+     shows one picture at a time. Placeholder copy; a stage without an entry
+     still shows its old panel. */
   var LOREM = [
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor " +
     "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud " +
@@ -3311,8 +3332,18 @@
     "officia deserunt mollit anim id est laborum."
   ];
 
+  /* The explainer cards carry their own words, so the alt text is those
+     words, not a description of the drawing. */
+  var EXPLAINER_CARDS = {
+    plan: {
+      src: "img/explainer/01_plan_beyond_the_chat.png",
+      alt: "Plan beyond the chat. The best results come from intentional " +
+           "planning, not just the conversation."
+    }
+  };
+
   var STAGE_LESSON = {
-    1: { paras: LOREM }
+    1: { paras: LOREM, card: "plan" }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }
@@ -3347,6 +3378,7 @@
     if (work) work.hidden = next === "chat";
     if (meta) meta.hidden = next === "chat";
     if (focus) focus.hidden = next !== "chat";
+    showLessonCard();
     if (next === "chat") {
       renderCoachRail();
       maybeStartConversation();
