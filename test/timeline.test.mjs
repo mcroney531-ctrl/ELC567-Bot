@@ -304,11 +304,15 @@ try {
   await page.setViewportSize({ width: 360, height: 780 });
   await page.waitForTimeout(200);
   await page.waitForTimeout(300);
-  check('the spine stands up on a phone', await page.evaluate(() => {
+  /* Home is one fixed 16:9 frame scaled to fit, like a Storyline slide, so a
+     phone gets the same composition smaller - not a reflowed list. */
+  check('a phone gets the same composition, scaled down', await page.evaluate(() => {
     const cards = [...document.querySelectorAll('.bw-station-card')].map(c => c.getBoundingClientRect());
-    // Stacked, not strung out left to right.
-    return cards.every(r => Math.abs(r.left - cards[0].left) < 2) &&
-           cards[4].top > cards[0].top;
+    const frame = document.querySelector('#bw-map-frame').getBoundingClientRect();
+    return cards[4].left > cards[0].left + 100 &&           // still left to right
+           cards[1].top > cards[0].top &&                   // still above and below
+           Math.abs(frame.width / frame.height - 16 / 9) < 0.02 &&
+           frame.left >= 0 && frame.right <= document.documentElement.clientWidth + 1;
   }));
   check('no horizontal overflow on the map at 360px', await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);

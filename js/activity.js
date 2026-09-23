@@ -2866,7 +2866,36 @@
     el.landing.hidden = next !== "landing";
     el.map.hidden = next !== "map";
     el.stage.hidden = next !== "stage";
-    if (next === "map") renderMap();
+    if (next === "map") { renderMap(); fitMap(); }
+  }
+
+  /* Home is one fixed 16:9 composition, scaled whole to the space it is given -
+     the width of the page, and the height of the window less the footer - and
+     centred in it. The same picture at every size, never a reflowed one.
+     Measured here rather than in CSS because the frame has to know both
+     dimensions at once, and a hidden map measures zero wide. */
+  var MAP_W = 1280, MAP_H = 720;
+
+  function fitMap() {
+    if (!TIMELINE || view !== "map" || !el.map) return;
+    var foot = document.querySelector(".bw-foot");
+    var w = el.map.clientWidth;
+    var h = Math.max(200, window.innerHeight - (foot ? foot.offsetHeight : 0));
+    if (!w) return;
+    var scale = Math.min(w / MAP_W, h / MAP_H);
+    el.map.style.height = Math.round(MAP_H * scale) + "px";
+    el.map.style.setProperty("--map-scale", String(scale));
+    el.map.style.setProperty("--map-x", Math.round((w - MAP_W * scale) / 2) + "px");
+  }
+
+  var fitQueued = false;
+  function queueFitMap() {
+    if (fitQueued) return;
+    fitQueued = true;
+    (window.requestAnimationFrame || setTimeout)(function () {
+      fitQueued = false;
+      fitMap();
+    });
   }
 
   function motionOff() {
@@ -2916,8 +2945,9 @@
       setView("map");
       if (motionOff()) return;
       window.gsap.timeline()
+        // Only what was animated: "all" would also wipe fitMap()'s sizing.
         .fromTo("#bw-map", { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: .4, ease: "power2.out", clearProps: "all" })
+                { opacity: 1, y: 0, duration: .4, ease: "power2.out", clearProps: "opacity,transform" })
         .fromTo(".bw-station-card", { opacity: 0, scale: .9, y: 10 },
                 { opacity: 1, scale: 1, y: 0, duration: .42, ease: "back.out(1.6)",
                   stagger: .07, clearProps: "all" }, .12)
@@ -2950,7 +2980,7 @@
     if (!motionOff()) {
       window.gsap.fromTo("#bw-map",
         { opacity: 0, y: -10 },
-        { opacity: 1, y: 0, duration: .38, ease: "power2.out", clearProps: "all" });
+        { opacity: 1, y: 0, duration: .38, ease: "power2.out", clearProps: "opacity,transform" });
     }
     var map = document.getElementById("bw-map");
     if (map && map.scrollIntoView) {
@@ -2968,6 +2998,7 @@
       return;
     }
     buildMap();
+    window.addEventListener("resize", queueFitMap);
     wireLearningStage();
     wireCoachPhase();
     // Someone who has started already gets home, not the pitch they have read.

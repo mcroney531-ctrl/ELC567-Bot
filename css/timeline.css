@@ -48,27 +48,4 @@
 .bw[data-view] .bw-step-head:hover { background: none; }
 .bw[data-view] .bw-step-caret { display: none; }
 
-/* ---- narrow: the spine stands up ---- */
-@media (max-width: 720px) {
-  .bw-spine { display: block; }
-  .bw-stations {
-    display: flex; flex-direction: column; gap: 14px;
-    padding-left: 28px; position: relative;
-  }
-  .bw-station { display: flex; align-items: center; gap: 12px; position: relative; width: 100%; }
-  .bw-rail {
-    grid-row: auto; grid-column: auto;
-    position: absolute; left: 7px; top: 8px; bottom: 8px;
-    width: 3px; height: auto; margin: 0;
-  }
-  .bw-rail-fill { inset: 0 0 auto 0; width: 100%; height: 0%; transition: height var(--bw-duration-system) var(--bw-ease-standard); }
-  .bw-station-stem { display: none; }
-  .bw-station-dot { position: absolute; left: -28px; top: 50%; transform: translateY(-50%); }
-  .bw-station-card {
-    flex: 1 1 auto; width: 100%; max-width: none; margin: 0;
-    flex-direction: row; align-items: center; text-align: left;
-    gap: 12px; padding: 12px;
-  }
-  .bw-station-art { flex: 0 0 auto; }
-  .bw-station-body { align-items: flex-start; }
-}
+/* No narrow layout for the spine: home is one fixed frame, scaled to fit. */

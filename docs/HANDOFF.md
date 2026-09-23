@@ -115,6 +115,19 @@ cards, a glowing wavy spine, and circuit-board scenery. The scenery is three inl
 depth is set in two places that must agree: `RAIL_Y` in `drawRail()` and `--wy` in
 `css/home.css`. The comment beside `--wy` has the arithmetic.
 
+**Home is a fixed 16:9 frame, scaled to fit, like a Storyline slide.** Everything in
+`#bw-map` sits inside `#bw-map-frame`, which is laid out at 1280×720 (1920×1080 at two
+thirds). `fitMap()` scales the frame to fit the page width and the window height minus
+the footer, then centres it. It runs on `setView("map")` and on resize. Consequences:
+- There is **no narrow layout for home**. A phone gets the same picture, smaller; on a
+  portrait phone it is letterboxed and small, and landscape is much better. This was
+  the user's call, on 2026-09-23.
+- Nothing inside the frame may size itself off the viewport (`vw`, `vh`, or media
+  queries), because the viewport is not what it is drawn in.
+- **Never `clearProps: "all"` on `#bw-map`.** It wipes the inline height and
+  `--map-scale` that `fitMap()` sets, and the map collapses to zero height. Clear only
+  what was animated (`"opacity,transform"`).
+
 ### Two phases inside a stage
 `phase` is `"lesson"` or `"chat"`, mirrored onto `el.root` as `[data-phase]`.
 
@@ -499,7 +512,8 @@ the boards before using any of them.
   the stage are the dark shell family. Open question, not a bug.
 
 ### Mobile
-No horizontal overflow at 360 px on any view, and that is tested. But the **coach header
+No horizontal overflow at 360 px on any view, and that is tested. Home scales as one
+frame (see §2); the landing and the stage still reflow. But the **coach header
 wraps badly at 390 px** — the coach name stacks, the badge collides, and `#bw-coach-restart`
 is pushed off. Pre-existing, cosmetic, not covered by an assertion.
 

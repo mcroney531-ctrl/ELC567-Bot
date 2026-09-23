@@ -47,10 +47,21 @@
   --id-deploy: #63d7ff;    --done-deploy: #278aae;
 
   position: relative;
-  padding: 26px 22px 22px;
-  border-radius: 26px;
   overflow: hidden;
   color: var(--home-text);
+  background: #050c18;                       /* the letterbox */
+}
+
+/* The composition, at a fixed 1280x720 whatever the screen. fitMap() sets
+   --map-scale and --map-x; nothing inside may size itself off the viewport,
+   because the viewport is not what it is drawn in. */
+.bw-map-frame {
+  position: absolute; top: 0; left: var(--map-x, 0px);
+  width: 1280px; height: 720px;
+  transform: scale(var(--map-scale, 1)); transform-origin: 0 0;
+  padding: 22px 40px 20px;
+  overflow: hidden;
+  font-size: 16px;
   background:
     radial-gradient(900px 360px at 50% 58%, rgba(40, 90, 190, .32) 0%, transparent 70%),
     radial-gradient(1200px 520px at 12% -10%, var(--home-bg-1) 0%, transparent 62%),
@@ -64,14 +75,12 @@
    keeps its own light treatment below; carrying the dark system through the
    landing and the stage workspaces is a separate decision. */
 .bw[data-view="map"] { background: #050c18; padding: 0; max-width: none; }
-.bw[data-view="map"] .bw-map { border-radius: 0; padding: 24px clamp(16px, 4vw, 40px) 26px; }
 /* The journey still reads best at a contained width even when the screen does not. */
 .bw[data-view="map"] .bw-stage-bar,
 .bw[data-view="map"] .bw-map-head,
 .bw[data-view="map"] .bw-spine,
 .bw[data-view="map"] .bw-map-hint,
-.bw[data-view="map"] .bw-legend,
-.bw[data-view="map"] .bw-foot > * { max-width: 1120px; }
+.bw[data-view="map"] .bw-legend { max-width: 1120px; }
 .bw[data-view="map"] .bw-spine,
 .bw[data-view="map"] .bw-legend,
 .bw[data-view="map"] .bw-map-hint { margin-left: auto; margin-right: auto; }
@@ -118,7 +127,7 @@
 .bw-circ .c-dots circle { fill: rgba(190, 220, 255, .7); }
 
 /* ---- the bar at the top of home ---- */
-.bw-map .bw-stage-bar { position: relative; z-index: 2; margin-bottom: 10px; }
+.bw-map .bw-stage-bar { position: relative; z-index: 2; margin-bottom: 6px; }
 .bw-map .bw-back { color: var(--home-text); border-color: rgba(190, 220, 255, .28); background: rgba(255,255,255,.06); }
 .bw-map .bw-back:hover { border-color: var(--home-glacier); color: #fff; }
 .bw-map .bw-stage-where { color: rgba(185, 203, 224, .8); }
@@ -130,7 +139,7 @@
   text-transform: uppercase; color: rgba(223, 242, 255, .88);
 }
 .bw .bw-map-title {
-  margin: 6px 0 8px; font-size: clamp(1.625rem, 1.1rem + 2.4vw, 2.75rem);
+  margin: 4px 0 6px; font-size: 2.75rem;
   font-weight: 800; letter-spacing: -.02em; line-height: 1.05; color: #fff;
   text-shadow: 0 0 24px rgba(120, 180, 255, .25);
 }
@@ -140,7 +149,7 @@
 
 .bw-spine {
   position: relative; z-index: 2;
-  margin: 26px 0 4px;
+  margin: 16px 0 4px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: 1fr 84px 1fr;
@@ -357,7 +366,7 @@
 
 .bw-map-hint {
   position: relative; z-index: 2;
-  margin-top: 18px; text-align: center;
+  margin-top: 12px; text-align: center;
   font-size: .8125rem; color: rgba(185, 210, 240, .8);
 }
 
@@ -365,7 +374,7 @@
 
 .bw-legend {
   position: relative; z-index: 2;
-  margin-top: 20px; padding: 14px 16px;
+  margin-top: 14px; padding: 12px 16px;
   display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
   border-radius: 16px;
   border: 1px solid rgba(150, 200, 255, .35);
@@ -405,45 +414,4 @@
     box-shadow: 0 0 0 3px var(--home-green-strong), 0 0 34px var(--home-green-glow),
                 0 18px 44px rgba(0, 0, 0, .3);
   }
-}
-
-/* ==========================  narrow  ========================== */
-@media (max-width: 760px) {
-  .bw-map { padding: 20px 14px 18px; border-radius: 20px; }
-  .bw-circ-l, .bw-circ-br { display: none; }
-  .bw-circ-tr { width: 180px; height: 148px; opacity: .55; }
-  .bw-spine { display: block; margin-top: 20px; }
-  .bw-rail { display: none; }
-  .bw-stations {
-    display: flex; flex-direction: column; gap: 12px;
-    position: relative; padding-left: 34px;
-  }
-  /* One straight vertical connector, still one neutral colour. */
-  .bw-stations::before {
-    content: ""; position: absolute; left: 16px; top: 14px; bottom: 14px;
-    width: 3px; border-radius: 999px;
-    background: var(--home-glacier); box-shadow: 0 0 12px var(--home-glacier-glow);
-  }
-  .bw-station { display: flex; align-items: center; position: relative; width: 100%; }
-  .bw-station-node {
-    position: absolute; left: -34px; top: 50%; width: 34px; height: 34px;
-    transform: translateY(-50%);
-  }
-  .bw-station-stem { display: none; }
-  .bw-station-way { top: 50%; left: 17px; width: 34px; height: 34px; font-size: .875rem; }
-  .bw-station-card {
-    flex: 1 1 auto; max-width: none;
-    flex-direction: row; align-items: center; text-align: left;
-    gap: 12px; padding: 12px 44px 12px 46px;
-  }
-  .bw-card-num { top: 50%; left: 14px; transform: translateY(-50%); font-size: 1rem; }
-  .bw-card-go { top: 50%; }
-  .bw-card-tile { width: 52px; height: 48px; border-radius: 14px; }
-  .bw-card-art { width: 22px; height: 22px; }
-  .bw-card-check::before { width: 32px; height: 32px; }
-  .bw-card-tick { width: 18px; height: 18px; }
-  /* In a column, flex-basis is a height: the strip's 22rem basis once made an
-     empty box taller than a phone screen. */
-  .bw-legend { flex-direction: column; align-items: flex-start; }
-  .bw-legend-strip { flex: 0 0 auto; }
 }
