@@ -69,12 +69,6 @@
 }
 
 
-/* The browser's own page, on home only: dark and edge to edge, so the space the
-   frame does not fill is letterbox rather than a white page. activity.js sets
-   the attribute; the other views keep the page as it was. */
-html[data-bw-view="map"],
-html[data-bw-view="map"] body { margin: 0; background: #050c18; }
-
 /* ---- the page around it ----
    Home is a screen, not a card sitting on a lighter page, so the light ground
    and its gutter step out of the way while the map is showing. The footer

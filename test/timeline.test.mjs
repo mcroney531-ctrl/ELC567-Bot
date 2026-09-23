@@ -24,6 +24,11 @@ const enter = async n => {
   await station(n).locator('.bw-station-card').click();
   await page.waitForTimeout(650);
 };
+const pageGround = () => page.evaluate(() => {
+  const b = getComputedStyle(document.body);
+  return { bg: b.backgroundColor, margin: b.margin };
+});
+const noWhitePage = g => g.margin === '0px' && g.bg !== 'rgb(255, 255, 255)' && g.bg !== 'rgba(0, 0, 0, 0)';
 const toMap = async () => { await page.click('#bw-to-map'); await page.waitForTimeout(550); };
 const start = async () => { await page.click('#bw-start'); await page.waitForTimeout(750); };
 /* Stage 1 is a lesson screen and then a coach, so this is the whole of it:
@@ -55,6 +60,8 @@ try {
   check('the objectives are there to read',
     await page.locator('.bw-objectives li').count() === 4);
   check('and a start button under them', await page.locator('#bw-start').isVisible());
+  { const g = await pageGround();
+    check('the landing has no white page around it', noWhitePage(g), JSON.stringify(g)); }
   check('the worked example sits below the start, not above it', await page.evaluate(() => {
     const s = document.querySelector('#bw-start').getBoundingClientRect().top;
     const e = document.querySelector('.bw-example').getBoundingClientRect().top;
@@ -130,6 +137,8 @@ try {
   check('the workspace does not repeat the whole timeline',
     !(await page.locator('.bw-spine').isVisible()));
   check('there is a way back', await page.locator('#bw-to-map').isVisible());
+  { const g = await pageGround();
+    check('the stage has no white page around it', noWhitePage(g), JSON.stringify(g)); }
 
   // -------------------------------------------------- back out without finishing
   await toMap();
