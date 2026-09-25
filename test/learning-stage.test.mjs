@@ -167,6 +167,44 @@ try {
     const next = document.querySelector('[data-next="2"]');
     return save && next && save.parentElement === next.parentElement;
   }));
+
+  /* The step card and the journey map's station cards share the .bw-card-*
+     namespace while being different components in different stylesheets. An
+     unscoped station rule reaching this card tore its number out of the grid
+     and shifted every field a column left, so these check the shape rather
+     than trusting the naming. */
+  const cardGeom = () => page.evaluate(() => {
+    const card = document.querySelector('#bw-cards .bw-card');
+    const box = sel => { const r = card.querySelector(sel).getBoundingClientRect();
+      return { l: r.left, w: r.width, h: r.height }; };
+    const num = card.querySelector('.bw-card-num');
+    return {
+      card: card.getBoundingClientRect(),
+      num: { ...box('.bw-card-num'), pos: getComputedStyle(num).position },
+      action: box('.bw-card-action'), tools: box('.bw-card-tools'),
+      label: box('.bw-card-action .bw-label')
+    };
+  });
+  let c = await cardGeom();
+  check('the step number stays inside its own card',
+    c.num.l >= c.card.left && c.num.l < c.card.right, JSON.stringify(c.num));
+  check('and stays in the grid rather than being positioned out of it',
+    c.num.pos === 'static', c.num.pos);
+  check('so the action field gets a real column, not the number\'s',
+    c.action.w > 120, JSON.stringify(c.action));
+  check('and is the wider of the two fields',
+    c.action.w >= c.tools.w, c.action.w + ' vs ' + c.tools.w);
+  check('leaving its label on one line', c.label.h < 26, String(c.label.h));
+
+  // Narrow enough that the two fields stack, which is a different code path.
+  await page.setViewportSize({ width: 560, height: 900 });
+  await page.waitForTimeout(300);
+  c = await cardGeom();
+  check('stacked, the fields still clear the number column',
+    c.action.l > c.card.left + 12 && c.action.w > 150, JSON.stringify(c.action));
+  check('and the number is still inside the card',
+    c.num.l >= c.card.left && c.num.l < c.card.right, JSON.stringify(c.num));
+  check('with the label still on one line', c.label.h < 26, String(c.label.h));
   await ctx.close();
 
   // Stage 4 is a panel stage with an info strip, which is where that machinery

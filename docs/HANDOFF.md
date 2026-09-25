@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # nine Playwright suites, 453 assertions, ~3 min
+npm test      # nine Playwright suites, 461 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -414,7 +414,7 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Nine Playwright suites, **453 assertions**, all passing.
+Nine Playwright suites, **461 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
@@ -422,7 +422,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 |---|---|---|
 | `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
 | `timeline.test.mjs` | 89 | Journey map: five stations, four states, navigation rules, the connector, responsive |
-| `learning-stage.test.mjs` | 69 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
+| `learning-stage.test.mjs` | 77 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
@@ -589,9 +589,14 @@ Match what is already there:
 - **One thing owns each fact.** The lesson title is read off the step's own heading rather
   than stored twice. Completion lines are computed. If you find yourself writing a second
   copy of a fact, that is the bug.
-- **The `.bw-*` namespace is flat and crowded.** Two class collisions have already been
-  fixed this way (`.bw-example` → `.bw-starter`, `.bw-card*` → `.bw-cc*` for coaching
-  cards). **Grep before you name a new class.**
+- **The `.bw-*` namespace is flat and crowded.** Three class collisions have already bitten
+  (`.bw-example` → `.bw-starter`, `.bw-card*` → `.bw-cc*` for coaching cards, and an
+  unscoped `.bw-card-num` in `home.css` reaching into the workflow step cards in
+  `activity.css` and tearing their number out of the grid). **Grep before you name a new
+  class**, and scope a component's rules to something that component owns — `home.css`
+  now qualifies every `.bw-card-*` rule with `.bw-station-card` for this reason.
+  `.bw-card-*` is still shared between the journey-map stations and the step cards;
+  renaming the station's set to `.bw-station-*` is the real fix and has not been done.
 - **Commit messages are long and explain the reasoning**, not just the change. Read
   `git log` for the register.
 - Commits must end with the attribution lines the session's system reminder specifies.
