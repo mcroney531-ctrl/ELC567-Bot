@@ -118,9 +118,12 @@
   background: var(--chat-canvas); border: 0; border-radius: 0; box-shadow: none;
 }
 .bw[data-phase="chat"] .bw-chat-log {
-  /* min-height:0 so the flex column can shrink it - anything else pushes the
-     composer off the bottom of the panel. */
-  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  /* flex-basis 0, not auto: the transcript's own content height is enormous, so
+     sizing from it makes the whole column permanently over-constrained and every
+     sibling gets squeezed to pay for it. From zero it simply takes what is left.
+     min-height:0 so it can still shrink - anything else pushes the composer off
+     the bottom of the panel. */
+  flex: 1 1 0; min-height: 0; overflow-y: auto;
   padding: 18px clamp(14px, 2.4vw, 26px);
   background: var(--chat-canvas); gap: 14px;
 }
@@ -161,6 +164,10 @@
 #bw-cards-top {
   padding-top: 16px;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;
+  /* The rail keeps its natural height but is capped, so pinned context can
+     never take more than its share of a short panel; anything past the cap
+     scrolls inside the rail rather than squeezing the conversation. */
+  flex: 0 0 auto; max-height: 25%; min-height: 0; overflow-y: auto;
 }
 #bw-cards-top .bw-cc { margin-bottom: 0; }
 #bw-cards-bottom { padding-top: 4px; padding-bottom: 0; flex: 0 0 auto; background: var(--chat-canvas); }
@@ -179,7 +186,13 @@
 }
 .bw .bw-cc-title { font-size: .875rem; font-weight: 700; color: var(--chat-ink); }
 .bw-cc-body { margin-top: 7px; font-size: .8125rem; line-height: 1.45; color: var(--chat-muted); }
-.bw-cc-items { list-style: none; margin: 9px 0 0; padding: 0; }
+.bw-cc-items {
+  list-style: none; margin: 9px 0 0; padding: 0;
+  /* A card is a glance, not a document. A long list scrolls inside its own
+     card so the card's height stays predictable and the header never leaves -
+     otherwise a five-step workflow decides how much conversation fits. */
+  max-height: 6.5rem; overflow-y: auto;
+}
 .bw-cc-item {
   position: relative; padding-left: 20px; margin-top: 4px;
   font-size: .8125rem; line-height: 1.4; color: var(--chat-ink);

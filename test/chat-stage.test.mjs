@@ -54,6 +54,57 @@ async function openCoach(opts = {}) {
 /* Stage 1 with nothing behind it: the lesson screen, then its own coach.
    Nothing is seeded, because how the problem statement gets written is the
    thing under test. */
+/* Everything finished, then back to an earlier stage - the state someone is in
+   once they have reached the master prompt and started looking around. */
+async function openFinished(stage) {
+  const ctx = await browser.newContext({ viewport: { width: 880, height: 760 } });
+  const page = await ctx.newPage();
+  report.watch(page);
+  await page.addInitScript(seed => {
+    localStorage.setItem('brainstorm_workflow_data', seed);
+    localStorage.setItem('bw_started', '1');
+  }, JSON.stringify({
+    ...SEED,
+    // Long enough to wrap, because a real learner's steps do.
+    steps: [{ action: "Pull last week's delivery numbers", tools: 'Tableau, Harvest' },
+            { action: 'Check the shared inbox for anything unresolved', tools: 'Gmail' },
+            { action: 'Draft a four paragraph update per client', tools: 'Word' },
+            { action: "Reformat into each client's preferred channel", tools: 'Gmail, Slack' }],
+    conversations: {
+      identify: [{ role: 'bot', text: 'What is the task?', at: '9:00 AM' },
+                 { role: 'user', text: 'The Monday status decks.', at: '9:01 AM' },
+                 { role: 'bot', text: 'Noted.', at: '9:01 AM' },
+                 { role: 'user', text: 'They go out before nine.', at: '9:02 AM' },
+                 { role: 'bot', text: 'Got it.', at: '9:02 AM' }],
+      all: [{ role: 'bot', text: 'What should the AI take on?', at: '9:10 AM' },
+            { role: 'user', text: 'The first draft of each update.', at: '9:11 AM' },
+            { role: 'bot', text: 'And what stays with you?', at: '9:11 AM' },
+            { role: 'user', text: 'The judgment call at the end.', at: '9:12 AM' },
+            { role: 'bot', text: 'Understood.', at: '9:12 AM' }]
+    },
+    progress: { unlocked: 5, current: 5, done: { 1: true, 2: true, 3: true, 4: true },
+                entered: { 1: true, 2: true, 3: true, 4: true, 5: true } }
+  }));
+  await page.goto(`http://127.0.0.1:${PORT}/`);
+  await page.waitForTimeout(400);
+  await page.click(`.bw-station[data-stage="${stage}"] .bw-station-card`);
+  await page.waitForTimeout(800);
+  return { ctx, page };
+}
+
+/* The pinned rail against the conversation it is supposed to be serving. */
+const railVsLog = page => page.evaluate(() => {
+  const rail = document.querySelector('#bw-cards-top');
+  const log = document.querySelector('.bw-chat-log');
+  const r = rail.getBoundingClientRect(), l = log.getBoundingClientRect();
+  return {
+    railH: Math.round(r.height), logH: Math.round(l.height),
+    panelH: Math.round(document.querySelector('#bw-chat-panel').getBoundingClientRect().height),
+    overlap: Math.round(r.bottom - l.top),
+    cards: rail.querySelectorAll('.bw-cc').length
+  };
+});
+
 async function openStage1() {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 950 } });
   const page = await ctx.newPage();
@@ -259,6 +310,40 @@ try {
   }));
   check('no horizontal page scrolling', await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
+  await ctx.close();
+
+  // ============ coming back to a stage with everything already filled ============
+  /* Pinned context is meant to orient the conversation, not crowd it out. Once
+     a learner has reached the master prompt, every card has something to say,
+     and a rail that never yields leaves the transcript a two-line slot. */
+  ({ ctx, page } = await openFinished(4));
+  let g = await railVsLog(page);
+  check('the rail never overlaps the transcript', g.overlap <= 0, JSON.stringify(g));
+  check('and never takes more of the panel than the conversation',
+    g.railH < g.logH, JSON.stringify(g));
+  check('the rail is capped rather than sized by its contents',
+    g.railH <= Math.round(g.panelH * 0.26) + 2, JSON.stringify(g));
+  check('a long list scrolls inside its own card, so the card stays a glance',
+    await page.evaluate(() => {
+      const ul = document.querySelector('.bw-cc-specificity .bw-cc-items');
+      return ul.clientHeight <= 110 && ul.scrollHeight > ul.clientHeight &&
+             getComputedStyle(ul).overflowY === 'auto';
+    }), await page.evaluate(() => {
+      const ul = document.querySelector('.bw-cc-specificity .bw-cc-items');
+      return JSON.stringify({ client: ul.clientHeight, scroll: ul.scrollHeight });
+    }));
+  check('the transcript is still usable', g.logH > 120, JSON.stringify(g));
+  await ctx.close();
+
+  /* Stage 1 is naming a task. The mapped steps are stage 2's output, and on the
+     way back through they are someone else's work burying this conversation. */
+  ({ ctx, page } = await openFinished(1));
+  check('stage 1 shows what the coach took down here',
+    await page.locator('[data-card="problem-summary"]').count() === 1);
+  check("but not another stage's workflow steps",
+    await page.locator('[data-card="specificity"]').count() === 0);
+  g = await railVsLog(page);
+  check('so the conversation keeps the room', g.logH > g.railH, JSON.stringify(g));
   await ctx.close();
 
   // ==================== stage 1: lesson, then its own coach ====================

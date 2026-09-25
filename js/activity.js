@@ -3487,7 +3487,11 @@
         body: shortQuote(problem, 26)
       });
     }
-    var steps = filledSteps();
+    /* The mapped steps belong to whichever stage is reasoning over the whole
+       picture. On stage 1 they are someone else's work: the learner is naming
+       a task, has not mapped anything yet, and coming back here after finishing
+       the activity should not bury this conversation under stage 2's output. */
+    var steps = sKey() === "identify" ? [] : filledSteps();
     if (steps.length) {
       cards.push({
         type: "specificity", where: "top",
