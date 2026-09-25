@@ -1,7 +1,7 @@
 # Handoff — AI Workflow Builder (ELC567-Bot)
 
 Written for a Claude session starting cold on this repository with no prior context.
-Current as of commit `94b55f6` on `main`.
+Kept current on `main`; `git log -- docs/HANDOFF.md` shows when it last changed.
 
 Everything below is verifiable from the code. Where something is a judgement call, an
 open question, or a known wart, it says so.
@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # nine Playwright suites, 434 assertions, ~3 min
+npm test      # nine Playwright suites, 445 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -47,6 +47,8 @@ css/
   stage.css             the learning stage (dark shell, light workspace)
   chat.css              the coach phase
   admin.css             the ?admin=1 review bar — never loaded into the learner's flow
+img/
+  explainer/            ten explainer cards (268x543 PNG) from the user's artwork package
 js/
   activity.js           the entire application, one IIFE
   vendor/gsap.min.js    vendored from the user's ELC564-StyleGuide repo
@@ -103,6 +105,36 @@ placement above/below the spine, blurb, and its deterministic completion line.
 
 Completion copy is **always computed from structured state, never from typed text**. This
 is deliberate and tested.
+
+Each home card shows three lines: the name, a status line and the stage's blurb. The status
+line only ever shows state: `Upcoming` (locked), `Ready to start`, `In progress`, or the
+completion line. Why a locked stage is shut ("Finish Map first") lives in the card's
+`aria-label` and the hint line under the map, not on the card.
+
+**Home's look** follows an inspo image the user supplied on 2026-09-23: frosted-glass
+cards, a glowing wavy spine, and circuit-board scenery. The scenery is three inline
+`svg.bw-circ` blocks at the top of `#bw-map`, all decorative and `aria-hidden`. The wave
+depth is set in two places that must agree: `RAIL_Y` in `drawRail()` and `--wy` in
+`css/home.css`. The comment beside `--wy` has the arithmetic.
+
+**Home is a fixed 16:9 frame, scaled to fit, like a Storyline slide.** Everything in
+`#bw-map` sits inside `#bw-map-frame`, which is laid out at 1280×720 (1920×1080 at two
+thirds). `fitMap()` scales the frame to fit the page width and the window height minus
+the footer, then centres it. It runs on `setView("map")` and on resize. Consequences:
+- There is **no narrow layout for home**. A phone gets the same picture, smaller; on a
+  portrait phone it is letterboxed and small, and landscape is much better. This was
+  the user's call, on 2026-09-23.
+- `setView()` puts the current view on `<html>` as `data-bw-view`. `timeline.css` uses
+  it to remove the browser page's margin and colour the page to match each view:
+  lavender for the landing, the stage shell's navy, and the home letterbox. No white
+  page shows in any view. A `/role/` slice never calls `setView()`, so an embedded
+  slice keeps its host's page. On home, the map fills the window, the frame is centred
+  in it both ways, and the footer sits at the bottom, so nothing scrolls.
+- Nothing inside the frame may size itself off the viewport (`vw`, `vh`, or media
+  queries), because the viewport is not what it is drawn in.
+- **Never `clearProps: "all"` on `#bw-map`.** It wipes the inline height and
+  `--map-scale` that `fitMap()` sets, and the map collapses to zero height. Clear only
+  what was animated (`"opacity,transform"`).
 
 ### Two phases inside a stage
 `phase` is `"lesson"` or `"chat"`, mirrored onto `el.root` as `[data-phase]`.
@@ -382,16 +414,16 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Nine Playwright suites, **434 assertions**. All passing at `94b55f6`.
+Nine Playwright suites, **445 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
 | Suite | Asserts | Covers |
 |---|---|---|
 | `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
-| `timeline.test.mjs` | 83 | Journey map: five stations, four states, navigation rules, the connector, responsive |
-| `learning-stage.test.mjs` | 65 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
-| `chat-stage.test.mjs` | 60 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
+| `timeline.test.mjs` | 89 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `learning-stage.test.mjs` | 69 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
+| `chat-stage.test.mjs` | 61 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 46 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
@@ -474,9 +506,10 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 1. **Lessons for stages 2, 3 and 5.** `STAGE_LESSON` has only stage 1. The others still
    show their original panels. Adding one is a one-line entry plus prose:
    ```js
-   var STAGE_LESSON = { 1: { paras: LOREM } };
+   var STAGE_LESSON = { 1: { paras: LOREM, card: "plan" } };
    ```
-   All the machinery (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is
+   `card` is optional and names an entry in `EXPLAINER_CARDS` (path + alt text). Ask
+   the user which card goes with which lesson rather than guessing. All the machinery (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is
    already general.
 
 2. **Real lesson copy.** Stage 1's is lorem ipsum, explicitly a placeholder the user will
@@ -502,6 +535,21 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
    stage. Left in place deliberately rather than deleted or relocated — it is the user's
    copy.
 
+### Lesson artwork
+While a lesson is on screen, its explainer card (`img/explainer/`) replaces the SVG
+stage icon in the left context panel. In the coach phase, and on stages with no lesson,
+the icon comes back, so there is one picture at a time. `showLessonCard()` does the
+swap with `hidden` and is called from both `renderLesson()` and `setPhase()`. The
+cards contain words, so their alt text is those words; the SVG icon stays
+`aria-hidden`. The cards are raster art with small type, so they are never drawn wider
+than their native 268 px.
+
+The user's package (`ai_workflow_vector_assets_package.zip`) also had three icon
+sets: soft vector, connected app and minimal process. **Those were not committed.** The
+package cut every board on the explainer board's five-column grid, but those boards
+use other layouts, so about a dozen tiles are clipped at the edges. Re-cut them from
+the boards before using any of them.
+
 ### Copy and naming inconsistencies flagged to the user, not yet resolved
 - The landing says **"Brainstorm an AI-Powered Workflow"**; home says **"AI Workflow
   Builder / Turn Ideas Into Impact"**.
@@ -512,7 +560,8 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
   the stage are the dark shell family. Open question, not a bug.
 
 ### Mobile
-No horizontal overflow at 360 px on any view, and that is tested. But the **coach header
+No horizontal overflow at 360 px on any view, and that is tested. Home scales as one
+frame (see §2); the landing and the stage still reflow. But the **coach header
 wraps badly at 390 px** — the coach name stacks, the badge collides, and `#bw-coach-restart`
 is pushed off. Pre-existing, cosmetic, not covered by an assertion.
 

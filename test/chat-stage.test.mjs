@@ -276,6 +276,9 @@ try {
   check('continue loads the coach on its own screen',
     await page.locator('#bw-chat-panel').isVisible() &&
     !(await page.locator('#bw-lesson-body').isVisible()));
+  check('the explainer card belongs to the lesson; the coach gets the stage icon',
+    !(await page.locator('#bw-ls-lesson-art').isVisible()) &&
+    await page.locator('#bw-ls-art svg').isVisible());
   check('the rail says what this stage is for',
     (await page.locator('#bw-focus-text').textContent()).includes('hand off'),
     await page.locator('#bw-focus-text').textContent());

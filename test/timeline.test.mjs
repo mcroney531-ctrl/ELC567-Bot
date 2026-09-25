@@ -24,6 +24,11 @@ const enter = async n => {
   await station(n).locator('.bw-station-card').click();
   await page.waitForTimeout(650);
 };
+const pageGround = () => page.evaluate(() => {
+  const b = getComputedStyle(document.body);
+  return { bg: b.backgroundColor, margin: b.margin };
+});
+const noWhitePage = g => g.margin === '0px' && g.bg !== 'rgb(255, 255, 255)' && g.bg !== 'rgba(0, 0, 0, 0)';
 const toMap = async () => { await page.click('#bw-to-map'); await page.waitForTimeout(550); };
 const start = async () => { await page.click('#bw-start'); await page.waitForTimeout(750); };
 /* Stage 1 is a lesson screen and then a coach, so this is the whole of it:
@@ -55,6 +60,8 @@ try {
   check('the objectives are there to read',
     await page.locator('.bw-objectives li').count() === 4);
   check('and a start button under them', await page.locator('#bw-start').isVisible());
+  { const g = await pageGround();
+    check('the landing has no white page around it', noWhitePage(g), JSON.stringify(g)); }
   check('the worked example sits below the start, not above it', await page.evaluate(() => {
     const s = document.querySelector('#bw-start').getBoundingClientRect().top;
     const e = document.querySelector('.bw-example').getBoundingClientRect().top;
@@ -90,10 +97,16 @@ try {
     await page.locator('.bw-station[data-state="current"]').count() === 0);
   check('stages 2 to 5 are locked',
     (await Promise.all([2, 3, 4, 5].map(stateOf))).join(',') === 'locked,locked,locked,locked');
-  check('a locked station says which stage opens it',
-    (await statusOf(3)) === 'Finish Map first', await statusOf(3));
-  check('an available station describes itself',
-    (await statusOf(1)) === 'Define the problem worth solving.', await statusOf(1));
+  check('a locked station reads as upcoming',
+    (await statusOf(3)) === 'Upcoming', await statusOf(3));
+  check('and still tells assistive tech which stage opens it',
+    (await station(3).locator('.bw-station-card').getAttribute('aria-label')).includes('Finish Map first'),
+    await station(3).locator('.bw-station-card').getAttribute('aria-label'));
+  check('an available station says it is ready',
+    (await statusOf(1)) === 'Ready to start', await statusOf(1));
+  check('every station describes itself, whatever its state',
+    (await page.locator('.bw-card-blurb').allTextContents())[0] === 'Define the problem worth solving.' &&
+    (await page.locator('.bw-card-blurb').allTextContents()).every(t => t.trim().length > 8));
   check('a locked station keeps its name visible',
     (await page.locator('.bw-card-name').nth(3).textContent()) === 'Refine');
   check('and shows a lock rather than its icon', await page.evaluate(() => {
@@ -124,6 +137,8 @@ try {
   check('the workspace does not repeat the whole timeline',
     !(await page.locator('.bw-spine').isVisible()));
   check('there is a way back', await page.locator('#bw-to-map').isVisible());
+  { const g = await pageGround();
+    check('the stage has no white page around it', noWhitePage(g), JSON.stringify(g)); }
 
   // -------------------------------------------------- back out without finishing
   await toMap();
@@ -298,16 +313,31 @@ try {
   await page.setViewportSize({ width: 360, height: 780 });
   await page.waitForTimeout(200);
   await page.waitForTimeout(300);
-  check('the spine stands up on a phone', await page.evaluate(() => {
+  /* Home is one fixed 16:9 frame scaled to fit, like a Storyline slide, so a
+     phone gets the same composition smaller - not a reflowed list. */
+  check('a phone gets the same composition, scaled down', await page.evaluate(() => {
     const cards = [...document.querySelectorAll('.bw-station-card')].map(c => c.getBoundingClientRect());
-    // Stacked, not strung out left to right.
-    return cards.every(r => Math.abs(r.left - cards[0].left) < 2) &&
-           cards[4].top > cards[0].top;
+    const frame = document.querySelector('#bw-map-frame').getBoundingClientRect();
+    return cards[4].left > cards[0].left + 100 &&           // still left to right
+           cards[1].top > cards[0].top &&                   // still above and below
+           Math.abs(frame.width / frame.height - 16 / 9) < 0.02 &&
+           frame.left >= 0 && frame.right <= document.documentElement.clientWidth + 1;
   }));
+  check('home fills the phone: no page to scroll, and no white page showing',
+    await page.evaluate(() => {
+      const bg = getComputedStyle(document.body).backgroundColor;
+      return document.documentElement.scrollHeight <= window.innerHeight + 1 &&
+             bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(255, 255, 255)';
+    }),
+    await page.evaluate(() => document.documentElement.scrollHeight + ' ' +
+      getComputedStyle(document.body).backgroundColor));
   check('no horizontal overflow on the map at 360px', await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
   check('all five stations are still there',
     await page.locator('.bw-station-card').count() === 5);
+  check('the legend stays compact when it stacks', await page.evaluate(() =>
+    document.querySelector('.bw-legend-strip').getBoundingClientRect().height < 200),
+    String(await page.evaluate(() => document.querySelector('.bw-legend-strip').getBoundingClientRect().height)));
 
   /* ---------------- every scenario the pack asks for, rendered ----------------
      Driven by seeding progress directly, because the point is that the four

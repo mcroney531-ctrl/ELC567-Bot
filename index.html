@@ -120,6 +120,59 @@ write [MISSING: metric name] and keep going.</pre>
 
 <!-- ==================== JOURNEY MAP (home) ==================== -->
 <section class="bw-map" id="bw-map" hidden>
+<!-- One fixed 16:9 frame (1280x720 = 1920x1080 at 2/3), scaled whole to fit
+     the screen, the way a Storyline slide is: the same composition on a TV,
+     a laptop or a phone, letterboxed rather than reflowed. See fitMap(). -->
+<div class="bw-map-frame" id="bw-map-frame">
+
+  <!-- Circuit-board scenery, purely decorative: traces, pads and dot grids at
+       the edges of the screen, behind everything that can be read or clicked. -->
+  <svg class="bw-circ bw-circ-tr" viewBox="0 0 280 230" aria-hidden="true" focusable="false">
+    <path class="c-trace" d="M280 58 H214 L184 88 V146 L160 170 H96"/>
+    <path class="c-trace" d="M250 0 V38 L228 60"/>
+    <path class="c-trace" d="M280 150 H236 L214 128"/>
+    <circle class="c-pad" cx="96" cy="170" r="4.5"/>
+    <circle class="c-halo" cx="214" cy="128" r="16"/>
+    <circle class="c-glow" cx="214" cy="128" r="7"/>
+    <rect class="c-sq" x="118" y="22" width="30" height="30" rx="7"/>
+    <rect class="c-sq" x="202" y="4"  width="34" height="34" rx="8"/>
+    <rect class="c-sq" x="240" y="84" width="34" height="34" rx="8"/>
+    <rect class="c-sq" x="126" y="92" width="24" height="24" rx="6"/>
+    <g class="c-dots">
+      <circle cx="150" cy="186" r="1.6"/><circle cx="163" cy="186" r="1.6"/><circle cx="176" cy="186" r="1.6"/><circle cx="189" cy="186" r="1.6"/>
+      <circle cx="150" cy="199" r="1.6"/><circle cx="163" cy="199" r="1.6"/><circle cx="176" cy="199" r="1.6"/><circle cx="189" cy="199" r="1.6"/>
+      <circle cx="150" cy="212" r="1.6"/><circle cx="163" cy="212" r="1.6"/><circle cx="176" cy="212" r="1.6"/><circle cx="189" cy="212" r="1.6"/>
+    </g>
+  </svg>
+  <svg class="bw-circ bw-circ-l" viewBox="0 0 90 380" aria-hidden="true" focusable="false">
+    <path class="c-trace" d="M22 0 V58 L44 80 V196 L62 214 V300"/>
+    <path class="c-trace" d="M0 330 H34 L50 314"/>
+    <circle class="c-pad" cx="22" cy="58" r="5"/>
+    <circle class="c-pad" cx="62" cy="300" r="5"/>
+    <rect class="c-sq" x="6"  y="118" width="30" height="30" rx="7"/>
+    <rect class="c-sq" x="14" y="236" width="36" height="36" rx="8"/>
+    <rect class="c-sq" x="56" y="244" width="20" height="20" rx="5"/>
+    <g class="c-dots">
+      <circle cx="40" cy="346" r="1.6"/><circle cx="53" cy="346" r="1.6"/><circle cx="66" cy="346" r="1.6"/><circle cx="79" cy="346" r="1.6"/>
+      <circle cx="40" cy="359" r="1.6"/><circle cx="53" cy="359" r="1.6"/><circle cx="66" cy="359" r="1.6"/><circle cx="79" cy="359" r="1.6"/>
+      <circle cx="40" cy="372" r="1.6"/><circle cx="53" cy="372" r="1.6"/><circle cx="66" cy="372" r="1.6"/><circle cx="79" cy="372" r="1.6"/>
+    </g>
+  </svg>
+  <svg class="bw-circ bw-circ-br" viewBox="0 0 150 230" aria-hidden="true" focusable="false">
+    <path class="c-trace" d="M150 16 H112 L94 34"/>
+    <circle class="c-pad" cx="94" cy="34" r="4.5"/>
+    <rect class="c-sq" x="96" y="150" width="40" height="40" rx="9"/>
+    <rect class="c-sq" x="18" y="190" width="28" height="28" rx="7"/>
+    <g class="c-dots">
+      <circle cx="84" cy="66" r="1.6"/><circle cx="97" cy="66" r="1.6"/><circle cx="110" cy="66" r="1.6"/><circle cx="123" cy="66" r="1.6"/><circle cx="136" cy="66" r="1.6"/>
+      <circle cx="84" cy="79" r="1.6"/><circle cx="97" cy="79" r="1.6"/><circle cx="110" cy="79" r="1.6"/><circle cx="123" cy="79" r="1.6"/><circle cx="136" cy="79" r="1.6"/>
+      <circle cx="84" cy="92" r="1.6"/><circle cx="97" cy="92" r="1.6"/><circle cx="110" cy="92" r="1.6"/><circle cx="123" cy="92" r="1.6"/><circle cx="136" cy="92" r="1.6"/>
+      <circle cx="84" cy="105" r="1.6"/><circle cx="97" cy="105" r="1.6"/><circle cx="110" cy="105" r="1.6"/><circle cx="123" cy="105" r="1.6"/><circle cx="136" cy="105" r="1.6"/>
+      <circle cx="30" cy="140" r="1.6"/><circle cx="43" cy="140" r="1.6"/><circle cx="56" cy="140" r="1.6"/><circle cx="69" cy="140" r="1.6"/>
+      <circle cx="30" cy="153" r="1.6"/><circle cx="43" cy="153" r="1.6"/><circle cx="56" cy="153" r="1.6"/><circle cx="69" cy="153" r="1.6"/>
+      <circle cx="30" cy="166" r="1.6"/><circle cx="43" cy="166" r="1.6"/><circle cx="56" cy="166" r="1.6"/><circle cx="69" cy="166" r="1.6"/>
+    </g>
+  </svg>
 
   <div class="bw-stage-bar">
     <button type="button" class="bw-btn bw-btn-quiet bw-back" id="bw-to-landing">
@@ -176,6 +229,8 @@ write [MISSING: metric name] and keep going.</pre>
   </section>
 
 
+</div>
+
 </section>
 
 <!-- ===================== STAGE WORKSPACE ===================== -->
@@ -206,6 +261,12 @@ write [MISSING: metric name] and keep going.</pre>
       <h2 class="bw-ls-name" id="bw-ls-name">Identify</h2>
       <p class="bw-ls-framing" id="bw-ls-framing"></p>
       <figure class="bw-ls-art" id="bw-ls-art" aria-hidden="true"></figure>
+      <!-- A lesson's explainer card takes the illustration's place while the
+           lesson is on screen. It carries words, so unlike the icon above it
+           is not hidden from assistive tech. -->
+      <figure class="bw-ls-lesson-art" id="bw-ls-lesson-art" hidden>
+        <img id="bw-ls-lesson-img" alt="" width="268" height="543" decoding="async">
+      </figure>
       <div class="bw-ls-meta">
         <div class="bw-ls-bar"><span class="bw-ls-bar-fill" id="bw-ls-bar-fill"></span></div>
         <p class="bw-ls-step" id="bw-ls-step">Step 1 of 5</p>

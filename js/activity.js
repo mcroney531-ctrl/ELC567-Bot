@@ -2741,8 +2741,10 @@
       var body = el2("span", "bw-card-body");
       var name = el2("span", "bw-card-name", s.name);
       var status = el2("span", "bw-card-status");
+      var blurb = el2("span", "bw-card-blurb", s.blurb);
       body.appendChild(name);
       body.appendChild(status);
+      body.appendChild(blurb);
 
       var go = el2("span", "bw-card-go");
       go.setAttribute("aria-hidden", "true");
@@ -2789,7 +2791,7 @@
      waypoints, which sit at alternating heights - the wave is the composition,
      not decoration on top of it. The line stays one neutral colour: state
      belongs to the nodes and the cards, never to the connector. */
-  var RAIL_Y = { odd: 7.2, even: 4.8 };
+  var RAIL_Y = { odd: 8.4, even: 3.6 };
 
   function drawRail() {
     var svg = document.getElementById("bw-rail");
@@ -2823,14 +2825,17 @@
       if (state === "current") node.card.setAttribute("aria-current", "step");
       else node.card.removeAttribute("aria-current");
 
+      // The card says what the stage is for underneath, so the status line is
+      // only ever the state. Why a stage is shut is in the label and the hint.
       node.status.textContent = state === "completed" ? node.def.done()
-        : state === "current" ? "In progress"
-        : state === "locked" ? lockedBecause(n)
-        : node.def.blurb;
+        : state === "locked" ? "Upcoming"
+        : STATE_WORD[state];
 
       node.card.setAttribute("aria-label",
-        "Stage " + n + ", " + node.def.name + ". " + STATE_WORD[state] + ". " +
-        node.status.textContent + (state === "locked" ? "" : " Open this stage."));
+        "Stage " + n + ", " + node.def.name + ". " + node.def.blurb + " " +
+        (state === "locked" ? "Locked. " + lockedBecause(n) + "."
+          : state === "completed" ? node.status.textContent + ". Open this stage."
+          : STATE_WORD[state] + ". Open this stage."));
     });
 
     var hint = document.getElementById("bw-map-hint");
@@ -2861,7 +2866,45 @@
     el.landing.hidden = next !== "landing";
     el.map.hidden = next !== "map";
     el.stage.hidden = next !== "stage";
-    if (next === "map") renderMap();
+    // The page itself has to go dark on home, or whatever the frame does not
+    // fill shows the browser's white page underneath.
+    document.documentElement.setAttribute("data-bw-view", next);
+    if (next === "map") { renderMap(); fitMap(); }
+  }
+
+  /* Home is one fixed 16:9 composition, scaled whole to the space it is given -
+     the width of the page, and the height of the window less the footer - and
+     centred in it both ways, so the map fills the window and the footer sits
+     at the bottom of the screen. The same picture at every size, never a
+     reflowed one.
+     Measured here rather than in CSS because the frame has to know both
+     dimensions at once, and a hidden map measures zero wide. */
+  var MAP_W = 1280, MAP_H = 720;
+
+  function fitMap() {
+    if (!TIMELINE || view !== "map" || !el.map) return;
+    var foot = document.querySelector(".bw-foot");
+    var w = el.map.clientWidth;
+    // Rounded up: offsetHeight rounds a 63.1px footer down, and that fraction
+    // of a pixel is enough to give the page a scrollbar.
+    var h = Math.max(200, Math.floor(window.innerHeight -
+      (foot ? Math.ceil(foot.getBoundingClientRect().height) : 0)));
+    if (!w) return;
+    var scale = Math.min(w / MAP_W, h / MAP_H);
+    el.map.style.height = h + "px";
+    el.map.style.setProperty("--map-scale", String(scale));
+    el.map.style.setProperty("--map-x", Math.round((w - MAP_W * scale) / 2) + "px");
+    el.map.style.setProperty("--map-y", Math.round((h - MAP_H * scale) / 2) + "px");
+  }
+
+  var fitQueued = false;
+  function queueFitMap() {
+    if (fitQueued) return;
+    fitQueued = true;
+    (window.requestAnimationFrame || setTimeout)(function () {
+      fitQueued = false;
+      fitMap();
+    });
   }
 
   function motionOff() {
@@ -2911,8 +2954,9 @@
       setView("map");
       if (motionOff()) return;
       window.gsap.timeline()
+        // Only what was animated: "all" would also wipe fitMap()'s sizing.
         .fromTo("#bw-map", { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: .4, ease: "power2.out", clearProps: "all" })
+                { opacity: 1, y: 0, duration: .4, ease: "power2.out", clearProps: "opacity,transform" })
         .fromTo(".bw-station-card", { opacity: 0, scale: .9, y: 10 },
                 { opacity: 1, scale: 1, y: 0, duration: .42, ease: "back.out(1.6)",
                   stagger: .07, clearProps: "all" }, .12)
@@ -2945,7 +2989,7 @@
     if (!motionOff()) {
       window.gsap.fromTo("#bw-map",
         { opacity: 0, y: -10 },
-        { opacity: 1, y: 0, duration: .38, ease: "power2.out", clearProps: "all" });
+        { opacity: 1, y: 0, duration: .38, ease: "power2.out", clearProps: "opacity,transform" });
     }
     var map = document.getElementById("bw-map");
     if (map && map.scrollIntoView) {
@@ -2963,6 +3007,7 @@
       return;
     }
     buildMap();
+    window.addEventListener("resize", queueFitMap);
     wireLearningStage();
     wireCoachPhase();
     // Someone who has started already gets home, not the pitch they have read.
@@ -3178,6 +3223,7 @@
     body.hidden = !lesson;
     if (steps) steps.hidden = !!lesson;
     if (progress) progress.hidden = !!lesson;
+    showLessonCard();
     if (!lesson) return;
 
     var copy = document.getElementById("bw-lesson-copy");
@@ -3189,6 +3235,25 @@
     if (next) {
       next.textContent = stageHasCoach(n)
         ? "Continue" : "Next: " + ((STATIONS[n] || {}).name || "finish");
+    }
+  }
+
+  /* The card is the lesson's picture and the icon is the coach's, so which one
+     shows follows the phase as well as the stage. Toggled with `hidden`
+     because `.bw [hidden]` would beat any CSS that tried to show it. */
+  function showLessonCard() {
+    var fig = document.getElementById("bw-ls-lesson-art");
+    var icon = document.getElementById("bw-ls-art");
+    if (!fig || !icon || !TIMELINE) return;
+    var lesson = stageLesson(workflowData.progress.current);
+    var card = phase === "lesson" && lesson && EXPLAINER_CARDS[lesson.card];
+    fig.hidden = !card;
+    icon.hidden = !!card;
+    if (!card) return;
+    var img = document.getElementById("bw-ls-lesson-img");
+    if (img && img.getAttribute("src") !== card.src) {
+      img.setAttribute("src", card.src);
+      img.setAttribute("alt", card.alt);
     }
   }
 
@@ -3298,10 +3363,11 @@
   var STAGE_COACH = { 1: true, 4: true };
 
   /* The instructional screen for a stage: prose, and nothing to fill in -
-     everything the learner types happens with the coach afterwards. The
-     illustration is the context panel's, on the left, so a lesson carries no
-     art of its own. Placeholder copy; a stage without an entry still shows
-     its old panel. */
+     everything the learner types happens with the coach afterwards. Pictures
+     stay on the left: a lesson's `card` is an explainer card that stands in
+     for the context panel's icon while the lesson is up, so the stage still
+     shows one picture at a time. Placeholder copy; a stage without an entry
+     still shows its old panel. */
   var LOREM = [
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor " +
     "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud " +
@@ -3311,8 +3377,18 @@
     "officia deserunt mollit anim id est laborum."
   ];
 
+  /* The explainer cards carry their own words, so the alt text is those
+     words, not a description of the drawing. */
+  var EXPLAINER_CARDS = {
+    plan: {
+      src: "img/explainer/01_plan_beyond_the_chat.png",
+      alt: "Plan beyond the chat. The best results come from intentional " +
+           "planning, not just the conversation."
+    }
+  };
+
   var STAGE_LESSON = {
-    1: { paras: LOREM }
+    1: { paras: LOREM, card: "plan" }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }
@@ -3347,6 +3423,7 @@
     if (work) work.hidden = next === "chat";
     if (meta) meta.hidden = next === "chat";
     if (focus) focus.hidden = next !== "chat";
+    showLessonCard();
     if (next === "chat") {
       renderCoachRail();
       maybeStartConversation();
