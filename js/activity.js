@@ -3527,6 +3527,240 @@
   }
 
   /* ==========================================================================
+     11. ADMIN MODE
+     --------------------------------------------------------------------------
+     A review harness, not a feature. Turned on by ?admin=1 (and /admin/, which
+     is a redirect to it), off in every other case. It exists so the activity
+     can be walked end to end and inspected without answering it first.
+
+     Two rules it must obey, because they are the reason the tool is trustworthy:
+
+       1. It writes ONLY through the same functions a learner's clicks reach -
+          setActions, recomputeTools, openStep, goNext, setPhase, refreshV2.
+          It never sets progress.done directly, and it never invents a state
+          the real flow could not produce. A bug you can only see in admin mode
+          is a bug in admin mode, which is worthless.
+       2. It is additive. Every element it builds is created here, at wire time,
+          and nothing in the learner's markup or CSS knows it exists.
+
+     It is not a security boundary - anyone can type ?admin=1. There is nothing
+     behind it to protect: it fills in sample answers, which the learner could
+     type themselves. Do not put anything here that is not safe to be public.
+     ========================================================================== */
+
+  var ADMIN = (function () {
+    try { return /(^|[?&])admin=1(&|$)/.test(window.location.search); }
+    catch (e) { return false; }   // no location in some embed sandboxes
+  })();
+
+  /* Deliberately recognisable sample answers. If one of these turns up in a
+     screenshot of "learner work", the screenshot came from admin mode. */
+  var ADMIN_SAMPLE = {
+    problem: "Every Monday I spend two hours building status updates for eleven clients — " +
+             "same numbers, same sentences, different names, and by the eleventh one the tone " +
+             "has drifted.",
+    steps: [
+      { action: "Pull last week's delivery numbers", tools: "Asana, Harvest" },
+      { action: "Check the shared inbox for anything unresolved", tools: "Gmail" },
+      { action: "Write a four paragraph update per client", tools: "Google Docs" },
+      { action: "Reformat into the client's preferred channel", tools: "Gmail, Slack" }
+    ],
+    answers: {
+      handoff: "The first draft of each client update, once I paste in the week's numbers.",
+      output: "Four short paragraphs, no bullets, under 200 words, direct client-facing tone " +
+              "with no hedging.",
+      keep: "The last paragraph — the “what I would watch next week” call. " +
+            "That judgment is mine.",
+      context: "Never invent a number. If a figure is missing from what I paste, write MISSING " +
+               "and keep going.",
+      notes: ["Client names are case sensitive and must match the roster exactly."]
+    },
+    /* Learner turns per conversation. Each list is long enough to satisfy that
+       stage's minTurns, read from STAGES rather than hard-coded here. */
+    turns: {
+      identify: ["Every Monday I spend two hours building status updates for eleven clients.",
+                 "They go out before nine, and the tone drifts by the eleventh one."],
+      all: ["The first draft of each client update, once I paste in the week's numbers.",
+            "Four short paragraphs, no bullets, under 200 words.",
+            "The last paragraph. That judgment is mine.",
+            "Never invent a number — write MISSING instead."]
+    }
+  };
+
+  /* Bot lines are filler; only the learner's turns count toward turnsNeeded().
+
+     A lone opening is not a conversation - opening a coaching stage posts one
+     before anyone has said anything, which is the same distinction
+     startPhaseFor() draws with convoLen > 1. So the guard here is "has the
+     learner spoken", not "is the log empty". */
+  function adminSeedConvo(key, texts) {
+    var log = workflowData.conversations[key];
+    if (!log) return;
+    var spoken = log.filter(function (m) { return m.role === "user"; }).length;
+    if (spoken) return;                      // never stomp a real conversation
+    if (!log.length) {
+      log.push({ role: "bot", at: timeLabel(),
+                 text: SCRIPTS[key] ? SCRIPTS[key].opening() : "Let's begin." });
+    }
+    texts.forEach(function (t, i) {
+      log.push({ role: "user", text: t, at: timeLabel() });
+      log.push({ role: "bot", text: "(admin) Noted — answer " + (i + 1) + " recorded.",
+                 at: timeLabel() });
+    });
+    workflowData.mockProgress[key] = texts.length;
+  }
+
+  /* One coach message carrying the finished prompt, so stage 5 shows the
+     "lifted from the coach" path rather than the template fallback. */
+  function adminSeedPromptBlock() {
+    var log = workflowData.conversations.all;
+    if (!log || !log.length) return;
+    if (latestBotPrompt()) return;
+    log.push({ role: "bot", at: timeLabel(), text:
+      "Here is your master prompt.\n\n```master-prompt\n" +
+      generateMasterPromptV2(workflowData) + "\n```" });
+  }
+
+  /* What each stage produces, written the way that stage writes it. */
+  function adminFillStage(n) {
+    if (n === 1) {
+      workflowData.problem = ADMIN_SAMPLE.problem;
+      if (el.problem) el.problem.value = workflowData.problem;
+      updateProblemCount();
+      adminSeedConvo("identify", ADMIN_SAMPLE.turns.identify);
+    } else if (n === 2) {
+      workflowData.steps = ADMIN_SAMPLE.steps.map(function (s) {
+        return { action: s.action, tools: s.tools };
+      });
+      recomputeTools();
+      renderCards();
+    } else if (n === 4) {
+      var a = ADMIN_SAMPLE.answers;
+      Object.keys(a).forEach(function (k) { workflowData.botAnswers[k] = a[k]; });
+      adminSeedConvo("all", ADMIN_SAMPLE.turns.all);
+      adminSeedPromptBlock();
+    } else if (n === 5) {
+      refreshV2(true);
+    }
+    renderPromptV1();
+    renderChatLog();
+    save();
+  }
+
+  /* Fill the open stage and take the same step forward the learner would. */
+  function adminSkip() {
+    var n = workflowData.progress.current;
+    adminFillStage(n);
+    render();
+    if (n >= 5) { setPhase("lesson"); renderAdminBar(); return; }
+    goNext(n);              // validates exactly as it does for a learner
+    renderAdminBar();
+  }
+
+  function adminFillAll() {
+    [1, 2, 3, 4, 5].forEach(adminFillStage);
+    [1, 2, 3, 4].forEach(function (n) { if (stepValid(n)) goNext(n); });
+    render();
+    renderAdminBar();
+  }
+
+  /* Jumping needs the stage unlocked first; openStep() refuses to go past
+     progress.unlocked, and that guard is worth leaving alone. */
+  function adminGoto(n) {
+    workflowData.progress.unlocked = Math.max(workflowData.progress.unlocked, n);
+    if (view !== "stage") setView("stage");
+    openStep(n, false);
+    startPhaseFor(n);
+    save();
+    renderAdminBar();
+  }
+
+  function adminTogglePhase() {
+    var n = workflowData.progress.current;
+    if (!stageHasCoach(n)) return;
+    setPhase(phase === "chat" ? "lesson" : "chat");
+    renderAdminBar();
+  }
+
+  var adminBar = null;
+
+  function adminBtn(label, title, onClick, cls) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "bw-admin-btn" + (cls ? " " + cls : "");
+    b.textContent = label;
+    b.title = title;
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function renderAdminBar() {
+    if (!adminBar) return;
+    var n = workflowData.progress.current;
+    var jumps = adminBar.querySelectorAll("[data-goto]");
+    Array.prototype.forEach.call(jumps, function (b) {
+      var k = parseInt(b.getAttribute("data-goto"), 10);
+      b.setAttribute("data-state", statusOf(k));
+      b.setAttribute("aria-current", k === n && view === "stage" ? "true" : "false");
+    });
+    var toggle = adminBar.querySelector("[data-phase-toggle]");
+    if (toggle) {
+      toggle.disabled = !(view === "stage" && stageHasCoach(n));
+      toggle.textContent = phase === "chat" ? "← Lesson" : "Chat →";
+    }
+    var where = adminBar.querySelector("[data-admin-where]");
+    if (where) where.textContent = view === "stage" ? "stage " + n + " · " + phase : view;
+  }
+
+  function buildAdminBar() {
+    if (!ADMIN || !TIMELINE) return;
+
+    var bar = document.createElement("div");
+    bar.className = "bw-admin";
+    bar.id = "bw-admin";
+    bar.setAttribute("role", "toolbar");
+    bar.setAttribute("aria-label", "Admin review controls");
+
+    var tag = el2("span", "bw-admin-tag", "ADMIN");
+    bar.appendChild(tag);
+
+    bar.appendChild(adminBtn("Skip →", "Fill this stage with sample answers and continue",
+      adminSkip, "bw-admin-primary"));
+    bar.appendChild(adminBtn("Fill all", "Fill every stage and unlock the whole journey",
+      adminFillAll));
+
+    var jump = el2("span", "bw-admin-jump");
+    [1, 2, 3, 4, 5].forEach(function (k) {
+      var b = adminBtn(String(k), "Jump to stage " + k, function () { adminGoto(k); });
+      b.setAttribute("data-goto", k);
+      jump.appendChild(b);
+    });
+    bar.appendChild(jump);
+
+    var toggle = adminBtn("Chat →", "Switch between the lesson and the coach",
+      adminTogglePhase);
+    toggle.setAttribute("data-phase-toggle", "true");
+    bar.appendChild(toggle);
+
+    bar.appendChild(adminBtn("Map", "Back to the journey map", function () {
+      backToMap(); renderAdminBar();
+    }));
+    bar.appendChild(adminBtn("Clear", "Erase everything and return to the landing", function () {
+      try { window.localStorage.removeItem(CONFIG.storageKey); } catch (e) { /* nothing to clear */ }
+      resetInPlace();
+      renderAdminBar();
+    }, "bw-admin-warn"));
+
+    bar.appendChild(el2("span", "bw-admin-where"));
+    bar.querySelector(".bw-admin-where").setAttribute("data-admin-where", "true");
+
+    document.body.appendChild(bar);
+    adminBar = bar;
+    el.root.setAttribute("data-admin", "on");
+    renderAdminBar();
+  }
+
+  /* ==========================================================================
      7. INIT
      ========================================================================== */
 
@@ -3624,6 +3858,7 @@
     wireSaveFlush();
     wireCrossBlockSync();
     if (workflowData.masterPromptV2) paintV2();
+    buildAdminBar();     // no-op unless ?admin=1
     render();
     maybeStartConversation();
     if (ownsStep(5) && (CONFIG.blockRole !== "all" || workflowData.progress.current === 5)) {

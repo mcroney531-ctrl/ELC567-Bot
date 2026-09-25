@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node test/serve.mjs",
     "serve": "node test/serve.mjs",
-    "test": "node test/scripted-coach.test.mjs && node test/live-endpoint.test.mjs && node test/capture-chat.test.mjs && node test/answer-quality.test.mjs && node test/timeline.test.mjs && node test/learning-stage.test.mjs && node test/chat-stage.test.mjs && node test/hardening.test.mjs"
+    "test": "node test/scripted-coach.test.mjs && node test/live-endpoint.test.mjs && node test/capture-chat.test.mjs && node test/answer-quality.test.mjs && node test/timeline.test.mjs && node test/learning-stage.test.mjs && node test/chat-stage.test.mjs && node test/admin.test.mjs && node test/hardening.test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

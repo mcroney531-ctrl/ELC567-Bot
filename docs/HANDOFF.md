@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # eight Playwright suites, 388 assertions, ~3 min
+npm test      # nine Playwright suites, 434 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -46,6 +46,7 @@ css/
   home.css              the dark journey map
   stage.css             the learning stage (dark shell, light workspace)
   chat.css              the coach phase
+  admin.css             the ?admin=1 review bar — never loaded into the learner's flow
 js/
   activity.js           the entire application, one IIFE
   vendor/gsap.min.js    vendored from the user's ELC564-StyleGuide repo
@@ -53,7 +54,8 @@ test/
   helpers.mjs           serveSite, withConfig, makeReporter, waitBots, seedThroughStage3
   coach-stub.mjs        fake LLM endpoint for the live-adapter suite
   serve.mjs             the dev server behind `npm start`
-  *.test.mjs            eight suites (see §7)
+  *.test.mjs            nine suites (see §7)
+admin/index.html        a redirect to /?admin=1 (see §6.5)
 personas/               offline persona-run harness (see §9)
 docs/design/            three design packs the user supplied, committed verbatim
 docs/HANDOFF.md         this file
@@ -61,8 +63,8 @@ README.md               user-facing overview
 ```
 
 **Stylesheet order matters** and is fixed in `index.html`:
-`tokens → activity → timeline → home → stage → chat`. Later files assume the earlier
-ones. `gsap.min.js` loads before `activity.js`.
+`tokens → activity → timeline → home → stage → chat → admin`. Later files assume the
+earlier ones. `gsap.min.js` loads before `activity.js`.
 
 ---
 
@@ -337,11 +339,50 @@ siblings have saved since — that is what stops blocks trampling each other.
 genuinely useful for working on one stage in isolation (`/role/problem`). Do not rip it
 out without asking. If you touch shared code, keep the `TIMELINE` guards.
 
+> `/role/` and `/frames/` are **test-harness routes only** — they are implemented in
+> `serveSite()`, not on GitHub Pages. They work under `npm start` and in tests, and 404
+> on the deployed site. Admin mode (below) is different: it is a query flag, so it works
+> everywhere.
+
+---
+
+## 6.5. Admin mode
+
+A review harness for walking the activity end to end without answering it. Section 11 of
+`activity.js`.
+
+**Turned on by `?admin=1`.** `/admin/` is a real directory (`admin/index.html`) whose only
+job is to `location.replace("../?admin=1")` — GitHub Pages has no router, so a query flag
+is the only thing that works on Pages, Netlify, `npm start` and inside a Storyline iframe
+alike. The flag is what the app reads; the directory is a convenience door.
+
+The bar offers: **Skip →** (fill the open stage, then advance), **Fill all**, stage jump
+buttons **1–5**, a **lesson ⇄ chat** toggle, **Map**, and **Clear**.
+
+Two rules it must keep, because they are why it is trustworthy:
+
+1. **It writes only through the functions a learner's clicks reach** — `setActions`,
+   `recomputeTools`, `openStep`, `goNext`, `setPhase`, `refreshV2`. It never sets
+   `progress.done` directly and never invents a state the real flow could not produce. A
+   bug visible only in admin mode is a bug *in* admin mode, which is worthless. The suite
+   asserts this by comparing what admin mode leaves behind against what the real flow
+   leaves behind — same map states, same computed completion lines, same `v2Source: "bot"`.
+2. **It is additive.** Every element is created at wire time; nothing in the learner's
+   markup or CSS knows it exists. The bar is a sibling of `.bw`, not a child — asserted.
+
+`ADMIN_SAMPLE` holds deliberately recognisable answers (eleven client status updates,
+Asana/Harvest/Gmail). If one turns up in a screenshot of "learner work", the screenshot
+came from admin mode.
+
+**It is not a security boundary.** Anyone can type `?admin=1`. There is nothing behind it
+to protect — it fills in sample answers a learner could type themselves. Do not put
+anything there that is not safe to be public.
+
 ---
 
 ## 7. Tests
 
-Eight Playwright suites, **388 assertions**. All passing at `94b55f6`.
+Nine Playwright suites, **434 assertions**. All passing at `94b55f6`.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
@@ -353,6 +394,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `chat-stage.test.mjs` | 60 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
+| `admin.test.mjs` | 46 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
 | `answer-quality.test.mjs` | 21 | Thin-answer heuristics and push-backs |
 | `hardening.test.mjs` | 14 | Charset, no blocking modals, OS dark mode, clipboard fallbacks, two-press confirms |
 
@@ -523,8 +565,10 @@ Walking the app once is worth more than reading `activity.js` top to bottom. Cli
 enter stage 1, read the lesson, press Continue, talk to the coach, take the handoff. That
 path exercises most of what is described above.
 
-To reach a later stage quickly without walking it, use the seeding pattern from
-`test/helpers.mjs` (`seedThroughStage3`) or open a slice: `http://127.0.0.1:8080/role/workflow`.
+To reach a later stage quickly without walking it, open **`http://127.0.0.1:8080/admin/`**
+and use the review bar (§6.5) — that is what it is for. The seeding pattern in
+`test/helpers.mjs` (`seedThroughStage3`) and the slices (`/role/workflow`) are the other
+two ways in.
 
 ### Before you push
 Every push to `main` deploys to GitHub Pages. Run the full suite first. If you changed

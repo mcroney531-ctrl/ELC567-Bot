@@ -1,0 +1,62 @@
+/* ==========================================================================
+   Admin review bar
+   --------------------------------------------------------------------------
+   Only ever on screen when ?admin=1 built it, so nothing here is scoped to a
+   state the learner can reach. It is deliberately plain and slightly ugly:
+   this is a tool sitting on top of the product, and it should never be
+   mistaken for part of it in a screenshot.
+
+   Fixed to the bottom of the viewport rather than placed in the flow, so it
+   cannot shift the layout it exists to let you inspect.
+   ========================================================================== */
+
+.bw-admin {
+  position: fixed; z-index: 9999;
+  left: 50%; bottom: 12px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  max-width: calc(100vw - 24px);
+  padding: 7px 10px; border-radius: 10px;
+  background: #11161f; border: 1px solid #39465c;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .34);
+  font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #cfd9e8;
+}
+
+.bw-admin-tag {
+  padding: 3px 7px; border-radius: 5px;
+  background: #d9483b; color: #fff;
+  font-weight: 700; letter-spacing: .09em;
+}
+
+.bw-admin-btn {
+  font: inherit; cursor: pointer;
+  padding: 5px 9px; border-radius: 6px;
+  background: #1d2634; border: 1px solid #3c4a60; color: #e6edf7;
+}
+.bw-admin-btn:hover:not(:disabled) { background: #27334a; border-color: #5a6d8c; }
+.bw-admin-btn:focus-visible { outline: 2px solid #7fb7e8; outline-offset: 2px; }
+.bw-admin-btn:disabled { opacity: .38; cursor: not-allowed; }
+
+.bw-admin-primary { background: #1f6f4a; border-color: #2c9a68; color: #fff; }
+.bw-admin-primary:hover:not(:disabled) { background: #268358; border-color: #3fbd85; }
+.bw-admin-warn { border-color: #6d3b36; color: #ffb9b1; }
+
+/* The jump row doubles as a read-out: each stage's button carries the same
+   state the map would show it in, so you can see the model without leaving
+   whatever screen you are inspecting. */
+.bw-admin-jump { display: inline-flex; gap: 3px; margin: 0 2px; }
+.bw-admin-jump .bw-admin-btn { padding: 5px 8px; min-width: 26px; }
+.bw-admin-jump [data-state="locked"]    { opacity: .45; }
+.bw-admin-jump [data-state="available"] { border-color: #2c9a68; }
+.bw-admin-jump [data-state="current"]   { border-color: #28f28e; color: #d8fff0; }
+.bw-admin-jump [data-state="completed"] { background: #2b3f5e; border-color: #7fb7e8; }
+.bw-admin-jump [aria-current="true"]    { box-shadow: inset 0 -2.5px 0 #7fb7e8; }
+
+.bw-admin-where { opacity: .6; padding-left: 2px; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .bw-admin { gap: 4px; padding: 6px 8px; font-size: 11px; }
+  .bw-admin-where { display: none; }
+}
+
+@media print { .bw-admin { display: none; } }

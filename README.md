@@ -26,7 +26,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # eight suites, 348 assertions
+npm test      # nine suites, 434 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -35,8 +35,24 @@ A server rather than opening `index.html` directly, because Chromium gives a `fi
 | Path | What it serves |
 |---|---|
 | `/` | the whole activity |
+| `/admin/` | the activity with the review bar up — a redirect to `/?admin=1` |
 | `/role/<name>` | one slice of it, for working on a stage in isolation |
 | `/frames/<a,b,c>` | several slices side by side on one origin, sharing state |
+
+`/role/` and `/frames/` are preview routes and exist only here; they 404 on the deployed site.
+`?admin=1` is a query flag, so it works everywhere the activity does.
+
+### Admin mode
+
+`/admin/` (or `?admin=1` on any host, including the deployed URL) puts a small bar at the bottom
+of the screen: **Skip →** fills the open stage with sample answers and continues, **Fill all**
+completes the whole journey, **1–5** jump to a stage, and a toggle switches between a stage's
+lesson and its coach. It exists so the activity can be walked and inspected without answering it
+first.
+
+It writes only through the functions a learner's own clicks reach, so every state it produces is
+one the real flow could produce — that is asserted in `test/admin.test.mjs` by comparing the two.
+It is not a login: anyone can type `?admin=1`, and there is nothing behind it to protect.
 
 ### Layout
 
@@ -402,7 +418,7 @@ validates loses its checkmark until it does.
 
 ```bash
 npm start     # the activity at http://127.0.0.1:8080
-npm test      # all five suites
+npm test      # all nine suites
 ```
 
 Every suite fails on any uncaught page error or unexpected console error, so a runtime exception
@@ -445,6 +461,10 @@ anywhere in the flow shows up as a test failure.
   with neither running the full width, that the context cards are drawn from real state, that the
   handoff card appears only once the coach has enough and then moves the learner on, that coming
   back mid-conversation resumes it, and that the rail collapses to a compact summary at 390px.
+- `test/admin.test.mjs` — the `?admin=1` review bar: that it stays off on every other URL, that
+  jumping unlocks only as far as it claims, that Skip goes through the real gate rather than around
+  it, and — the point of the suite — that the journey it leaves behind is indistinguishable from one
+  somebody answered honestly, down to the computed completion lines and the prompt's provenance.
 - `test/hardening.test.mjs` — the failure modes that survived the move off Rise: that the page
   declares its own encoding, that dark mode stays off by default and still works when opted in,
   that copying survives a missing clipboard API and leaves the text selected when it can't copy at

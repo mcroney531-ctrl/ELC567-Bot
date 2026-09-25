@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin — AI Workflow Builder</title>
+<!-- There is no server here to route /admin: this is a static site on GitHub
+     Pages, so /admin/ is a real directory whose only job is to hand you the
+     activity with the review bar switched on. The query string is what the app
+     actually reads, and it works from any host - Pages, Netlify, a local
+     server, or inside a Storyline iframe. -->
+<meta http-equiv="refresh" content="0; url=../?admin=1">
+<script>location.replace("../?admin=1" + location.hash);</script>
+<style>
+  body { margin: 0; display: grid; place-items: center; min-height: 100vh;
+         font: 15px/1.5 system-ui, sans-serif; background: #11161f; color: #cfd9e8; }
+  a { color: #7fb7e8; }
+</style>
+</head>
+<body>
+  <p>Opening the activity in admin mode&hellip; <a href="../?admin=1">continue</a></p>
+</body>
+</html>

@@ -73,7 +73,13 @@ export function serveSite(port, overrides = {}) {
         '</body></html>', TYPES['.html']);
     }
 
-    const file = path.join(ROOT, url.pathname.replace(/^\/+/, ''));
+    let file = path.join(ROOT, url.pathname.replace(/^\/+/, ''));
+    // A directory resolves to its index.html, the way a static host does it -
+    // otherwise /admin/ is reachable on GitHub Pages but not locally, and the
+    // preview stops telling you the truth about the deployed site.
+    if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
+      file = path.join(file, 'index.html');
+    }
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       return res.end('not found: ' + url.pathname);
