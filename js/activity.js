@@ -3513,8 +3513,9 @@
       "connected to an LLM through features like plugins and extensions." },
     { type: "p", text:
       "Naming your specific tools can unearth these possibilities. Sometimes, as you list " +
-      "them a connection becomes obvious. Other times, AI might pick up on one or present a " +
-      "workaround. The more you practice, the easier this gets to see on your own." },
+      "them a connection becomes obvious. If you're brainstorming with AI in a session, the " +
+      "model might pick up on one or present a workaround. The more you practice, the easier " +
+      "this gets to see on your own." },
     { type: "defs", lead: "Examples:", items: [
       { term: "Spreadsheet \u2192 Email", text:
         "Automatically tracks changes, sends notifications, and delivers insights on a schedule." },
