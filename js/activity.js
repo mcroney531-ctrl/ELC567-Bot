@@ -118,7 +118,13 @@
   var STAGE = ROLE.stage;                             // null for capture / artifact
   /* The two stages that take down the workflow itself rather than an opinion. */
   var isCaptureChat = !!(STAGE && STAGES[STAGE].owns);
-  var ownsStep = function (n) { return ROLE.steps.indexOf(n) !== -1; };
+  /* The full activity owns every stage there is, so it does not consult a list
+     that would have to be kept in step with STATIONS. A slice owns what it
+     declares. (ROLES.all.steps is left in place for readability; nothing reads
+     it any more.) */
+  var ownsStep = function (n) {
+    return CONFIG.blockRole === "all" || ROLE.steps.indexOf(n) !== -1;
+  };
   var ownsAnswer = function (k) {
     return STAGE ? STAGES[STAGE].answers.indexOf(k) !== -1 : false;
   };
@@ -337,7 +343,7 @@
     base.progress = base.progress || defaultData().progress;
     base.progress.done = base.progress.done || {};
     base.progress.entered = base.progress.entered || {};
-    ROLE.steps.forEach(function (n) {
+    ownedSteps().forEach(function (n) {
       if (workflowData.progress.entered[n]) base.progress.entered[n] = true;
       if (workflowData.progress.done[n]) base.progress.done[n] = true;
       // A chat block shares its step with the other chats in that step, so it
@@ -394,7 +400,7 @@
     });
     var mine = workflowData.progress.done;
     var theirs = stored.progress.done || {};
-    [1, 2, 3, 4, 5].forEach(function (n) {
+    stageNumbers().forEach(function (n) {
       if (ownsStep(n)) return;
       if (theirs[n]) mine[n] = true; else delete mine[n];
     });
@@ -475,7 +481,7 @@
     if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(); }
     render();
     maybeStartConversation();
-    if (ownsStep(5)) refreshV2(false);
+    if (ownsStep(lastStage())) refreshV2(false);
   }
 
   /* A debounced write is lost if the learner reloads, navigates, or closes the
@@ -1789,14 +1795,15 @@
 
     if (CONFIG.blockRole === "capture") {
       // Return a coming-back learner to the first step they haven't finished.
+      var last = ROLE.steps[ROLE.steps.length - 1];
       var u = 1;
-      while (u < 3 && workflowData.progress.done[u]) u++;
+      while (u < last && workflowData.progress.done[u]) u++;
       workflowData.progress.unlocked = u;
       workflowData.progress.current = u;
     } else {
       // Single-step blocks are never "locked"; they gate on the capture block
       // being filled in instead, which applyPrereqState handles.
-      workflowData.progress.unlocked = 5;
+      workflowData.progress.unlocked = lastStage();
       workflowData.progress.current = ROLE.steps[0];
     }
   }
@@ -1976,7 +1983,7 @@
       }
     }
     if (TIMELINE ? stageHasCoach(n) : (n === 4 || (n === 3 && isCaptureChat))) maybeStartConversation();
-    if (n === 5) refreshV2(false);
+    if (n === lastStage()) refreshV2(false);
   }
 
   function prefersReducedMotion() {
@@ -1987,9 +1994,9 @@
     if (!stepValid(n)) { showWarning(n, warningFor(n)); return; }
     showWarning(n, "");
     workflowData.progress.done[n] = true;
-    workflowData.progress.unlocked = Math.max(workflowData.progress.unlocked, Math.min(5, n + 1));
+    workflowData.progress.unlocked = Math.max(workflowData.progress.unlocked, Math.min(lastStage(), n + 1));
     save();
-    var next = Math.min(5, n + 1);
+    var next = Math.min(lastStage(), n + 1);
     if (!ownsStep(next)) {   // the next step lives in a different Rise block
       el.handoff.textContent = "Saved. Keep going in the next section of this lesson.";
       el.handoff.hidden = false;
@@ -2028,10 +2035,10 @@
     });
 
     renderAdminBar();   // no-op unless ?admin=1
-    var doneCount = [1, 2, 3, 4, 5].filter(function (n) { return workflowData.progress.done[n]; }).length;
-    el.progressFill.style.width = (doneCount / 5 * 100) + "%";
-    el.progressLabel.textContent = doneCount === 5 ? "Complete"
-      : (ROLE.label || "Step " + current + " of 5");
+    var doneCount = stageNumbers().filter(function (n) { return workflowData.progress.done[n]; }).length;
+    el.progressFill.style.width = (doneCount / stageCount() * 100) + "%";
+    el.progressLabel.textContent = doneCount === stageCount() ? "Complete"
+      : (ROLE.label || "Step " + current + " of " + stageCount());
 
     applyPrereqState();
     renderMap();
@@ -2568,7 +2575,7 @@
           : "Couldn't copy automatically \u2014 the text is selected, press Ctrl+C (Cmd+C on a Mac).";
         setTimeout(function () { el.copyStatus.textContent = ""; }, 4000);
         if (ok) {
-          workflowData.progress.done[5] = true;
+          workflowData.progress.done[lastStage()] = true;
           save();
           render();
         }
@@ -2705,6 +2712,17 @@
       done: function () { return "Complete · Master prompt ready"; } }
   ];
 
+  /* How long the journey is, and which numbers are in it, read off STATIONS so
+     the count is one fact rather than two that have to agree. Everything whose
+     meaning is "the whole journey" goes through these; rules that mean one
+     particular stage still name their own number. */
+  function stageNumbers() { return STATIONS.map(function (s) { return s.step; }); }
+  /* The steps this block is responsible for writing back: the whole journey for
+     the full activity, and the declared slice otherwise. */
+  function ownedSteps() { return CONFIG.blockRole === "all" ? stageNumbers() : ROLE.steps; }
+  function stageCount() { return STATIONS.length; }
+  function lastStage() { return STATIONS[STATIONS.length - 1].step; }
+
   /* The four presentation states, derived from progress and nothing else.
      locked -> available -> current -> completed.
 
@@ -2732,6 +2750,9 @@
     var host = document.getElementById("bw-stations");
     if (!host) return;
     host.textContent = "";
+    // The spine's column count is the number of stations, and nothing else.
+    var spine = document.getElementById("bw-spine");
+    if (spine) spine.style.setProperty("--station-count", String(stageCount()));
     stationNodes = STATIONS.map(function (s, i) {
       var li = document.createElement("li");
       li.className = "bw-station";
@@ -2739,6 +2760,9 @@
       li.setAttribute("data-stage", String(s.step));
       li.setAttribute("data-place", s.place);
       li.setAttribute("data-accent", s.accent);
+      // Which column this station sits in. Inherited by the card and the
+      // waypoint, which is what replaces a rule per position in home.css.
+      li.style.setProperty("--station-col", String(i + 1));
 
       /* -- the card -- */
       var card = document.createElement("button");
@@ -2812,7 +2836,13 @@
   function drawRail() {
     var svg = document.getElementById("bw-rail");
     if (!svg) return;
-    var xs = [10, 30, 50, 70, 90];
+    /* One waypoint per station, at the centre of that station's grid column:
+       for N columns the centre of column i is (i + 0.5) x 100/N. At five that
+       is exactly the 10/30/50/70/90 this was written with, and it stays true
+       whatever the count becomes. */
+    var n = stageCount();
+    var xs = STATIONS.map(function (_, i) { return (i + 0.5) * (100 / n); });
+    if (!xs.length) return;
     var y = function (i) { return i % 2 === 0 ? RAIL_Y.odd : RAIL_Y.even; };
     var d = "M 0 " + y(0) + " L " + xs[0] + " " + y(0);
     for (var i = 1; i < xs.length; i++) {
@@ -2830,7 +2860,7 @@
     if (!TIMELINE || !stationNodes.length) return;
     var p = workflowData.progress;
     var resume = 1;
-    while (resume < 5 && p.done[resume]) resume++;
+    while (resume < lastStage() && p.done[resume]) resume++;
 
     stationNodes.forEach(function (node) {
       var n = node.def.step;
@@ -2856,8 +2886,8 @@
 
     var hint = document.getElementById("bw-map-hint");
     if (hint) {
-      var doneCount = [1, 2, 3, 4, 5].filter(function (n) { return p.done[n]; }).length;
-      hint.textContent = doneCount === 5
+      var doneCount = stageNumbers().filter(function (n) { return p.done[n]; }).length;
+      hint.textContent = doneCount === stageCount()
         ? "Every stage complete. Open Deploy to copy your master prompt again."
         : "Pick up at " + STATIONS[resume - 1].name + ". Stages open as you finish the one before.";
     }
@@ -3195,7 +3225,7 @@
     setText("bw-ls-num", pad2(n));
     setText("bw-ls-name", def.name);
     setText("bw-ls-framing", ctx.framing || def.blurb);
-    setText("bw-ls-step", "Step " + n + " of 5");
+    setText("bw-ls-step", "Step " + n + " of " + stageCount());
     setText("bw-ls-quote", ctx.quote ? "“" + ctx.quote + "”" : "");
 
     var art = document.getElementById("bw-ls-art");
@@ -3206,7 +3236,7 @@
         STAGE_ART[def.art] + '</svg>';
     }
     var fill = document.getElementById("bw-ls-bar-fill");
-    if (fill) fill.style.width = (n / 5 * 100) + "%";
+    if (fill) fill.style.width = (n / stageCount() * 100) + "%";
 
     // The lesson title is the step's own heading, so it can never disagree
     // with the panel underneath it.
@@ -3938,7 +3968,7 @@
       Object.keys(a).forEach(function (k) { workflowData.botAnswers[k] = a[k]; });
       adminSeedConvo("all", ADMIN_SAMPLE.turns.all);
       adminSeedPromptBlock();
-    } else if (n === 5) {
+    } else if (n === lastStage()) {
       refreshV2(true);
     }
     renderPromptV1();
@@ -3951,14 +3981,14 @@
     var n = workflowData.progress.current;
     adminFillStage(n);
     render();
-    if (n >= 5) { setPhase("lesson"); renderAdminBar(); return; }
+    if (n >= lastStage()) { setPhase("lesson"); renderAdminBar(); return; }
     goNext(n);              // validates exactly as it does for a learner
     renderAdminBar();
   }
 
   function adminFillAll() {
-    [1, 2, 3, 4, 5].forEach(adminFillStage);
-    [1, 2, 3, 4].forEach(function (n) { if (stepValid(n)) goNext(n); });
+    stageNumbers().forEach(adminFillStage);
+    stageNumbers().slice(0, -1).forEach(function (n) { if (stepValid(n)) goNext(n); });
     render();
     renderAdminBar();
   }
@@ -4032,7 +4062,7 @@
       adminFillAll));
 
     var jump = el2("span", "bw-admin-jump");
-    [1, 2, 3, 4, 5].forEach(function (k) {
+    stageNumbers().forEach(function (k) {
       var b = adminBtn(String(k), "Jump to stage " + k, function () { adminGoto(k); });
       b.setAttribute("data-goto", k);
       jump.appendChild(b);
@@ -4163,7 +4193,7 @@
     buildAdminBar();     // no-op unless ?admin=1
     render();
     maybeStartConversation();
-    if (ownsStep(5) && (CONFIG.blockRole !== "all" || workflowData.progress.current === 5)) {
+    if (ownsStep(lastStage()) && (CONFIG.blockRole !== "all" || workflowData.progress.current === lastStage())) {
       refreshV2(false);
     }
     reportHeight();

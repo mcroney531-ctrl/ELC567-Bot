@@ -151,7 +151,7 @@
   position: relative; z-index: 2;
   margin: 16px 0 4px;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--station-count, 5), 1fr);
   grid-template-rows: 1fr 84px 1fr;
   align-items: center;
 }
@@ -173,7 +173,7 @@
 /* The stem and the waypoint move together, so the marker always sits on the
    line even though the line rises and falls between stations. */
 .bw-station-node {
-  grid-row: 2; position: relative;
+  grid-row: 2; grid-column: var(--station-col, auto); position: relative;
   width: 100%; height: 84px;
   justify-self: center;
 }
@@ -208,7 +208,7 @@
 
 .bw-station-card {
   position: relative;
-  grid-column: auto;
+  grid-column: var(--station-col, auto);
   justify-self: center;
   width: 100%; max-width: 240px;
   padding: 16px 14px 14px;
@@ -225,11 +225,9 @@
               box-shadow var(--bw-duration-micro) var(--bw-ease-standard);
 }
 
-.bw-station:nth-child(1) .bw-station-card, .bw-station:nth-child(1) .bw-station-node { grid-column: 1; }
-.bw-station:nth-child(2) .bw-station-card, .bw-station:nth-child(2) .bw-station-node { grid-column: 2; }
-.bw-station:nth-child(3) .bw-station-card, .bw-station:nth-child(3) .bw-station-node { grid-column: 3; }
-.bw-station:nth-child(4) .bw-station-card, .bw-station:nth-child(4) .bw-station-node { grid-column: 4; }
-.bw-station:nth-child(5) .bw-station-card, .bw-station:nth-child(5) .bw-station-node { grid-column: 5; }
+/* Column comes from --station-col, set on each .bw-station by buildMap() and
+   inherited through display:contents. This was five nth-child rules, which
+   meant the map could only ever have five stations. */
 .bw-station[data-place="above"] .bw-station-card { grid-row: 1; align-self: end; margin-bottom: 0; }
 .bw-station[data-place="below"] .bw-station-card { grid-row: 3; align-self: start; }
 

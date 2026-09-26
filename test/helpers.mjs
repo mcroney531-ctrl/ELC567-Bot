@@ -47,7 +47,11 @@ const TYPES = {
  *   /role/<name>      the activity with CONFIG.blockRole set to <name>
  *   anything else     that file, straight off disk
  */
-export function serveSite(port, overrides = {}) {
+/* `transform` rewrites the served activity.js source, for the one case config
+   cannot reach: proving the journey machinery does not require exactly five
+   stations. It never touches the file on disk, so a fixture built with it can
+   never become production content. */
+export function serveSite(port, overrides = {}, transform = null) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
     const send = (body, type) => { res.writeHead(200, { 'Content-Type': type }); res.end(body); };
@@ -88,7 +92,9 @@ export function serveSite(port, overrides = {}) {
     if (url.pathname === '/js/activity.js') {
       const asked = url.searchParams.get('role');
       const config = asked ? { ...overrides, blockRole: `"${asked}"` } : overrides;
-      return send(Object.keys(config).length ? withConfig(config) : readActivity(), TYPES['.js']);
+      let src = Object.keys(config).length ? withConfig(config) : readActivity();
+      if (transform) src = transform(src);
+      return send(src, TYPES['.js']);
     }
     send(fs.readFileSync(file), TYPES[path.extname(file)] || 'application/octet-stream');
   });
@@ -165,4 +171,24 @@ export async function readLesson(page, max = 6) {
     await page.waitForTimeout(450);
   }
   throw new Error('lesson did not end after ' + max + ' pages');
+}
+
+/* Serve the activity with one station removed from STATIONS, and nothing else
+   changed. Used only to prove the count is derived; the four-station journey it
+   produces is a structural fixture, not a product. */
+export function withoutStation(name) {
+  return src => {
+    const open = src.indexOf('  var STATIONS = [');
+    if (open === -1) throw new Error('STATIONS not found');
+    const from = src.indexOf('    { step: ', open);
+    const end = src.indexOf('\n  ];', open);
+    const body = src.slice(from, end);
+    const entries = body.split(/\n(?=    \{ step: )/);
+    const kept = entries.filter(e => !e.includes('name: "' + name + '"'));
+    if (kept.length !== entries.length - 1) {
+      throw new Error('expected to drop exactly one station named ' + name +
+        ', dropped ' + (entries.length - kept.length));
+    }
+    return src.slice(0, from) + kept.join('\n') + src.slice(end);
+  };
 }
