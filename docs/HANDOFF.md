@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # nine Playwright suites, 461 assertions, ~3 min
+npm test      # nine Playwright suites, 466 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -414,7 +414,7 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Nine Playwright suites, **461 assertions**, all passing.
+Nine Playwright suites, **466 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
@@ -422,7 +422,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 |---|---|---|
 | `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
 | `timeline.test.mjs` | 89 | Journey map: five stations, four states, navigation rules, the connector, responsive |
-| `learning-stage.test.mjs` | 77 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
+| `learning-stage.test.mjs` | 82 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
@@ -498,7 +498,7 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 - The journey map, four-state lifecycle, deterministic completion copy.
 - The learning stage shell, mini-node strip, constant-shell rule.
 - The coach phase as a mode inside the stage.
-- Stage 1: lesson screen (lorem ipsum) → coach → handoff.
+- Stage 1: lesson screen (real copy, supplied by the user) → coach → handoff.
 - Stage 2's builder, V1 generation, stage 4's coach, V2 capture, stage 5's artifact.
 
 ### Open work, roughly in priority order
@@ -512,8 +512,16 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
    the user which card goes with which lesson rather than guessing. All the machinery (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is
    already general.
 
-2. **Real lesson copy.** Stage 1's is lorem ipsum, explicitly a placeholder the user will
-   replace. Do not write instructional copy for them without asking.
+2. **Real lesson copy.** Stage 1's is written (`STAGE_1_LESSON`, used verbatim as the user
+   supplied it). Stages 2–5 have none. **Do not write instructional copy for them without
+   asking** — the user writes it and hands it over.
+
+   Copy is a list of typed blocks, rendered one node per type by
+   `buildLessonBlock()`: `h` (the question a section answers), `p`, `list`
+   (with an optional `lead`), and `turn` (the handoff, which poses the question
+   the coach is about to ask and sits directly above Continue). A lesson may give
+   `paras` instead, which is shorthand for all-paragraphs. Nothing goes through
+   `innerHTML`.
 
 3. **Stage 2's coach.** The `workflow` and `tools` capture scripts exist and
    `STAGE_CONVO` maps stage 2 → `workflow`, but stage 2 is **not** in `STAGE_COACH` and

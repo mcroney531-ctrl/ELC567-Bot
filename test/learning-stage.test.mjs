@@ -109,6 +109,25 @@ try {
   check('the lesson is on screen', await page.locator('#bw-lesson-body').isVisible());
   check('with a heading', (await page.locator('#bw-lesson-title').textContent()).trim().length > 0);
   check('and prose', (await page.locator('#bw-lesson-copy').textContent()).trim().length > 80);
+  /* The copy has shape - a question, prose, a worked list, and the turn that
+     hands the learner to the coach - so it is blocks, not a run of paragraphs. */
+  check('rendered as typed blocks, in the order they are written',
+    (await page.locator('#bw-lesson-copy > *').evaluateAll(
+      els => els.map(e => e.className.replace('bw-lesson-', '')).join(','))) ===
+    'h,para,para,para,listwrap,para,turn',
+    await page.locator('#bw-lesson-copy > *').evaluateAll(
+      els => els.map(e => e.className).join(',')));
+  check('with the examples as a real list', await page.locator('.bw-lesson-item').count() === 4);
+  check('and no lorem ipsum left in it',
+    !/lorem ipsum/i.test(await page.locator('#bw-lesson-copy').textContent()));
+  check('the turn asks the question the coach is about to ask',
+    (await page.locator('.bw-lesson-turn').textContent()).includes('What makes it tedious?'),
+    await page.locator('.bw-lesson-turn').textContent());
+  check('and it sits directly above Continue', await page.evaluate(() => {
+    const turn = document.querySelector('.bw-lesson-turn').getBoundingClientRect();
+    const next = document.querySelector('#bw-lesson-next').getBoundingClientRect();
+    return next.top >= turn.bottom - 2;
+  }));
   check('the lesson\'s picture is an explainer card, in the context panel',
     await page.locator('.bw-ls-context #bw-ls-lesson-img').isVisible() &&
     await page.locator('.bw-ls-work img, .bw-ls-work svg').count() === 0,

@@ -26,7 +26,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # nine suites, 461 assertions
+npm test      # nine suites, 466 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no

@@ -3229,13 +3229,42 @@
     var copy = document.getElementById("bw-lesson-copy");
     if (copy) {
       copy.textContent = "";
-      lesson.paras.forEach(function (t) { copy.appendChild(el2("p", "bw-lesson-para", t)); });
+      lessonBlocks(lesson).forEach(function (b) {
+        copy.appendChild(buildLessonBlock(b));
+      });
     }
     var next = document.getElementById("bw-lesson-next");
     if (next) {
       next.textContent = stageHasCoach(n)
         ? "Continue" : "Next: " + ((STATIONS[n] || {}).name || "finish");
     }
+  }
+
+  function lessonBlocks(lesson) {
+    if (lesson.blocks) return lesson.blocks;
+    return (lesson.paras || []).map(function (t) { return { type: "p", text: t }; });
+  }
+
+  /* One node per block type. Nothing here goes through innerHTML: lesson copy
+     is ours, but it is still text, and the rest of the activity holds that line. */
+  function buildLessonBlock(b) {
+    if (b.type === "h") return el2("h4", "bw-lesson-h", b.text);
+    if (b.type === "turn") {
+      var turn = el2("p", "bw-lesson-turn");
+      turn.appendChild(el2("strong", "bw-lesson-turn-label", b.label));
+      turn.appendChild(document.createTextNode(" " + b.text));
+      return turn;
+    }
+    if (b.type === "list") {
+      var wrap = el2("div", "bw-lesson-listwrap");
+      if (b.lead) wrap.appendChild(el2("p", "bw-lesson-lead", b.lead));
+      var ul = el2("ul", "bw-lesson-list");
+      ul.setAttribute("role", "list");
+      b.items.forEach(function (t) { ul.appendChild(el2("li", "bw-lesson-item", t)); });
+      wrap.appendChild(ul);
+      return wrap;
+    }
+    return el2("p", "bw-lesson-para", b.text);
   }
 
   /* The card is the lesson's picture and the icon is the coach's, so which one
@@ -3368,13 +3397,35 @@
      for the context panel's icon while the lesson is up, so the stage still
      shows one picture at a time. Placeholder copy; a stage without an entry
      still shows its old panel. */
-  var LOREM = [
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor " +
-    "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud " +
-    "exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-    "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat " +
-    "nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui " +
-    "officia deserunt mollit anim id est laborum."
+  /* Lesson copy is a list of typed blocks rather than a list of paragraphs,
+     because the writing has shape: a question, prose, a worked list, and the
+     turn that hands the learner to the coach. A lesson may still give `paras`
+     instead, which is shorthand for all-paragraphs. */
+  var STAGE_1_LESSON = [
+    { type: "h", text: "What makes a good problem to tackle?" },
+    { type: "p", text:
+      "The ideal task for AI utilization is one where the outcome is already defined before " +
+      "you start. These are usually the things you could describe step-by-step if someone " +
+      "asked. You follow the same steps every time." },
+    { type: "p", text:
+      "They also shouldn't be subjective. There shouldn't be branches in the process \u2014 no " +
+      "\u201cif this happens, then you do that instead.\u201d The steps stay the same every " +
+      "time, regardless of the situation." },
+    { type: "p", text:
+      "These tasks tend to be more on the tedious side. In many cases, it's something that " +
+      "takes real time but doesn't require much thought once you know the steps." },
+    { type: "list", lead: "Examples:", items: [
+      "Compiling client feedback into a summary document",
+      "Formatting meeting notes into action items",
+      "Pulling data from three different tools into one spreadsheet",
+      "Drafting routine emails from templates"
+    ] },
+    { type: "p", text:
+      "Take a moment to think about some of the work that you do regularly. What are some " +
+      "things that might fit? Perhaps it's a spreadsheet task, updating a weekly report, or " +
+      "maybe a timesheet." },
+    { type: "turn", label: "Your turn:", text:
+      "Think of one task that fits this pattern. What is it? What makes it tedious?" }
   ];
 
   /* The explainer cards carry their own words, so the alt text is those
@@ -3388,7 +3439,7 @@
   };
 
   var STAGE_LESSON = {
-    1: { paras: LOREM, card: "plan" }
+    1: { blocks: STAGE_1_LESSON, card: "plan" }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }

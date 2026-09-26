@@ -351,4 +351,38 @@
 .bw-lesson-copy { max-width: 62ch; }
 .bw-lesson-para { font-size: .9375rem; line-height: 1.6; color: var(--ls-muted); }
 .bw-lesson-para + .bw-lesson-para { margin-top: 14px; }
+
+/* The question the section answers. Darker than the prose under it, because it
+   is a waypoint in the reading rather than another sentence. */
+.bw .bw-lesson-h {
+  margin: 0 0 10px; font-size: 1rem; font-weight: 700;
+  letter-spacing: -.01em; color: var(--ls-strong);
+}
+.bw-lesson-para + .bw-lesson-h, .bw-lesson-listwrap + .bw-lesson-h { margin-top: 22px; }
+
+.bw-lesson-listwrap { margin-top: 16px; }
+.bw-lesson-lead {
+  margin: 0 0 8px; font-size: .9375rem; font-weight: 650; color: var(--ls-strong);
+}
+.bw-lesson-list { list-style: none; margin: 0; padding: 0; }
+.bw-lesson-item {
+  position: relative; padding-left: 20px; margin-top: 7px;
+  font-size: .9375rem; line-height: 1.5; color: var(--ls-muted);
+}
+.bw-lesson-item::before {
+  content: ""; position: absolute; left: 4px; top: .6em;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent, #3e8bff);
+}
+.bw-lesson-listwrap + .bw-lesson-para { margin-top: 16px; }
+
+/* The handoff. It asks the question the coach is about to ask, so it sits
+   just above Continue and carries the stage's colour to tie the two together. */
+.bw-lesson-turn {
+  margin: 20px 0 0; padding: 13px 15px; border-radius: 12px;
+  border-left: 3px solid var(--accent, #3e8bff);
+  background: color-mix(in srgb, var(--accent, #3e8bff) 7%, var(--ls-card));
+  font-size: .9375rem; line-height: 1.55; color: var(--ls-strong);
+}
+.bw .bw-lesson-turn-label { color: var(--accent, #3e8bff); font-weight: 700; }
 .bw-lesson-actions { margin-top: 26px; }
