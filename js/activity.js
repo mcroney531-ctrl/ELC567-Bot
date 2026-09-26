@@ -29,7 +29,7 @@
     // everything downstream is written from this sentence.
     minProblemChars: 25,
 
-    // Minimum filled-in workflow cards before Step 2 counts as answered.
+    // Minimum filled-in workflow cards before Step 3 counts as answered.
     minWorkflowSteps: 2,
 
     // Minimum learner replies in Step 4 before Step 5 unlocks.
@@ -1825,7 +1825,7 @@
                      "appears here." }
   };
   if (isCaptureChat) {
-    // These two chats live in step 2, and each waits on the one before it.
+    // These two chats live in step 3, and each waits on the one before it.
     GATES[CONFIG.blockRole] = ownsActions()
       ? { step: 3, hide: "chatWrap", notice: "prereq3",
           needs: function () { return stepValid(1); },
@@ -2070,7 +2070,7 @@
       : len + " characters";
   }
 
-  /* ---- step 2 ---- */
+  /* ---- the workflow form: step 3 since the reorder ---- */
 
   function renderCards() {
     el.cards.textContent = "";
@@ -2145,6 +2145,9 @@
     save();
   }
 
+  /* Named for the step it used to be. The form it wires is step 3 now; the
+     name is left alone because renaming it is a refactor and the journey is
+     still being decided. Trust the number in the marker above, not the name. */
   function wireStep2() {
     renderCards();
     recomputeTools();
