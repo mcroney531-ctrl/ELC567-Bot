@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # nine Playwright suites, 483 assertions, ~3 min
+npm test      # nine Playwright suites, 491 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -98,8 +98,8 @@ placement above/below the spine, blurb, and its deterministic completion line.
 | # | Name | Accent | Place | Completion line |
 |---|---|---|---|---|
 | 1 | Identify | `identify` | above | `Complete · Task defined` |
-| 2 | Map | `map` | below | `Complete · N steps mapped` (counts real steps) |
-| 3 | Envision | `envision` | above | `Complete · Ideal outcome defined` |
+| 2 | Describe | `describe` | below | `Complete · Process in view` |
+| 3 | Map | `map` | above | `Complete · N steps mapped` (counts real steps) |
 | 4 | Refine | `refine` | below | `Complete · Coach review finished` |
 | 5 | Deploy | `deploy` | above | `Complete · Master prompt ready` |
 
@@ -414,19 +414,19 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Nine Playwright suites, **483 assertions**, all passing.
+Nine Playwright suites, **491 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
 | Suite | Asserts | Covers |
 |---|---|---|
-| `scripted-coach.test.mjs` | 84 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
-| `timeline.test.mjs` | 90 | Journey map: five stations, four states, navigation rules, the connector, responsive |
-| `learning-stage.test.mjs` | 94 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
+| `scripted-coach.test.mjs` | 90 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
+| `timeline.test.mjs` | 93 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `learning-stage.test.mjs` | 92 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
-| `admin.test.mjs` | 46 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
+| `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
 | `answer-quality.test.mjs` | 21 | Thin-answer heuristics and push-backs |
 | `hardening.test.mjs` | 14 | Charset, no blocking modals, OS dark mode, clipboard fallbacks, two-press confirms |
 

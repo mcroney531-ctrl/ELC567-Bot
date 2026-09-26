@@ -28,7 +28,7 @@
 
   --id-identify: #3e8bff;  --done-identify: #1863b8;
   --id-map: #41d6d4;       --done-map: #10877f;
-  --id-envision: #ffaa3e;  --done-envision: #b56708;
+  --id-describe: #ffaa3e;  --done-describe: #b56708;
   --id-refine: #c85bff;    --done-refine: #7b34b0;
   --id-deploy: #61d6ff;    --done-deploy: #2486ab;
 }
@@ -36,7 +36,7 @@
 /* Anything carrying an identity names it once; the rest of the file reads it. */
 [data-accent="identify"] { --accent: var(--id-identify); --accent-done: var(--done-identify); }
 [data-accent="map"]      { --accent: var(--id-map);      --accent-done: var(--done-map); }
-[data-accent="envision"] { --accent: var(--id-envision); --accent-done: var(--done-envision); }
+[data-accent="describe"] { --accent: var(--id-describe); --accent-done: var(--done-describe); }
 [data-accent="refine"]   { --accent: var(--id-refine);   --accent-done: var(--done-refine); }
 [data-accent="deploy"]   { --accent: var(--id-deploy);   --accent-done: var(--done-deploy); }
 

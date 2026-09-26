@@ -61,19 +61,19 @@ try {
   // ---------------------------------------------------------------- gating
   check('the workflow chat waits on the task being named',
     !(await F('coach-workflow').locator('#bw-chat-wrap').isVisible()) &&
-    (await F('coach-workflow').locator('#bw-prereq-2').textContent()).includes('Name the task'));
+    (await F('coach-workflow').locator('#bw-prereq-3').textContent()).includes('Name the task'));
   check('the tools chat waits on the steps being mapped',
     !(await F('coach-tools').locator('#bw-chat-wrap').isVisible()) &&
-    (await F('coach-tools').locator('#bw-prereq-2').textContent()).includes('Walk the coach through'));
+    (await F('coach-tools').locator('#bw-prereq-3').textContent()).includes('Walk the coach through'));
   check('neither capture chat shows the card form',
     !(await F('coach-workflow').locator('#bw-workflow-wrap').isVisible()) &&
     !(await F('coach-tools').locator('#bw-workflow-wrap').isVisible()));
-  check('the chat lives inside step 2, not step 4', await page.evaluate(() =>
+  check('the chat lives inside step 3, not step 4', await page.evaluate(() =>
     document.querySelector('#coach-workflow').contentDocument
-      .querySelector('#bw-panel-2 #bw-chat-wrap') !== null));
+      .querySelector('#bw-panel-3 #bw-chat-wrap') !== null));
   check('each capture chat has its own heading',
-    (await F('coach-workflow').locator('#bw-head-2 .bw-h2').textContent()).includes('Walk me through') &&
-    (await F('coach-tools').locator('#bw-head-2 .bw-h2').textContent()).includes('Where does each step'));
+    (await F('coach-workflow').locator('#bw-head-3 .bw-h2').textContent()).includes('Walk me through') &&
+    (await F('coach-tools').locator('#bw-head-3 .bw-h2').textContent()).includes('Where does each step'));
 
   await nameTask();
   await bots('coach-workflow', 1); turns['coach-workflow'] = 1;

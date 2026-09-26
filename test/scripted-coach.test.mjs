@@ -46,6 +46,10 @@ try {
   check('start opens the journey map', await page.locator('#bw-map').isVisible());
   await enter(1);
   check('step2 locked at start', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
+  check('and the map names the new order',
+    (await page.locator('.bw-mini-label').allTextContents()).join('|') ===
+    '01 Identify|02 Describe|03 Map|04 Refine|05 Deploy',
+    (await page.locator('.bw-mini-label').allTextContents()).join('|'));
 
   // Stage 1 opens on its lesson: artwork and prose, and nothing to fill in.
   check('stage 1 opens on the lesson', await page.locator('#bw-lesson-body').isVisible());
@@ -83,18 +87,28 @@ try {
   check('step1 marked done', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'true');
   check('the chat closes behind it', !(await page.locator('#bw-chat-panel').isVisible()));
 
-  check('stage 2 opens on its lesson, not its builder',
+  // Stage 2 is reading and nothing else: Continue leaves the stage rather than
+  // uncovering a panel.
+  check('stage 2 is a reading', await page.locator('#bw-lesson-body').isVisible());
+  check('with no workspace behind it', !(await page.locator('#bw-cards').isVisible()));
+  check('and no prompt shown to the learner yet',
+    !(await page.locator('#bw-prompt-v1').isVisible()));
+  await page.click('#bw-lesson-next');
+  await page.waitForTimeout(700);
+  check('reading it through moves on to stage 3',
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '3',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
+  check('stage 2 ticks off on being read',
+    await page.locator('.bw-step[data-step="2"]').getAttribute('data-done') === 'true');
+
+  check('stage 3 opens on its lesson, not its builder',
     await page.locator('#bw-lesson-body').isVisible() &&
     !(await page.locator('#bw-cards').isVisible()));
-  check('and says how much reading there is',
-    (await page.locator('#bw-lesson-count').textContent()) === '1 of 2',
-    await page.locator('#bw-lesson-count').textContent());
-  check('read through it reaches the builder', await readLesson(page) === 2,
-    'pages read');
-  check('which is the workspace stage 2 is for', await page.locator('#bw-cards').isVisible());
+  check('read through it reaches the builder', await readLesson(page) === 1, 'pages read');
+  check('which is the workspace stage 3 is for', await page.locator('#bw-cards').isVisible());
 
-  await page.click('[data-next="2"]');
-  check('empty cards blocked', !(await page.locator('#bw-warn-2').isHidden()));
+  await page.click('[data-next="3"]');
+  check('empty cards blocked', !(await page.locator('#bw-warn-3').isHidden()));
   const cards = () => page.locator('#bw-cards .bw-card');
   check('starts with 2 cards', await cards().count() === 2);
   check('remove disabled at minimum', await cards().nth(0).locator('.bw-card-remove').isDisabled());
@@ -116,15 +130,18 @@ try {
   await page.click('#bw-add-step');
   await cards().nth(3).locator('input').nth(0).fill(rows[3][0]);
   await cards().nth(3).locator('input').nth(1).fill(rows[3][1]);
-  await page.click('[data-next="2"]');
-  check('step3 open', await page.locator('.bw-step[data-step="3"]').getAttribute('data-state') === 'active');
+  await page.click('[data-next="3"]');
+  await page.waitForTimeout(600);
+  check('step4 open', await page.locator('.bw-step[data-step="4"]').getAttribute('data-state') === 'active');
 
-  const v1 = await page.locator('#bw-prompt-v1').textContent();
+  /* The draft is still built - it is what the coach is given - but the learner
+     is not shown a prompt until Deploy. */
+  const v1 = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('brainstorm_workflow_data')).masterPromptV1);
   check('V1 has problem', v1.includes('eleven clients'));
   check('V1 lists 4 steps', /1\..*\n2\..*\n3\..*\n4\./s.test(v1), v1.slice(0, 300));
   check('V1 dedupes tools across steps', /Asana, Harvest, Gmail, Google Docs, Slack/.test(v1), v1);
-  await page.click('[data-next="3"]');
-  await page.waitForTimeout(500);
+  check('and none of it is on screen', !(await page.locator('#bw-prompt-v1').isVisible()));
 
   // Stage 4 opens on its lesson; Continue hands off to the coach.
   check('a coaching stage opens on its lesson, not the chat',

@@ -80,7 +80,7 @@ try {
   check('five stations', await page.locator('.bw-station').count() === 5);
   check('named for the practice, not this activity',
     (await page.locator('.bw-card-name').allTextContents()).join(',') ===
-    'Identify,Map,Envision,Refine,Deploy',
+    'Identify,Describe,Map,Refine,Deploy',
     (await page.locator('.bw-card-name').allTextContents()).join(','));
   check('they alternate above and below the line',
     (await page.locator('.bw-station').evaluateAll(
@@ -100,7 +100,7 @@ try {
   check('a locked station reads as upcoming',
     (await statusOf(3)) === 'Upcoming', await statusOf(3));
   check('and still tells assistive tech which stage opens it',
-    (await station(3).locator('.bw-station-card').getAttribute('aria-label')).includes('Finish Map first'),
+    (await station(3).locator('.bw-station-card').getAttribute('aria-label')).includes('Finish Describe first'),
     await station(3).locator('.bw-station-card').getAttribute('aria-label'));
   check('an available station says it is ready',
     (await statusOf(1)) === 'Ready to start', await statusOf(1));
@@ -165,7 +165,7 @@ try {
   check('on its lesson rather than straight into the builder',
     await page.locator('#bw-lesson-body').isVisible());
   check('the context panel moved with it',
-    (await page.locator('#bw-ls-name').textContent()) === 'Map',
+    (await page.locator('#bw-ls-name').textContent()) === 'Describe',
     await page.locator('#bw-ls-name').textContent());
 
   // ------------------------------------------------------ the completed state
@@ -210,7 +210,15 @@ try {
   }));
 
   // ----------------------------------------------- a count that comes from data
+  /* Stage 2 is reading only, so finishing it is reading it; the count belongs
+     to stage 3, which is where the form lives now. */
   await enter(2);
+  check('a reading-only stage shows no workspace behind its pages',
+    !(await page.locator('#bw-cards').isVisible()));
+  await readLesson(page);
+  check('and reading it through lands on the next stage',
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '3',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
   await readLesson(page);
   const cards = page.locator('#bw-cards .bw-card');
   await page.click('#bw-add-step');
@@ -219,11 +227,13 @@ try {
     await cards.nth(i).locator('input').nth(0).fill(rows[i][0]);
     await cards.nth(i).locator('input').nth(1).fill(rows[i][1]);
   }
-  await page.click('[data-next="2"]');
+  await page.click('[data-next="3"]');
   await page.waitForTimeout(550);
   await toMap();
   check('the count is the real number of steps',
-    (await statusOf(2)) === 'Complete · 3 steps mapped', await statusOf(2));
+    (await statusOf(3)) === 'Complete · 3 steps mapped', await statusOf(3));
+  check('and the reading before it just reads as done',
+    (await statusOf(2)) === 'Complete · Process in view', await statusOf(2));
   /* The connector stays one neutral colour whatever the progress - state
      belongs to the nodes and the cards, never to the line. */
   check('the connector never takes on state colour', await page.evaluate(() => {
@@ -249,13 +259,13 @@ try {
       toolsAll: ['Excel'], masterPromptV1: '', masterPromptV2: '', v2Source: '',
       conversations: {}, mockProgress: {},
       botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
-      progress: { current: 1, unlocked: 3, done: { 1: true, 2: true } }
+      progress: { current: 1, unlocked: 4, done: { 1: true, 2: true, 3: true } }
     }));
   await odd.goto(`http://127.0.0.1:${PORT}/`);
   await odd.waitForTimeout(400);
   check('a stored "done" that no longer holds is not shown as done',
-    (await odd.locator('.bw-station[data-stage="2"]').getAttribute('data-state')) === 'available',
-    await odd.locator('.bw-station[data-stage="2"]').getAttribute('data-state'));
+    (await odd.locator('.bw-station[data-stage="3"]').getAttribute('data-state')) === 'available',
+    await odd.locator('.bw-station[data-stage="3"]').getAttribute('data-state'));
   check('and stage 1, which does still hold, stays completed',
     (await odd.locator('.bw-station[data-stage="1"]').getAttribute('data-state')) === 'completed');
   await oddCtx.close();
@@ -274,11 +284,11 @@ try {
       toolsAll: ['Excel'], masterPromptV1: '', masterPromptV2: '', v2Source: '',
       conversations: {}, mockProgress: {},
       botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
-      progress: { current: 1, unlocked: 3, done: { 1: true, 2: true } }
+      progress: { current: 1, unlocked: 4, done: { 1: true, 2: true, 3: true } }
     }));
   await solo.goto('http://127.0.0.1:8154/');
   await solo.waitForTimeout(400);
-  const soloStatus = await solo.locator('.bw-station[data-stage="2"] .bw-card-status').textContent();
+  const soloStatus = await solo.locator('.bw-station[data-stage="3"] .bw-card-status').textContent();
   check('one mapped step reads "1 step", not "1 steps"',
     soloStatus === 'Complete \u00b7 1 step mapped', soloStatus);
   await soloCtx.close();

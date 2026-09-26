@@ -118,7 +118,12 @@ try {
 
   await btn('Skip →').click();
   await page.waitForTimeout(900);
-  check('skip works on the builder stage too', (await where()).startsWith('stage 3'));
+  check('skip reads past a reading-only stage', (await where()).startsWith('stage 3'),
+    await where());
+  await btn('Skip →').click();
+  await page.waitForTimeout(900);
+  check('skip works on the builder stage too', (await where()).startsWith('stage 4'),
+    await where());
   check('with four real steps', (await stored()).steps.filter(s => s.action).length === 4,
     String((await stored()).steps.length));
   check('and tools recomputed from them, not stored twice',
@@ -138,9 +143,9 @@ try {
     (await mapStates()) === (await jumpStates()),
     (await mapStates()) + ' vs ' + (await jumpStates()));
   check('completion lines are the real computed ones, not admin text',
-    (await page.locator('.bw-station[data-stage="2"] .bw-card-status').textContent())
+    (await page.locator('.bw-station[data-stage="3"] .bw-card-status').textContent())
       === 'Complete · 4 steps mapped',
-    await page.locator('.bw-station[data-stage="2"] .bw-card-status').textContent());
+    await page.locator('.bw-station[data-stage="3"] .bw-card-status').textContent());
 
   // ============ the artifact it leaves behind is the real one ============
   await jump(5).click();

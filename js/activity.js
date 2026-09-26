@@ -73,10 +73,10 @@
     intro:              { steps: [],              intro: true,  label: "",                  stage: null },
     capture:            { steps: [1, 2, 3],       intro: true,  label: "Set it up",         stage: null },
     problem:            { steps: [1],             intro: false, label: "Name it",           stage: null },
-    workflow:           { steps: [2],             intro: false, label: "Map it",            stage: null },
-    "coach-workflow":   { steps: [2],             intro: false, label: "Walk me through it", stage: "workflow" },
-    "coach-tools":      { steps: [2],             intro: false, label: "Where it happens",   stage: "tools" },
-    draft:              { steps: [3],             intro: false, label: "Your draft",        stage: null },
+    workflow:           { steps: [3],             intro: false, label: "Map it",            stage: null },
+    "coach-workflow":   { steps: [3],             intro: false, label: "Walk me through it", stage: "workflow" },
+    "coach-tools":      { steps: [3],             intro: false, label: "Where it happens",   stage: "tools" },
+    draft:              { steps: [2],             intro: false, label: "Your draft",        stage: null },
     "coach-handoff":    { steps: [4],             intro: false, label: "Hand it over",      stage: "handoff" },
     "coach-standards":  { steps: [4],             intro: false, label: "Set the bar",       stage: "standards" },
     "coach-guardrails": { steps: [4],             intro: false, label: "Set the guardrails", stage: "guardrails" },
@@ -94,7 +94,8 @@
     workflow:   { answers: [], minTurns: 1, owns: "actions" },
     tools:      { answers: [], minTurns: 1, owns: "tools" },
     identify:   { answers: [],                                                minTurns: 2, owns: "problem" },
-    envision:   { answers: [],                                                minTurns: 1 },
+    describe:   { answers: [],                                                minTurns: 1 },
+    map:        { answers: [],                                                minTurns: 1 },
     deploy:     { answers: [],                                                minTurns: 1 },
     handoff:    { answers: ["handoff"],                                       minTurns: 1 },
     standards:  { answers: ["output", "keep"],                                minTurns: 2 },
@@ -125,7 +126,9 @@
      A slice has exactly one, fixed by its role. The full activity shows one
      stage at a time, so one chat serves all of them - the transcript it is
      bound to follows whichever stage is open. */
-  var STAGE_CONVO = { 1: "identify", 2: "workflow", 3: "envision", 4: "all", 5: "deploy" };
+  /* Every stage needs an entry even when it has no coach: sKey() falls back to
+     "all" without one, which would put stage 4's transcript on screen. */
+  var STAGE_CONVO = { 1: "identify", 2: "describe", 3: "map", 4: "all", 5: "deploy" };
 
   function sKey() {
     if (!TIMELINE) return STAGE;
@@ -203,9 +206,9 @@
       v2Source: "",          // "bot" | "template" | "user"
       // One transcript per stage, so several chat blocks are separate
       // conversations that still build one shared master prompt.
-      conversations: { all: [], identify: [], workflow: [], tools: [], envision: [],
+      conversations: { all: [], identify: [], describe: [], map: [], workflow: [], tools: [],
                        deploy: [], handoff: [], standards: [], guardrails: [] },
-      mockProgress:  { all: 0,  identify: 0,  workflow: 0,  tools: 0,  envision: 0,
+      mockProgress:  { all: 0,  identify: 0,  describe: 0,  map: 0,  workflow: 0,  tools: 0,
                        deploy: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
@@ -467,7 +470,7 @@
   }
 
   function adoptExternal() {
-    if (ownsStep(2) && !isCaptureChat) renderCards();
+    if (ownsStep(3) && !isCaptureChat) renderCards();
     if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(); }
     render();
     maybeStartConversation();
@@ -1710,7 +1713,7 @@
       sub: "Name the tools, step by step",
       intro: "The coach has your steps from the section above. This pass adds where each one " +
              "happens \u2014 which is what stops the finished prompt from being generic advice.",
-      next: "Next: see your draft prompt"
+      next: "Next: sharpen it with the coach"
     },
     handoff: {
       title: "What should the AI take over?",
@@ -1739,11 +1742,11 @@
   function applyRole() {
     if (CONFIG.blockRole === "all") return;
 
-    /* Two of the chats belong to step 2 rather than step 4, so the markup moves
+    /* Two of the chats belong to step 3 rather than step 4, so the markup moves
        to them. One chat panel serves every stage; only its home changes. */
     if (isCaptureChat) {
-      var panel2 = document.getElementById("bw-panel-2");
-      var warn2 = document.getElementById("bw-warn-2");
+      var panel2 = document.getElementById("bw-panel-3");
+      var warn2 = document.getElementById("bw-warn-3");
       var acts2 = document.querySelector("#bw-workflow-wrap .bw-actions");
       panel2.insertBefore(el.chatWrap, warn2);
       panel2.insertBefore(el.chatError, warn2);
@@ -1807,34 +1810,34 @@
      needs, and re-checks on every storage sync - so it opens itself the moment
      the section above is done. */
   var GATES = {
-    workflow: { step: 2, hide: "workflowWrap", notice: "prereq2",
+    workflow: { step: 3, hide: "workflowWrap", notice: "prereq3",
                 needs: function () { return stepValid(1); },
                 msg: "Name the task in the section above first \u2014 the workflow map builds on what " +
                      "you write there. This opens on its own once you've done that." },
-    draft:    { step: 3, hide: "draftWrap", notice: "prereq3",
-                needs: function () { return stepValid(1) && stepValid(2); },
+    draft:    { step: 2, hide: "draftWrap", notice: "prereq2",
+                needs: function () { return stepValid(1) && stepValid(3); },
                 msg: "Your draft prompt is written from the two sections above. Fill those in and it " +
                      "appears here." },
     artifact: { step: 5, hide: "finalWrap", notice: "prereq5",
-                needs: function () { return stepValid(1) && stepValid(2); },
+                needs: function () { return stepValid(1) && stepValid(3); },
                 msg: "Your master prompt builds itself from the sections above. Finish those and it " +
                      "appears here." }
   };
   if (isCaptureChat) {
     // These two chats live in step 2, and each waits on the one before it.
     GATES[CONFIG.blockRole] = ownsActions()
-      ? { step: 2, hide: "chatWrap", notice: "prereq2",
+      ? { step: 3, hide: "chatWrap", notice: "prereq3",
           needs: function () { return stepValid(1); },
           msg: "Name the task in the section above first \u2014 the coach maps the workflow around " +
                "it. This opens on its own once you've done that." }
-      : { step: 2, hide: "chatWrap", notice: "prereq2",
+      : { step: 3, hide: "chatWrap", notice: "prereq3",
           needs: function () { return filledSteps().length >= CONFIG.minWorkflowSteps; },
           msg: "Walk the coach through your steps in the section above first \u2014 this one asks " +
                "where each of them happens. It opens on its own once they're down." };
   } else if (isSplitCoach) {
     GATES[CONFIG.blockRole] = {
       step: 4, hide: "chatWrap", notice: "prereq4",
-      needs: function () { return stepValid(1) && stepValid(2); },
+      needs: function () { return stepValid(1) && stepValid(3); },
       msg: "Map your workflow in the sections above first \u2014 the coach needs your problem and your " +
            "steps before it can ask anything useful. This opens on its own once you've done that."
     };
@@ -1885,11 +1888,13 @@
   function stepValid(n) {
     switch (n) {
       case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
+      // Stage 2 is reading. There is nothing to get wrong, so reaching the end
+      // of it is the whole of finishing it.
+      case 2: return true;
       // The block that maps the workflow is done once the steps are down; every
       // other block needs the tools too, because the prompt is built from both.
-      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps &&
+      case 3: return filledSteps().length >= CONFIG.minWorkflowSteps &&
                      (ownsActions() || toolsCaptured());
-      case 3: return true;
       case 4: return userTurns() >= turnsNeeded();
       default: return true;
     }
@@ -1901,7 +1906,7 @@
         return String(workflowData.problem).trim()
           ? "Give it a little more \u2014 what the task is, how often, and what it costs you. About a sentence and a half."
           : "Describe the task before moving on. Rough words are fine.";
-      case 2:
+      case 3:
         if (ownsActions())
           return "Walk the coach through at least " + CONFIG.minWorkflowSteps +
             " steps first \u2014 everything below is built from that list.";
@@ -1969,7 +1974,7 @@
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
     }
-    if (TIMELINE ? stageHasCoach(n) : (n === 4 || (n === 2 && isCaptureChat))) maybeStartConversation();
+    if (TIMELINE ? stageHasCoach(n) : (n === 4 || (n === 3 && isCaptureChat))) maybeStartConversation();
     if (n === 5) refreshV2(false);
   }
 
@@ -1996,8 +2001,8 @@
   /* ---- render ---- */
 
   function render() {
-    // Steps 1 and 2 can be edited after the fact - un-tick them if they break.
-    [1, 2].forEach(function (n) {
+    // Steps 1 and 3 can be edited after the fact - un-tick them if they break.
+    [1, 3].forEach(function (n) {
       if (workflowData.progress.done[n] && !stepValid(n)) workflowData.progress.done[n] = false;
     });
 
@@ -2021,6 +2026,7 @@
         : state === "active" ? "In progress" : "Ready";
     });
 
+    renderAdminBar();   // no-op unless ?admin=1
     var doneCount = [1, 2, 3, 4, 5].filter(function (n) { return workflowData.progress.done[n]; }).length;
     el.progressFill.style.width = (doneCount / 5 * 100) + "%";
     el.progressLabel.textContent = doneCount === 5 ? "Complete"
@@ -2660,7 +2666,7 @@
   var ART = {
     identify: '<circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 21 21"/>',
     map: '<circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h5a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h7"/>',
-    envision: '<path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 1.9v.2h5.2v-.2c0-.7.3-1.4.9-1.9A6 6 0 0 0 12 3Z"/>',
+    describe: '<path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 1.9v.2h5.2v-.2c0-.7.3-1.4.9-1.9A6 6 0 0 0 12 3Z"/>',
     refine: '<path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/>',
     deploy: '<path d="M5 13.5 19.5 4.5 15 20l-3.9-5.4L5 13.5Z"/><path d="M11.1 14.6 19.5 4.5"/>'
   };
@@ -2678,15 +2684,15 @@
     { step: 1, name: "Identify", accent: "identify", art: "identify", place: "above",
       blurb: "Define the problem worth solving.",
       done: function () { return "Complete · Task defined"; } },
-    { step: 2, name: "Map", accent: "map", art: "map", place: "below",
+    { step: 2, name: "Describe", accent: "describe", art: "describe", place: "below",
+      blurb: "Picture the process as it really is.",
+      done: function () { return "Complete · Process in view"; } },
+    { step: 3, name: "Map", accent: "map", art: "map", place: "above",
       blurb: "Break the process into real steps.",
       done: function () {
         var k = filledSteps().length;
         return "Complete · " + k + (k === 1 ? " step" : " steps") + " mapped";
       } },
-    { step: 3, name: "Envision", accent: "envision", art: "envision", place: "above",
-      blurb: "Imagine the ideal version.",
-      done: function () { return "Complete · Ideal outcome defined"; } },
     { step: 4, name: "Refine", accent: "refine", art: "refine", place: "below",
       blurb: "Sharpen ideas into specifics.",
       done: function () { return "Complete · Coach review finished"; } },
@@ -3060,7 +3066,7 @@
       '<circle cx="66" cy="34" r="7" class="a-fill"/>' +
       '<circle cx="48" cy="64" r="7" class="a-fill"/>' +
       '<path d="M37 41 61 37M35 44 44 58M62 40 53 58" class="a-line"/>',
-    envision:
+    describe:
       '<rect x="20" y="24" width="60" height="52" rx="9" class="a-soft"/>' +
       '<path d="M50 26a15 15 0 0 0-8.6 27.3c1.4 1 2.1 2.6 2.1 4.3v.6h13v-.6c0-1.7.7-3.3 2.1-4.3A15 15 0 0 0 50 26Z" class="a-line"/>' +
       '<path d="M44 66h12M45.5 72h9" class="a-line"/>',
@@ -3081,10 +3087,10 @@
   var STAGE_CONTEXT = {
     1: { framing: "Define the problem worth solving.",
          quote: "Clarity today. Impact tomorrow." },
-    2: { framing: "Understand the context and the tools involved.",
+    2: { framing: "Picture the process as it really is, in detail.",
+         quote: "The blueprint comes before the build." },
+    3: { framing: "Understand the context and the tools involved.",
          quote: "People, process, and data create the full picture." },
-    3: { framing: "Explore possibilities and define success.",
-         quote: "Bigger possibilities. Real-world impact." },
     4: { framing: "Design, validate, and plan the workflow.",
          quote: "Turn ideas into a clear plan." },
     5: { framing: "Put it into action and drive impact.",
@@ -3272,6 +3278,7 @@
       return;
     }
     if (stageHasCoach(n)) { continueFromLesson(n); return; }
+    if (!stageHasWork(n)) { goNext(n); return; }
     lessonPage = pages.length;          // past the end: the panel takes over
     renderStageContext();
     turnLessonPage(1);
@@ -3501,10 +3508,9 @@
     }
   };
 
-  /* Stage 2 reads in two passes before the learner touches the builder: why
-     naming the tools is worth doing, then how much detail a step needs. The
-     mapping panel is what Continue reaches after the last page. */
-  var STAGE_2_LESSON = [
+  /* Stage 3's reading: why naming the tools is worth doing, and what having
+     named them can turn up. The mapping form is what Continue reaches. */
+  var STAGE_3_LESSON = [
     { type: "p", text:
       "Many programs already talk to each other, and include integration-friendly features " +
       "that are now more accessible with AI. With many organizations adapting to the AI " +
@@ -3535,7 +3541,7 @@
     ] }
   ];
 
-  var STAGE_2B_LESSON = [
+  var STAGE_2_LESSON = [
     { type: "p", text:
       "Working with AI often happens in a chat interface, which makes it easy to treat it " +
       "like other off-the-cuff messaging, like sending a text or ping. As a result, a common " +
@@ -3566,12 +3572,10 @@
 
   var STAGE_LESSON = {
     1: { blocks: STAGE_1_LESSON, card: "plan" },
-    2: { pages: [
-      { blocks: STAGE_2_LESSON },
-      { title: "Describe the workflow in full",
-        sub: "How much detail a step actually needs",
-        blocks: STAGE_2B_LESSON }
-    ] }
+    // Reading only: work: false says Continue leaves the stage rather than
+    // uncovering a panel. Stage 2's panel holds the retired draft prompt.
+    2: { blocks: STAGE_2_LESSON, work: false },
+    3: { blocks: STAGE_3_LESSON }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }
@@ -3593,6 +3597,14 @@
      panel, so "has a lesson" is not the same question as "is on one". */
   function onLessonPage(n) {
     return lessonPage < lessonPages(n).length;
+  }
+
+  /* Whether anything follows the reading. A stage marked work: false is the
+     reading and nothing else, so Continue on its last page leaves the stage
+     instead of uncovering a panel the learner has no business seeing. */
+  function stageHasWork(n) {
+    var lesson = stageLesson(n);
+    return !lesson || lesson.work !== false;
   }
 
   var COACH_FOCUS = {
@@ -3911,7 +3923,7 @@
       if (el.problem) el.problem.value = workflowData.problem;
       updateProblemCount();
       adminSeedConvo("identify", ADMIN_SAMPLE.turns.identify);
-    } else if (n === 2) {
+    } else if (n === 3) {
       workflowData.steps = ADMIN_SAMPLE.steps.map(function (s) {
         return { action: s.action, tools: s.tools };
       });
@@ -3977,6 +3989,9 @@
     return b;
   }
 
+  /* Called from render() as well as from the bar's own handlers: the app
+     navigates on its own (Continue at the end of a reading), and a read-out
+     that lags behind the app is worse than no read-out. */
   function renderAdminBar() {
     if (!adminBar) return;
     var n = workflowData.progress.current;
@@ -4101,7 +4116,7 @@
     el.promptV2.value = "";
     el.v2Source.hidden = true;
     el.handoff.hidden = true;
-    [1, 2, 4].forEach(function (n) { showWarning(n, ""); });
+    [1, 3, 4].forEach(function (n) { showWarning(n, ""); });
     render();
     maybeStartConversation();
   }

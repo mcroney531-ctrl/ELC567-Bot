@@ -353,24 +353,24 @@ write [MISSING: metric name] and keep going.</pre>
       <button type="button" class="bw-step-head" id="bw-head-2" aria-expanded="false" aria-controls="bw-panel-2" disabled>
         <span class="bw-step-num"><span>2</span></span>
         <span class="bw-step-titles">
-          <span class="bw-h2">Map the workflow and tools</span>
-          <span class="bw-step-sub">Break the task into the steps you actually perform</span>
+          <span class="bw-h2">Describe the workflow in full</span>
+          <span class="bw-step-sub">Picture the process as it really is</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
         <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
+      <!-- Retired from the journey. The learner sees no prompt until Deploy, so
+           stage 2 is reading only and this panel never opens in the timeline.
+           The draft is still generated into it, which is what keeps V1 available
+           as the coach's context and keeps the /role/draft preview working. -->
       <div class="bw-step-panel" id="bw-panel-2" role="region" aria-labelledby="bw-head-2" hidden>
-        <p class="bw-step-intro">
-          Walk through it the way you'd explain it to a new hire on their first day. One action per
-          card, plus wherever that action happens. Two steps minimum &mdash; most tasks have four or five.
-        </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-2" hidden></div>
-        <div id="bw-workflow-wrap">
-          <div class="bw-cards" id="bw-cards"></div>
+        <div id="bw-draft-wrap">
+          <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
           <div class="bw-actions">
-            <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
+            <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
             <span class="bw-spacer"></span>
-            <button type="button" class="bw-btn" data-next="2">Next: see your draft prompt</button>
+            <button type="button" class="bw-btn" data-next="2">Next: map the workflow</button>
           </div>
         </div>
         <div class="bw-notice bw-notice-warn" id="bw-warn-2" hidden></div>
@@ -382,26 +382,27 @@ write [MISSING: metric name] and keep going.</pre>
       <button type="button" class="bw-step-head" id="bw-head-3" aria-expanded="false" aria-controls="bw-panel-3" disabled>
         <span class="bw-step-num"><span>3</span></span>
         <span class="bw-step-titles">
-          <span class="bw-h2">Your draft master prompt</span>
-          <span class="bw-step-sub">Built automatically from what you just wrote</span>
+          <span class="bw-h2">Map the workflow and tools</span>
+          <span class="bw-step-sub">Break the task into the steps you actually perform</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
         <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-3" role="region" aria-labelledby="bw-head-3" hidden>
         <p class="bw-step-intro">
-          This is your workflow, restated as something an AI can act on. It's a starting point, not
-          the deliverable &mdash; it still doesn't know what "good" looks like for you. That's what Step 4 fixes.
+          Walk through it the way you'd explain it to a new hire on their first day. One action per
+          card, plus wherever that action happens. Two steps minimum &mdash; most tasks have four or five.
         </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-3" hidden></div>
-        <div id="bw-draft-wrap">
-          <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
+        <div id="bw-workflow-wrap">
+          <div class="bw-cards" id="bw-cards"></div>
           <div class="bw-actions">
-            <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
+            <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
             <span class="bw-spacer"></span>
             <button type="button" class="bw-btn" data-next="3">Next: sharpen it with the coach</button>
           </div>
         </div>
+        <div class="bw-notice bw-notice-warn" id="bw-warn-3" hidden></div>
       </div>
     </li>
 

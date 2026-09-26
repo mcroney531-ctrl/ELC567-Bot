@@ -42,7 +42,7 @@
   /* ---- stage identity, and the cooled version used once finished ---- */
   --id-identify: #4aa2ff;  --done-identify: #166cc8;
   --id-map: #53dfd7;       --done-map: #118f88;
-  --id-envision: #ffb23d;  --done-envision: #b86b08;
+  --id-describe: #ffb23d;  --done-describe: #b86b08;
   --id-refine: #ca62ff;    --done-refine: #7e38b6;
   --id-deploy: #63d7ff;    --done-deploy: #278aae;
 
@@ -99,7 +99,7 @@
 /* Each station names its own identity once; the rest of the file reads it. */
 .bw-station[data-accent="identify"] { --accent: var(--id-identify); --accent-done: var(--done-identify); }
 .bw-station[data-accent="map"]      { --accent: var(--id-map);      --accent-done: var(--done-map); }
-.bw-station[data-accent="envision"] { --accent: var(--id-envision); --accent-done: var(--done-envision); }
+.bw-station[data-accent="describe"] { --accent: var(--id-describe); --accent-done: var(--done-describe); }
 .bw-station[data-accent="refine"]   { --accent: var(--id-refine);   --accent-done: var(--done-refine); }
 .bw-station[data-accent="deploy"]   { --accent: var(--id-deploy);   --accent-done: var(--done-deploy); }
 
@@ -407,7 +407,7 @@
   animation: bw-way-pulse 2.6s ease-in-out infinite;
 }
 .bw-legend-item[data-state="completed"] .bw-legend-dot {
-  border-color: var(--id-envision); background: var(--done-envision);
+  border-color: var(--id-describe); background: var(--done-describe);
 }
 
 /* ---- motion off: keep every distinction, drop the movement ---- */
