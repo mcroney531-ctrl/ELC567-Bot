@@ -274,6 +274,24 @@ it produces are indistinguishable from real ones.
 
 ---
 
+## 8.5. Superseded by the Map merge decision
+
+**DECIDED (2026-09-26):** Describe is not a standalone stage. The Describe reading and the
+Map reading are two halves of one cognitive move, and the form is its application, so they
+become one Map stage: two lesson pages, then the existing form. The form stays a form; the
+retired conversational workflow capture stays retired.
+
+**OPEN:** whether the journey then becomes four stages (Identify → Map → Refine → Deploy)
+or whether a newly conceived Envision — *"now that you understand the current workflow,
+what would the ideal AI-assisted version look like?"* — takes the third position. The old
+Envision implementation (an auto-generated draft prompt on screen) stays retired either
+way; the learner still sees no prompt before Deploy.
+
+This supersedes questions 1 and 2 below, which asked about stage 2's name and whether it
+earned a station. See `docs/design/map-merge-orientation.md` for the technical read:
+the multi-page lesson path is a verified clean fit, and the two branches differ mainly in
+whether the hardcoded five-ness (progress math, rail geometry, map grid CSS) has to move.
+
 ## 9. Open questions
 
 Framed as decisions, with what each one costs in code.
