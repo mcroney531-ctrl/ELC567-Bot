@@ -4,7 +4,7 @@
  * the art - the cards are meant to be redrawn, so nothing below asserts on a
  * colour, a size, or an illustration.
  */
-import { serveSite, makeReporter, loadChromium, waitBots } from './helpers.mjs';
+import { serveSite, makeReporter, loadChromium, waitBots, readLesson } from './helpers.mjs';
 
 const chromium = await loadChromium();
 const report = makeReporter('journey map');
@@ -158,8 +158,12 @@ try {
   await fillStage1();
   check('continuing stays in the workspace',
     await page.locator('#bw-stage').isVisible() && !(await page.locator('#bw-map').isVisible()));
+  // Stage 2 opens on its reading, so the mini strip is what says where we are.
   check('and lands on the next stage',
-    await page.locator('.bw-step:visible').getAttribute('data-step') === '2');
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '2',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
+  check('on its lesson rather than straight into the builder',
+    await page.locator('#bw-lesson-body').isVisible());
   check('the context panel moved with it',
     (await page.locator('#bw-ls-name').textContent()) === 'Map',
     await page.locator('#bw-ls-name').textContent());
@@ -207,6 +211,7 @@ try {
 
   // ----------------------------------------------- a count that comes from data
   await enter(2);
+  await readLesson(page);
   const cards = page.locator('#bw-cards .bw-card');
   await page.click('#bw-add-step');
   const rows = [['Pull the numbers', 'Tableau'], ['Draft each update', 'Word'], ['Reformat the deck', 'PowerPoint']];

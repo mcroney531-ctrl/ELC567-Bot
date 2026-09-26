@@ -3,7 +3,7 @@
  * gating, the workflow builder, prompt generation, the conversation,
  * V2 capture, persistence, copy, reset, and mobile layout.
  */
-import { serveSite, makeReporter, waitBots as wait, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, waitBots as wait, loadChromium, readLesson } from './helpers.mjs';
 
 const chromium = await loadChromium();
 
@@ -82,6 +82,16 @@ try {
   check('step2 unlocked after valid problem', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'active');
   check('step1 marked done', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'true');
   check('the chat closes behind it', !(await page.locator('#bw-chat-panel').isVisible()));
+
+  check('stage 2 opens on its lesson, not its builder',
+    await page.locator('#bw-lesson-body').isVisible() &&
+    !(await page.locator('#bw-cards').isVisible()));
+  check('and says how much reading there is',
+    (await page.locator('#bw-lesson-count').textContent()) === '1 of 2',
+    await page.locator('#bw-lesson-count').textContent());
+  check('read through it reaches the builder', await readLesson(page) === 2,
+    'pages read');
+  check('which is the workspace stage 2 is for', await page.locator('#bw-cards').isVisible());
 
   await page.click('[data-next="2"]');
   check('empty cards blocked', !(await page.locator('#bw-warn-2').isHidden()));

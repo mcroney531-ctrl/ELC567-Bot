@@ -153,3 +153,16 @@ export function seedThroughStage3(page, problem = SEED_PROBLEM) {
     }));
   }, ['brainstorm_workflow_data', problem]);
 }
+
+/* Click through a stage's lesson pages until its own workspace is showing.
+   Stages gain and lose lesson pages as the copy gets written, so a suite that
+   only wants to reach the work says that, rather than counting clicks. */
+export async function readLesson(page, max = 6) {
+  for (let i = 0; i < max; i++) {
+    const body = page.locator('#bw-lesson-body');
+    if (!(await body.isVisible())) return i;
+    await page.click('#bw-lesson-next');
+    await page.waitForTimeout(450);
+  }
+  throw new Error('lesson did not end after ' + max + ' pages');
+}

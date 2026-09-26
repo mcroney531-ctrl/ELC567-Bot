@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # nine Playwright suites, 466 assertions, ~3 min
+npm test      # nine Playwright suites, 483 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -414,15 +414,15 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Nine Playwright suites, **466 assertions**, all passing.
+Nine Playwright suites, **483 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
 | Suite | Asserts | Covers |
 |---|---|---|
-| `scripted-coach.test.mjs` | 80 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
-| `timeline.test.mjs` | 89 | Journey map: five stations, four states, navigation rules, the connector, responsive |
-| `learning-stage.test.mjs` | 82 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
+| `scripted-coach.test.mjs` | 84 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
+| `timeline.test.mjs` | 90 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `learning-stage.test.mjs` | 94 | Dark shell / light workspace, mini-node strip, the constant-shell rule, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
@@ -518,10 +518,25 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 
    Copy is a list of typed blocks, rendered one node per type by
    `buildLessonBlock()`: `h` (the question a section answers), `p`, `list`
-   (with an optional `lead`), and `turn` (the handoff, which poses the question
-   the coach is about to ask and sits directly above Continue). A lesson may give
-   `paras` instead, which is shorthand for all-paragraphs. Nothing goes through
+   (with an optional `lead`), `defs` (term/definition pairs with an optional
+   `note`), and `turn` (the handoff, which poses the question the stage's work
+   is about to ask and sits directly above Continue). A lesson may give `paras`
+   instead, which is shorthand for all-paragraphs. Nothing goes through
    `innerHTML`.
+
+   **A lesson can be several pages.** `STAGE_LESSON[n].pages` is a list; a
+   single-page lesson may be written as the page itself, which is what stage 1
+   does. Stage 2 reads twice before the builder. The page index `lessonPage` is
+   module state, like `view` and `phase` — where someone is looking is not part
+   of their work, so entering a stage always starts its reading at page one.
+   **Past the last page is how a stage reaches its own panel**, so `onLessonPage(n)`
+   ("is reading") is a different question from `stageLesson(n)` ("has a lesson");
+   `placeWorkspaceExtras` and `renderLesson` both need the first one. A page may
+   carry its own `title`/`sub` to retitle the workspace.
+
+   Tests that need a stage's workspace call `readLesson(page)` from
+   `test/helpers.mjs`, which clicks through to the end of the reading rather than
+   counting Continues — so adding a page to a lesson does not break them.
 
 3. **Stage 2's coach.** The `workflow` and `tools` capture scripts exist and
    `STAGE_CONVO` maps stage 2 → `workflow`, but stage 2 is **not** in `STAGE_COACH` and

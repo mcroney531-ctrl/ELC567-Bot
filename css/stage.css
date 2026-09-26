@@ -376,6 +376,29 @@
 }
 .bw-lesson-listwrap + .bw-lesson-para { margin-top: 16px; }
 
+/* Term and definition. The arrow pairs are the point of the section, so the
+   pair reads as one unit with the tool names carrying the weight. */
+.bw-lesson-def { margin-top: 14px; }
+.bw .bw-lesson-def-term {
+  margin: 0; font-size: .9375rem; font-weight: 700; color: var(--ls-strong);
+}
+.bw-lesson-def-text {
+  margin: 3px 0 0; font-size: .9375rem; line-height: 1.5; color: var(--ls-muted);
+}
+.bw-lesson-def-note {
+  margin: 7px 0 0; padding-left: 11px;
+  border-left: 2px solid color-mix(in srgb, var(--accent, #3e8bff) 40%, transparent);
+  font-size: .875rem; font-style: italic; line-height: 1.5; color: var(--ls-muted);
+}
+
+/* Paging. The counter sits between Back and Continue so the row reads as one
+   control: where you are, and the two ways out. */
+.bw-lesson-count {
+  font-size: .8125rem; font-weight: 600; color: var(--ls-muted);
+  font-variant-numeric: tabular-nums;
+}
+.bw .bw-lesson-back { padding-left: 14px; padding-right: 14px; }
+
 /* The handoff. It asks the question the coach is about to ask, so it sits
    just above Continue and carries the stage's colour to tie the two together. */
 .bw-lesson-turn {

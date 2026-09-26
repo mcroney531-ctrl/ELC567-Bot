@@ -7,7 +7,7 @@
  * only the mini nodes carry progression, and stage identity is confined to the
  * number, the illustration and the progress fill.
  */
-import { serveSite, makeReporter, loadChromium } from './helpers.mjs';
+import { serveSite, makeReporter, loadChromium, readLesson } from './helpers.mjs';
 
 const chromium = await loadChromium();
 const report = makeReporter('learning stage');
@@ -172,15 +172,66 @@ try {
     }));
   await ctx.close();
 
-  // ---- a stage without a written lesson still shows its own panel ----
+  // ---- a lesson can be several pages before the stage's own work ----
+  /* Stage 2 reads twice and then maps. Paging is module state, like the view
+     and the phase: it is where someone is looking, not part of their work. */
   ({ ctx, page } = await openStage({ unlocked: 2, current: 2, open: 2, done: [1], entered: [1, 2] }));
-  check('a stage without a lesson keeps its workspace',
+  const lessonState = () => page.evaluate(() => ({
+    reading: !document.querySelector('#bw-lesson-body').hidden,
+    panel: !document.querySelector('.bw-steps').hidden,
+    title: document.querySelector('#bw-lesson-title').textContent,
+    count: document.querySelector('#bw-lesson-count').hidden
+      ? null : document.querySelector('#bw-lesson-count').textContent,
+    back: !document.querySelector('#bw-lesson-back').hidden
+  }));
+  let L = await lessonState();
+  check('a multi-page stage opens on page one, not its panel',
+    L.reading && !L.panel && L.count === '1 of 2', JSON.stringify(L));
+  check('with no way back from the first page', !L.back);
+  check('titled for the stage it is in', L.title === 'Map the workflow and tools', L.title);
+
+  await page.click('#bw-lesson-next');
+  await page.waitForTimeout(500);
+  L = await lessonState();
+  check('continue turns the page rather than leaving the lesson',
+    L.reading && !L.panel && L.count === '2 of 2', JSON.stringify(L));
+  check('a page may retitle the workspace',
+    L.title === 'Describe the workflow in full', L.title);
+  check('and now there is a way back', L.back);
+  check('the arrow pairs render as term and definition',
+    await page.locator('.bw-lesson-def').count() === 0);
+
+  await page.click('#bw-lesson-back');
+  await page.waitForTimeout(500);
+  L = await lessonState();
+  check('back returns to the previous page', L.count === '1 of 2' && L.reading, JSON.stringify(L));
+  check('and restores the stage\'s own title',
+    L.title === 'Map the workflow and tools', L.title);
+  check('page one is where the worked pairs are',
+    await page.locator('.bw-lesson-def').count() === 5,
+    String(await page.locator('.bw-lesson-def').count()));
+  check('one of which carries a human-in-the-loop note',
+    await page.locator('.bw-lesson-def-note').count() === 1);
+
+  await readLesson(page);
+  check('past the last page the stage\'s own workspace takes over',
     await page.locator('#bw-cards').isVisible());
   check('and its stage icon, with no explainer card',
     await page.locator('#bw-ls-art svg').isVisible() &&
     !(await page.locator('#bw-ls-lesson-art').isVisible()));
   check('and its own input, not the lesson',
     !(await page.locator('#bw-lesson-body').isVisible()));
+
+  /* Leaving and coming back starts the reading again - nothing was captured on
+     those pages, so there is no progress to resume. */
+  await page.click('#bw-to-map');
+  await page.waitForTimeout(550);
+  await page.click('.bw-station[data-stage="2"] .bw-station-card');
+  await page.waitForTimeout(800);
+  L = await lessonState();
+  check('re-entering the stage starts its reading over',
+    L.reading && L.count === '1 of 2', JSON.stringify(L));
+  await readLesson(page);
   check('save draft sits next to that stage\'s continue', await page.evaluate(() => {
     const save = document.querySelector('#bw-save-draft');
     const next = document.querySelector('[data-next="2"]');

@@ -1933,11 +1933,17 @@
      returning to a stage actually wants. */
   function startPhaseFor(n) {
     if (!TIMELINE) return;
+    // Entering a stage starts its reading again. The render that got us here
+    // ran against the page we left on, so the workspace is repainted after the
+    // reset rather than before it - otherwise a stage whose panel was showing
+    // keeps showing it instead of going back to page one.
+    lessonPage = 0;
     // One chat serves every stage, so the transcript has to be repainted from
     // whichever conversation the open stage owns before it goes on screen.
     renderChatLog();
     var convoLen = (workflowData.conversations[STAGE_CONVO[n]] || []).length;
     setPhase(stageHasCoach(n) && convoLen > 1 ? "chat" : "lesson");
+    renderStageContext();
   }
 
   function openStep(n, scroll) {
@@ -3214,30 +3220,75 @@
   /* A stage with a written lesson shows a heading and prose; one without still
      shows its original panel, so nothing is lost while the rest are written. */
   function renderLesson(n) {
-    var lesson = stageLesson(n);
+    var pages = lessonPages(n);
     var body = document.getElementById("bw-lesson-body");
     var steps = document.querySelector(".bw-steps");
     var progress = document.querySelector(".bw-ls-work .bw-progress");
     if (!body) return;
 
-    body.hidden = !lesson;
-    if (steps) steps.hidden = !!lesson;
-    if (progress) progress.hidden = !!lesson;
+    // Past the last page is how a stage reaches its own panel: stage 2 reads
+    // twice and then maps. A stage with no lesson starts past the end already.
+    var reading = onLessonPage(n);
+    body.hidden = !reading;
+    if (steps) steps.hidden = reading;
+    if (progress) progress.hidden = reading;
     showLessonCard();
-    if (!lesson) return;
+    if (!reading) return;
 
+    var page = pages[lessonPage];
     var copy = document.getElementById("bw-lesson-copy");
     if (copy) {
       copy.textContent = "";
-      lessonBlocks(lesson).forEach(function (b) {
+      lessonBlocks(page).forEach(function (b) {
         copy.appendChild(buildLessonBlock(b));
       });
     }
-    var next = document.getElementById("bw-lesson-next");
-    if (next) {
-      next.textContent = stageHasCoach(n)
-        ? "Continue" : "Next: " + ((STATIONS[n] || {}).name || "finish");
+
+    // A page may retitle the workspace; most read as the stage they are in.
+    if (page.title) setText("bw-lesson-title", page.title);
+    if (page.sub) setText("bw-lesson-sub", page.sub);
+
+    var count = document.getElementById("bw-lesson-count");
+    if (count) {
+      count.hidden = pages.length < 2;
+      count.textContent = (lessonPage + 1) + " of " + pages.length;
     }
+    var back = document.getElementById("bw-lesson-back");
+    if (back) back.hidden = lessonPage === 0;
+
+    // Continue always goes somewhere: the next page, the coach, or the stage's
+    // own panel. There is no lesson that is the end of its stage.
+    setText("bw-lesson-next", "Continue");
+  }
+
+  /* Continue, on a lesson page: turn the page, hand off to the coach, or step
+     aside for the stage's own panel. */
+  function advanceLesson(n) {
+    var pages = lessonPages(n);
+    if (lessonPage < pages.length - 1) {
+      lessonPage++;
+      renderStageContext();
+      turnLessonPage(1);
+      return;
+    }
+    if (stageHasCoach(n)) { continueFromLesson(n); return; }
+    lessonPage = pages.length;          // past the end: the panel takes over
+    renderStageContext();
+    turnLessonPage(1);
+  }
+
+  function backLesson() {
+    if (lessonPage <= 0) return;
+    lessonPage--;
+    renderStageContext();
+    turnLessonPage(-1);
+  }
+
+  function turnLessonPage(dir) {
+    var work = document.querySelector(".bw-ls-work");
+    if (!work || motionOff()) return;
+    window.gsap.fromTo(work, { opacity: 0, x: 14 * dir },
+      { opacity: 1, x: 0, duration: .28, ease: "power2.out", clearProps: "all" });
   }
 
   function lessonBlocks(lesson) {
@@ -3254,6 +3305,18 @@
       turn.appendChild(el2("strong", "bw-lesson-turn-label", b.label));
       turn.appendChild(document.createTextNode(" " + b.text));
       return turn;
+    }
+    if (b.type === "defs") {
+      var dw = el2("div", "bw-lesson-listwrap");
+      if (b.lead) dw.appendChild(el2("p", "bw-lesson-lead", b.lead));
+      b.items.forEach(function (it) {
+        var row = el2("div", "bw-lesson-def");
+        row.appendChild(el2("p", "bw-lesson-def-term", it.term + ":"));
+        row.appendChild(el2("p", "bw-lesson-def-text", it.text));
+        if (it.note) row.appendChild(el2("p", "bw-lesson-def-note", it.note));
+        dw.appendChild(row);
+      });
+      return dw;
     }
     if (b.type === "list") {
       var wrap = el2("div", "bw-lesson-listwrap");
@@ -3324,7 +3387,7 @@
     // warn about - artwork and prose, and the one row under them. Save draft
     // still rides along with Continue, because leaving mid-read is a thing
     // people do and the button is how they know the work is kept.
-    if (stageLesson(workflowData.progress.current)) {
+    if (onLessonPage(workflowData.progress.current)) {
       if (examples) examples.hidden = true;
       if (info) info.hidden = true;
       var lessonRow = document.querySelector(".bw-lesson-actions");
@@ -3351,11 +3414,11 @@
     var lessonNext = document.getElementById("bw-lesson-next");
     if (lessonNext) {
       lessonNext.addEventListener("click", function () {
-        var n = workflowData.progress.current;
-        if (stageHasCoach(n)) continueFromLesson(n);
-        else goNext(n);
+        advanceLesson(workflowData.progress.current);
       });
     }
+    var lessonBack = document.getElementById("bw-lesson-back");
+    if (lessonBack) lessonBack.addEventListener("click", backLesson);
 
     var save = document.createElement("button");
     save.type = "button";
@@ -3438,11 +3501,98 @@
     }
   };
 
+  /* Stage 2 reads in two passes before the learner touches the builder: why
+     naming the tools is worth doing, then how much detail a step needs. The
+     mapping panel is what Continue reaches after the last page. */
+  var STAGE_2_LESSON = [
+    { type: "p", text:
+      "Many programs already talk to each other, and include integration-friendly features " +
+      "that are now more accessible with AI. With many organizations adapting to the AI " +
+      "landscape, there's also a rapid increase in built-in AI capabilities across programs. " +
+      "So sometimes everything you need is already there, in-app. They might also already be " +
+      "connected to an LLM through features like plugins and extensions." },
+    { type: "p", text:
+      "Naming your specific tools can unearth these possibilities. Sometimes, as you list " +
+      "them a connection becomes obvious. Other times, AI might pick up on one or present a " +
+      "workaround. The more you practice, the easier this gets to see on your own." },
+    { type: "defs", lead: "Examples:", items: [
+      { term: "Spreadsheet \u2192 Email", text:
+        "Automatically tracks changes, sends notifications, and delivers insights on a schedule." },
+      { term: "PDF Reader \u2192 File Storage", text:
+        "Automatically reads document content, then files and organizes it into the correct " +
+        "folder based on what's inside.",
+        note: "Human in the loop tip: To ensure accuracy and proper tracking, consider pairing " +
+              "with a notification or filing system that can be reviewed by a human." },
+      { term: "File Storage \u2192 Calendar/Tracking System", text:
+        "Automatically flags documents that are expiring or need review, tied to a specific date." },
+      { term: "Video Conferencing \u2192 Task/Reminder System", text:
+        "Automatically transcribes meetings, identifies action items and loose threads, and " +
+        "syncs them into a reminder or task system." },
+      { term: "Claude Connector \u2192 CRM", text:
+        "Pulls live customer data directly into the conversation, so you can ask questions, " +
+        "locate specific records, or request status updates based on real information." }
+    ] }
+  ];
+
+  var STAGE_2B_LESSON = [
+    { type: "p", text:
+      "Working with AI often happens in a chat interface, which makes it easy to treat it " +
+      "like other off-the-cuff messaging, like sending a text or ping. As a result, a common " +
+      "misconception is that all of the planning, thinking, and work is contained to the " +
+      "chat itself." },
+    { type: "p", text:
+      "However, the most effective work with AI that will accurately reflect your knowledge " +
+      "and skills often happens outside the LLM. Like an architect sketching blueprints " +
+      "before construction begins, the more intentional you are with that upfront work, the " +
+      "stronger the foundation you're building on." },
+    { type: "p", text:
+      "Put this into practice when planning out your AI-powered workflow. Because the steps " +
+      "of the task you chose can often feel like second nature, it's easy to gloss over " +
+      "specifics. However, one of the biggest strengths of an LLM is its ability to pick up " +
+      "on specific patterns and potentially hidden details. The more detail you provide, the " +
+      "more material there is to hang on to and work with." },
+    { type: "p", text:
+      "Take a moment to envision each specific step of your current workflow. What exactly " +
+      "happens, and how does it happen? What are the specific actions?" },
+    { type: "p", text:
+      "For example, instead of \u201cdraft the email,\u201d the real steps might look like: " +
+      "find the documents, pull the information needed, open the email template, then write " +
+      "the email." },
+    { type: "turn", label: "Your turn:", text:
+      "Think about the task that you chose in these terms, and write each specific step and " +
+      "behavior below." }
+  ];
+
   var STAGE_LESSON = {
-    1: { blocks: STAGE_1_LESSON, card: "plan" }
+    1: { blocks: STAGE_1_LESSON, card: "plan" },
+    2: { pages: [
+      { blocks: STAGE_2_LESSON },
+      { title: "Describe the workflow in full",
+        sub: "How much detail a step actually needs",
+        blocks: STAGE_2B_LESSON }
+    ] }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }
+
+  /* A lesson is one or more pages. A single-page lesson may be written as the
+     page itself, which is what stage 1 does. */
+  function lessonPages(n) {
+    var lesson = stageLesson(n);
+    if (!lesson) return [];
+    return lesson.pages || [lesson];
+  }
+
+  /* Which page is on screen. Module state, not learner data: like the view and
+     the phase, where someone is looking is not part of their work, and a stage
+     they leave and come back to opens at the top of its reading. */
+  var lessonPage = 0;
+
+  /* Reading, as opposed to working. Past the last page a stage shows its own
+     panel, so "has a lesson" is not the same question as "is on one". */
+  function onLessonPage(n) {
+    return lessonPage < lessonPages(n).length;
+  }
 
   var COACH_FOCUS = {
     1: "Name the task you want to hand off, in your own words.",
