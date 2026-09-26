@@ -524,9 +524,24 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
    instead, which is shorthand for all-paragraphs. Nothing goes through
    `innerHTML`.
 
+   **A stage can be its reading and nothing else.** `work: false` on a lesson says
+   Continue leaves the stage instead of uncovering a panel; stage 2 (Describe) is
+   the only one today. Stage 2's panel still exists in the markup — it holds the
+   **retired draft-prompt screen**, which is no longer part of the journey. V1 is
+   still generated into it, which keeps `/role/draft` previewing; the coach never
+   needed the V1 text, because `contextInjection()` hands it the problem, the
+   steps and the tools directly. **The learner sees no prompt until Deploy.**
+
+   **The step numbers and the stage names came apart.** Step 2 is the Describe
+   reading, step 3 is the mapping form — swapped when Describe moved ahead of Map.
+   Five places key off the *step* number and have to agree: `stepValid`,
+   `warningFor`, `GATES`, `ROLES`, and the re-validation list at the top of
+   `render()`. Check those together if the order changes again.
+
    **A lesson can be several pages.** `STAGE_LESSON[n].pages` is a list; a
-   single-page lesson may be written as the page itself, which is what stage 1
-   does. Stage 2 reads twice before the builder. The page index `lessonPage` is
+   single-page lesson may be written as the page itself, which is what every
+   lesson does today — so the multi-page path (counter, Back button) is built and
+   correct but not currently exercised by any content. The page index `lessonPage` is
    module state, like `view` and `phase` — where someone is looking is not part
    of their work, so entering a stage always starts its reading at page one.
    **Past the last page is how a stage reaches its own panel**, so `onLessonPage(n)`
