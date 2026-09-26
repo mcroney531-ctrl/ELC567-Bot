@@ -10,10 +10,13 @@ activity's specific framing.
 | Stage | The practice | In this activity |
 |---|---|---|
 | 1 | **Identify** — naming a problem worth solving | Name the task that keeps eating your week |
-| 2 | **Map** — breaking a process into its real steps | Walk through the workflow and where each step happens |
-| 3 | **Envision** — imagining the ideal version | A draft prompt, built from what you just said |
-| 4 | **Refine** — sharpening vague ideas into specifics | Three short conversations with a coach |
+| 2 | **Describe** — seeing the process as it really is | Read through what a step actually contains (no input; name under review) |
+| 3 | **Map** — breaking a process into its real steps | Walk through the workflow and where each step happens |
+| 4 | **Refine** — sharpening vague ideas into specifics | A conversation with a coach |
 | 5 | **Deploy** — translating thinking into action | Edit and copy the finished master prompt |
+
+The learner sees no prompt before Deploy. A draft is still generated on every change — it is what
+the coach reasons over — but the screen that used to show it at stage 3 is retired.
 
 > **Status.** Originally an Articulate Rise custom block split across nine pasteable files. That
 > delivery is retired. The navigation is now a journey map; the artwork and card styling on it are
@@ -26,7 +29,7 @@ activity's specific framing.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # nine suites, 491 assertions
+npm test      # ten suites, 521 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -98,7 +101,7 @@ heights, so the wave is the composition rather than decoration laid over it.
 Two ideas are kept strictly apart, because the spec is emphatic about it:
 
 - **Stage identity** answers *which step is this*. It lives in `[data-accent]` and never changes:
-  Identify blue, Map teal, Envision amber, Refine violet, Deploy cyan.
+  Identify blue, Describe amber, Map teal, Refine violet, Deploy cyan.
 - **State** answers *what can the learner do with it right now*. It lives in `[data-state]`.
 
 State treatment layers on top of identity; it never replaces it. The connector stays one neutral
@@ -347,7 +350,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `botTimeoutMs` | `45000` | When to give up on a coach request. |
 | `storageKey` | `"brainstorm_workflow_data"` | localStorage key. Change the suffix to invalidate saved data after a breaking edit. |
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
-| `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
+| `minWorkflowSteps` | `2` | Filled-in cards Step 3 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
 | `blockRole` | `"all"` | Which slice to render. `"all"` is the whole activity and is what ships; see **Slices** above. |
 | `syncPollMs` | `1200` | How often a slice re-checks storage for another slice's work. Unused when `blockRole` is `"all"`. |
@@ -390,7 +393,7 @@ flushed on unload so a reload can't drop the last edit):
 ```js
 {
   problem: "",                      // Step 1
-  steps: [{ action: "", tools: "" }],  // Step 2
+  steps: [{ action: "", tools: "" }],  // Step 3
   toolsAll: [],                     // derived from steps, de-duplicated case-insensitively
   masterPromptV1: "",               // regenerated from problem + steps on every keystroke
   masterPromptV2: "",               // the deliverable
@@ -409,8 +412,8 @@ assembles a prompt from their answers with `[bracketed]` gaps where an answer is
 way the result lands in an editable textarea. Once the learner types in it, `v2Source` flips to
 `"user"` and nothing overwrites their edit until they press **Rebuild from my answers**.
 
-Editing Steps 1–2 later is fine: the draft prompt regenerates live, and a step that no longer
-validates loses its checkmark until it does.
+Editing Steps 1 and 3 later is fine: the draft regenerates live behind the scenes, and a step that
+no longer validates loses its checkmark until it does.
 
 ---
 

@@ -42,8 +42,9 @@
     //   "intro"             - the framing and the worked example, nothing else
     //   "capture"           - steps 1-3 together in one block
     //   "problem"           - step 1 only: name the task
-    //   "workflow"          - step 2 only: map the steps and tools
-    //   "draft"             - step 3 only: the auto-built draft prompt
+    //   "workflow"          - step 3 only: map the steps and tools
+    //   "draft"             - step 2 only: the auto-built draft prompt, retired from the
+    //                         journey and previewable only through this role
     //   "coach-handoff"     - chat 1: which step the AI takes over
     //   "coach-standards"   - chat 2: what good looks like, and what stays yours
     //   "coach-guardrails"  - chat 3: context and rules, then the finished prompt
@@ -3566,8 +3567,8 @@
       "find the documents, pull the information needed, open the email template, then write " +
       "the email." },
     { type: "turn", label: "Your turn:", text:
-      "Think about the task that you chose in these terms, and write each specific step and " +
-      "behavior below." }
+      "Think about the task that you chose in these terms. Next, you'll turn what you just " +
+      "pictured into explicit steps \u2014 each one with the tool it happens in." }
   ];
 
   var STAGE_LESSON = {

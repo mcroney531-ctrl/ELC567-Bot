@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # nine Playwright suites, 491 assertions, ~3 min
+npm test      # ten Playwright suites, 521 assertions, ~3 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -414,7 +414,7 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Nine Playwright suites, **491 assertions**, all passing.
+Ten Playwright suites, **521 assertions**, all passing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
@@ -428,6 +428,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
 | `answer-quality.test.mjs` | 21 | Thin-answer heuristics and push-backs |
+| `journey-contract.test.mjs` | 30 | The journey the learner is told about, and the five places that must agree about steps 2 and 3 |
 | `hardening.test.mjs` | 14 | Charset, no blocking modals, OS dark mode, clipboard fallbacks, two-press confirms |
 
 ### The harness
@@ -536,7 +537,10 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
    reading, step 3 is the mapping form — swapped when Describe moved ahead of Map.
    Five places key off the *step* number and have to agree: `stepValid`,
    `warningFor`, `GATES`, `ROLES`, and the re-validation list at the top of
-   `render()`. Check those together if the order changes again.
+   `render()`. Check those together if the order changes again —
+   `test/journey-contract.test.mjs` exercises all five through the UI and names
+   which one drifted, so you will hear about it rather than finding out from a
+   stuck learner.
 
    **A lesson can be several pages.** `STAGE_LESSON[n].pages` is a list; a
    single-page lesson may be written as the page itself, which is what every
