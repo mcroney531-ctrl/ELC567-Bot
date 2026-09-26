@@ -281,16 +281,48 @@ Map reading are two halves of one cognitive move, and the form is its applicatio
 become one Map stage: two lesson pages, then the existing form. The form stays a form; the
 retired conversational workflow capture stays retired.
 
-**OPEN:** whether the journey then becomes four stages (Identify → Map → Refine → Deploy)
-or whether a newly conceived Envision — *"now that you understand the current workflow,
-what would the ideal AI-assisted version look like?"* — takes the third position. The old
-Envision implementation (an auto-generated draft prompt on screen) stays retired either
-way; the learner still sees no prompt before Deploy.
+**SETTLED IN PRINCIPLE (2026-09-26):** five stages.
+
+```
+01 Identify   define the problem worth solving
+02 Map        understand reality at tiny step + tool level
+03 Envision   define the ideal outcome, then what AI does in that better version
+04 Refine     turn that vision into responsibilities, standards, context, guardrails
+05 Deploy     review, edit and use the finished prompt
+```
+
+Envision returns as a **future-state design stage**, not the retired draft-prompt screen.
+That screen stays retired and the learner still sees no prompt before Deploy.
+
+Two caveats on "settled in principle": the Describe + Map merge is not implemented yet, and
+**Envision's exact interaction and data contract remain open.**
+
+The architecture question no longer blocks the design conversation. The station count is
+now derived from `STATIONS` rather than written down in a dozen places, so four and five
+are both structurally viable and no implementation debt is voting for either.
+
+### Envision — current design lean, not decided
+
+Recorded so the next implementation pass knows the direction and knows it is a lean:
+
+- **Reading → small form, not a coach.** Sidesteps the live-vs-scripted asymmetry entirely,
+  and keeps the learner doing the imagining rather than asking AI to imagine for them.
+- **Two questions.** *"Picture the better version — what would be different if this
+  workflow worked exactly the way you wanted?"* then *"Where does AI fit — what would you
+  want AI to do in that better version?"*
+- **Output is new top-level learner data**, not `botAnswers`, because the learner produced
+  it rather than a coach. Provisionally `idealOutcome` and `aiRole`, possibly only those two.
+- **It reaches the final prompt transformed, not verbatim, and not as a new section.**
+  `idealOutcome` informs `## CONTEXT` and `## OUTPUT I EXPECT`; `aiRole` informs
+  `## WHAT I NEED YOU TO DO`. Refine then makes those intentions precise. The learner should
+  be able to recognise their Envision thinking in the finished prompt.
+
+The division of labour that falls out of this: **Envision says what the better workflow
+should become; Refine makes it precise enough for an AI to operate inside.**
 
 This supersedes questions 1 and 2 below, which asked about stage 2's name and whether it
-earned a station. See `docs/design/map-merge-orientation.md` for the technical read:
-the multi-page lesson path is a verified clean fit, and the two branches differ mainly in
-whether the hardcoded five-ness (progress math, rail geometry, map grid CSS) has to move.
+earned a station. See `docs/design/map-merge-orientation.md` for the technical read of the
+merge, and §5 of this file for the Refine coach contract that Envision would feed.
 
 ## 9. Open questions
 

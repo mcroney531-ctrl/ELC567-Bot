@@ -13,9 +13,17 @@ repo and run, not reasoned about. The spike was discarded; the production tree i
 experience: two reading pages, then the existing form. The form stays a form; the retired
 conversational workflow capture stays retired.
 
-**OPEN.** Whether the journey becomes four stages (Identify → Map → Refine → Deploy) or
-whether a newly conceived Envision occupies the third position (Identify → Map → Envision
-→ Refine → Deploy). Not solved here, and no Envision content invented.
+**SETTLED IN PRINCIPLE, after this orientation was written.** The journey is five stages:
+Identify → Map → Envision → Refine → Deploy, with Envision returning as a future-state
+design stage rather than the retired draft-prompt screen. **Branch B is the live branch.**
+
+Branch A below is kept as written, because it is the record of what a four-stage journey
+would have cost and because the count-decoupling work it prompted has since landed —
+`STATIONS` is now the only place the journey's length is written, so §4c's broken
+four-station map no longer happens. Read Branch A as history, not as an option.
+
+**Still open:** Envision's exact interaction and data contract. See
+`docs/design/restructure-brief.md` §8.5 for the current lean.
 
 ---
 

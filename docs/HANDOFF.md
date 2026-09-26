@@ -502,6 +502,37 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 - Stage 1: lesson screen (real copy, supplied by the user) → coach → handoff.
 - Stage 2's builder, V1 generation, stage 4's coach, V2 capture, stage 5's artifact.
 
+### Where the journey is going
+
+The shipping journey is Identify / Describe / Map / Refine / Deploy. **That is not where it
+lands.** Settled in principle, not yet implemented:
+
+```
+01 Identify   define the problem worth solving
+02 Map        understand reality at tiny step + tool level   (Describe + Map merged)
+03 Envision   define the ideal outcome, then what AI does in that better version
+04 Refine     turn that vision into responsibilities, standards, context, guardrails
+05 Deploy     review, edit and use the finished prompt
+```
+
+Two pieces of work stand between here and there, in order:
+
+1. **Merge Describe into Map.** Verified as a pure data change: `STAGE_LESSON` gets
+   `pages: [describe blocks, map blocks]` on the stage that owns the form, and the
+   standalone reading stage goes. The multi-page path already works — see
+   `docs/design/map-merge-orientation.md` §2 for the spike, and §4 for the renumber's
+   blast radius.
+2. **Envision.** Returns as a *future-state design stage*, not the retired draft-prompt
+   screen — the learner still sees no prompt before Deploy. Its interaction and data
+   contract are **open**; the author's current lean (reading → small form, new top-level
+   `idealOutcome` / `aiRole`, reaching the final prompt transformed rather than as a new
+   section) is written up in `docs/design/restructure-brief.md` §8.5. Do not implement or
+   invent its content.
+
+The station count is derived from `STATIONS` now, so adding or removing a station no longer
+touches progress arithmetic, rail geometry or the map grid. `test/station-count.test.mjs`
+holds that line.
+
 ### Open work, roughly in priority order
 
 1. **Lessons for stages 2, 3 and 5.** `STAGE_LESSON` has only stage 1. The others still
