@@ -133,31 +133,49 @@ export const waitBots = (page, n) => page.waitForFunction(
 export const SEED_PROBLEM =
   'Every Monday I rebuild the same eleven client status updates by hand, and it eats two hours.';
 
+/* A v3 save with stages 1-3 behind the learner, for suites that are not testing
+   how the journey gets filled in. Stage 4's coach is where they land. */
+export const SEED_VISION = {
+  idealOutcome:
+    'Monday mornings stop being a write-up shift; the numbers are already gathered and a ' +
+    'first draft is waiting, so the time goes on the judgement calls.',
+  aiRole:
+    'Gather the figures from the usual places and draft the routine paragraphs, so what ' +
+    'reaches me is a first pass to react to rather than a blank page.'
+};
+
+export function seedState(overrides = {}) {
+  return {
+    version: 3,
+    problem: SEED_PROBLEM,
+    steps: [
+      { action: 'Pull delivery numbers', tools: 'Asana, Harvest' },
+      { action: 'Draft the update', tools: 'Google Docs' }
+    ],
+    toolsAll: ['Asana', 'Harvest', 'Google Docs'],
+    idealOutcome: SEED_VISION.idealOutcome,
+    aiRole: SEED_VISION.aiRole,
+    masterPromptV1: '', masterPromptV2: '', v2Source: '',
+    conversations: { all: [], identify: [], map: [], envision: [], workflow: [], tools: [],
+                     deploy: [], handoff: [], standards: [], guardrails: [] },
+    mockProgress: { all: 0, identify: 0, map: 0, envision: 0, workflow: 0, tools: 0,
+                    deploy: 0, handoff: 0, standards: 0, guardrails: 0 },
+    botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
+    pushedBack: {},
+    progress: {
+      current: 4, unlocked: 4,
+      done: { 1: true, 2: true, 3: true },
+      entered: { 1: true, 2: true, 3: true }
+    },
+    ...overrides
+  };
+}
+
 export function seedThroughStage3(page, problem = SEED_PROBLEM) {
-  return page.addInitScript(([key, text]) => {
+  return page.addInitScript(([key, payload]) => {
     localStorage.setItem('bw_started', '1');
-    localStorage.setItem(key, JSON.stringify({
-      version: 2,
-      problem: text,
-      steps: [
-        { action: 'Pull delivery numbers', tools: 'Asana, Harvest' },
-        { action: 'Draft the update', tools: 'Google Docs' }
-      ],
-      toolsAll: ['Asana', 'Harvest', 'Google Docs'],
-      masterPromptV1: '', masterPromptV2: '', v2Source: '',
-      conversations: { all: [], identify: [], workflow: [], tools: [], envision: [],
-                       deploy: [], handoff: [], standards: [], guardrails: [] },
-      mockProgress: { all: 0, identify: 0, workflow: 0, tools: 0, envision: 0,
-                      deploy: 0, handoff: 0, standards: 0, guardrails: 0 },
-      botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
-      pushedBack: {},
-      progress: {
-        current: 4, unlocked: 4,
-        done: { 1: true, 2: true, 3: true },
-        entered: { 1: true, 2: true, 3: true }
-      }
-    }));
-  }, ['brainstorm_workflow_data', problem]);
+    localStorage.setItem(key, payload);
+  }, ['brainstorm_workflow_data', JSON.stringify(seedState({ problem }))]);
 }
 
 /* Click through a stage's lesson pages until its own workspace is showing.

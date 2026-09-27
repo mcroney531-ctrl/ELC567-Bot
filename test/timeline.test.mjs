@@ -80,7 +80,7 @@ try {
   check('five stations', await page.locator('.bw-station').count() === 5);
   check('named for the practice, not this activity',
     (await page.locator('.bw-card-name').allTextContents()).join(',') ===
-    'Identify,Describe,Map,Refine,Deploy',
+    'Identify,Map,Envision,Refine,Deploy',
     (await page.locator('.bw-card-name').allTextContents()).join(','));
   check('they alternate above and below the line',
     (await page.locator('.bw-station').evaluateAll(
@@ -100,7 +100,7 @@ try {
   check('a locked station reads as upcoming',
     (await statusOf(3)) === 'Upcoming', await statusOf(3));
   check('and still tells assistive tech which stage opens it',
-    (await station(3).locator('.bw-station-card').getAttribute('aria-label')).includes('Finish Describe first'),
+    (await station(3).locator('.bw-station-card').getAttribute('aria-label')).includes('Finish Map first'),
     await station(3).locator('.bw-station-card').getAttribute('aria-label'));
   check('an available station says it is ready',
     (await statusOf(1)) === 'Ready to start', await statusOf(1));
@@ -165,7 +165,7 @@ try {
   check('on its lesson rather than straight into the builder',
     await page.locator('#bw-lesson-body').isVisible());
   check('the context panel moved with it',
-    (await page.locator('#bw-ls-name').textContent()) === 'Describe',
+    (await page.locator('#bw-ls-name').textContent()) === 'Map',
     await page.locator('#bw-ls-name').textContent());
 
   // ------------------------------------------------------ the completed state
@@ -189,6 +189,23 @@ try {
       .getPropertyValue('--accent-done').trim();
     return a && b && a !== b;
   }));
+  /* Every station's accent has to resolve to its own colour. A renamed token once
+     left a stage matching no rule at all, which is invisible in a diff and shows
+     up as one stage quietly wearing the fallback. */
+  check('every station resolves its own accent, none falling through to a default',
+    await page.evaluate(() => {
+      const pairs = [...document.querySelectorAll('.bw-station')].map(st => {
+        const cs = getComputedStyle(st);
+        return [cs.getPropertyValue('--accent').trim(),
+                cs.getPropertyValue('--accent-done').trim()];
+      });
+      // Both halves resolved, and no two stations wearing the same one.
+      const ids = pairs.map(p => p[0]);
+      return pairs.every(p => p[0] && p[1]) && new Set(ids).size === ids.length;
+    }),
+    await page.evaluate(() => [...document.querySelectorAll('.bw-station')].map(st =>
+      st.dataset.accent + ':' + getComputedStyle(st).getPropertyValue('--accent').trim()
+    ).join(' ')));
   check('the check overlays the dimmed icon rather than replacing it', await page.evaluate(() => {
     const st = document.querySelector('.bw-station[data-state="completed"]');
     return getComputedStyle(st.querySelector('.bw-card-check')).display !== 'none' &&
@@ -210,15 +227,12 @@ try {
   }));
 
   // ----------------------------------------------- a count that comes from data
-  /* Stage 2 is reading only, so finishing it is reading it; the count belongs
-     to stage 3, which is where the form lives now. */
+  /* Map reads twice and then maps, so the count belongs to stage 2. */
   await enter(2);
-  check('a reading-only stage shows no workspace behind its pages',
+  check('Map keeps its builder behind the reading',
     !(await page.locator('#bw-cards').isVisible()));
-  await readLesson(page);
-  check('and reading it through lands on the next stage',
-    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '3',
-    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
+  check('which is two pages', (await page.locator('#bw-lesson-count').textContent()) === '1 of 2',
+    await page.locator('#bw-lesson-count').textContent());
   await readLesson(page);
   const cards = page.locator('#bw-cards .bw-card');
   await page.click('#bw-add-step');
@@ -227,13 +241,13 @@ try {
     await cards.nth(i).locator('input').nth(0).fill(rows[i][0]);
     await cards.nth(i).locator('input').nth(1).fill(rows[i][1]);
   }
-  await page.click('[data-next="3"]');
+  await page.click('[data-next="2"]');
   await page.waitForTimeout(550);
   await toMap();
   check('the count is the real number of steps',
-    (await statusOf(3)) === 'Complete · 3 steps mapped', await statusOf(3));
-  check('and the reading before it just reads as done',
-    (await statusOf(2)) === 'Complete · Process in view', await statusOf(2));
+    (await statusOf(2)) === 'Complete · 3 steps mapped', await statusOf(2));
+  check('and Envision is what opens next, still unanswered',
+    await stateOf(3) === 'current' || await stateOf(3) === 'available', await stateOf(3));
   /* The connector stays one neutral colour whatever the progress - state
      belongs to the nodes and the cards, never to the line. */
   check('the connector never takes on state colour', await page.evaluate(() => {
@@ -253,19 +267,19 @@ try {
   report.watch(odd);
   await odd.addInitScript(seed => localStorage.setItem('brainstorm_workflow_data', seed),
     JSON.stringify({
-      version: 2,
+      version: 3,
       problem: 'A task I do every single week that takes most of a morning.',
       steps: [{ action: 'Do the whole thing by hand', tools: 'Excel' }],
       toolsAll: ['Excel'], masterPromptV1: '', masterPromptV2: '', v2Source: '',
       conversations: {}, mockProgress: {},
       botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
-      progress: { current: 1, unlocked: 4, done: { 1: true, 2: true, 3: true } }
+      progress: { current: 1, unlocked: 3, done: { 1: true, 2: true } }
     }));
   await odd.goto(`http://127.0.0.1:${PORT}/`);
   await odd.waitForTimeout(400);
   check('a stored "done" that no longer holds is not shown as done',
-    (await odd.locator('.bw-station[data-stage="3"]').getAttribute('data-state')) === 'available',
-    await odd.locator('.bw-station[data-stage="3"]').getAttribute('data-state'));
+    (await odd.locator('.bw-station[data-stage="2"]').getAttribute('data-state')) === 'available',
+    await odd.locator('.bw-station[data-stage="2"]').getAttribute('data-state'));
   check('and stage 1, which does still hold, stays completed',
     (await odd.locator('.bw-station[data-stage="1"]').getAttribute('data-state')) === 'completed');
   await oddCtx.close();
@@ -278,17 +292,17 @@ try {
   report.watch(solo);
   await solo.addInitScript(seed => localStorage.setItem('brainstorm_workflow_data', seed),
     JSON.stringify({
-      version: 2,
+      version: 3,
       problem: 'A task I do every single week that takes most of a morning.',
       steps: [{ action: 'Do the whole thing by hand', tools: 'Excel' }],
       toolsAll: ['Excel'], masterPromptV1: '', masterPromptV2: '', v2Source: '',
       conversations: {}, mockProgress: {},
       botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
-      progress: { current: 1, unlocked: 4, done: { 1: true, 2: true, 3: true } }
+      progress: { current: 1, unlocked: 3, done: { 1: true, 2: true } }
     }));
   await solo.goto('http://127.0.0.1:8154/');
   await solo.waitForTimeout(400);
-  const soloStatus = await solo.locator('.bw-station[data-stage="3"] .bw-card-status').textContent();
+  const soloStatus = await solo.locator('.bw-station[data-stage="2"] .bw-card-status').textContent();
   check('one mapped step reads "1 step", not "1 steps"',
     soloStatus === 'Complete \u00b7 1 step mapped', soloStatus);
   await soloCtx.close();
@@ -358,10 +372,14 @@ try {
      Driven by seeding progress directly, because the point is that the four
      states fall out of the state model rather than out of the route taken. */
   const SEED = {
-    version: 2, problem: 'A weekly task that eats most of a morning, every Monday.',
+    version: 3, problem: 'A weekly task that eats most of a morning, every Monday.',
     steps: [{ action: 'Pull the numbers', tools: 'Tableau' },
             { action: 'Draft the update', tools: 'Word' }],
     toolsAll: ['Tableau', 'Word'], masterPromptV1: '', masterPromptV2: '', v2Source: '',
+    /* Envision's two answers. Without them stage 3 cannot validate, and render()
+       would un-tick every scenario that seeds it done. */
+    idealOutcome: 'The Monday update goes out before lunch without me rebuilding it by hand.',
+    aiRole: 'Draft the narrative from the numbers so I am editing rather than writing.',
     conversations: {}, mockProgress: {},
     botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] }
   };

@@ -10,13 +10,13 @@ activity's specific framing.
 | Stage | The practice | In this activity |
 |---|---|---|
 | 1 | **Identify** — naming a problem worth solving | Name the task that keeps eating your week |
-| 2 | **Describe** — seeing the process as it really is | Read through what a step actually contains (no input; name under review) |
-| 3 | **Map** — breaking a process into its real steps | Walk through the workflow and where each step happens |
-| 4 | **Refine** — sharpening vague ideas into specifics | A conversation with a coach |
+| 2 | **Map** — breaking a process into its real steps | Read what a step actually contains, then write the workflow down with the tool each step happens in |
+| 3 | **Envision** — deciding what better looks like | Describe the outcome you want, then the part you'd want AI to play in reaching it |
+| 4 | **Refine** — sharpening vague ideas into specifics | A conversation with a coach, working from that outcome |
 | 5 | **Deploy** — translating thinking into action | Edit and copy the finished master prompt |
 
 The learner sees no prompt before Deploy. A draft is still generated on every change — it is what
-the coach reasons over — but the screen that used to show it at stage 3 is retired.
+the coach reasons over — but the screen that used to show it mid-journey is retired.
 
 > **Status.** Originally an Articulate Rise custom block split across nine pasteable files. That
 > delivery is retired. The navigation is now a journey map; the artwork and card styling on it are
@@ -101,7 +101,7 @@ heights, so the wave is the composition rather than decoration laid over it.
 Two ideas are kept strictly apart, because the spec is emphatic about it:
 
 - **Stage identity** answers *which step is this*. It lives in `[data-accent]` and never changes:
-  Identify blue, Describe amber, Map teal, Refine violet, Deploy cyan.
+  Identify blue, Map teal, Envision amber, Refine violet, Deploy cyan.
 - **State** answers *what can the learner do with it right now*. It lives in `[data-state]`.
 
 State treatment layers on top of identity; it never replaces it. The connector stays one neutral
@@ -350,7 +350,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `botTimeoutMs` | `45000` | When to give up on a coach request. |
 | `storageKey` | `"brainstorm_workflow_data"` | localStorage key. Change the suffix to invalidate saved data after a breaking edit. |
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
-| `minWorkflowSteps` | `2` | Filled-in cards Step 3 needs. Also the floor for the remove button. |
+| `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
 | `blockRole` | `"all"` | Which slice to render. `"all"` is the whole activity and is what ships; see **Slices** above. |
 | `syncPollMs` | `1200` | How often a slice re-checks storage for another slice's work. Unused when `blockRole` is `"all"`. |
@@ -393,8 +393,9 @@ flushed on unload so a reload can't drop the last edit):
 ```js
 {
   problem: "",                      // Step 1
-  steps: [{ action: "", tools: "" }],  // Step 3
+  steps: [{ action: "", tools: "" }],  // Step 2
   toolsAll: [],                     // derived from steps, de-duplicated case-insensitively
+  idealOutcome: "", aiRole: "",     // Step 3, in the learner's own words
   masterPromptV1: "",               // regenerated from problem + steps on every keystroke
   masterPromptV2: "",               // the deliverable
   v2Source: "",                     // "bot" | "template" | "user"

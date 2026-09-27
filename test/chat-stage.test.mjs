@@ -17,12 +17,14 @@ const server = await serveSite(PORT);
 const browser = await chromium.launch();
 
 const SEED = {
-  version: 2,
+  version: 3,
   problem: 'Every Monday I rebuild eleven client status decks by hand and it eats the whole morning.',
   steps: [{ action: 'Pull the delivery numbers', tools: 'Tableau' },
           { action: 'Draft each client update', tools: 'Word' }],
   toolsAll: ['Tableau', 'Word'],
   masterPromptV1: '', masterPromptV2: '', v2Source: '',
+  idealOutcome: 'The decks go out before lunch without me rebuilding each one by hand.',
+  aiRole: 'Assemble the routine parts from the numbers so I am reviewing rather than retyping.',
   conversations: {}, mockProgress: {},
   botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] }
 };

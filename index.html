@@ -32,9 +32,10 @@
       and what you keep.
     </p>
     <p class="bw-lede">
-      The activity moves through five stages: identifying the task, picturing how you do it now,
-      mapping it into steps and the tools each one happens in, refining the plan in conversation
-      with a coach, and leaving with a prompt you can use immediately.
+      The activity moves through five stages: identifying the task, mapping how it actually
+      works today step by step, picturing the better version you want and AI's part in it,
+      refining that into specifics with a coach, and leaving with a prompt you can use
+      immediately.
     </p>
 
     <h2 class="bw-intro-h">Learning Objectives</h2>
@@ -65,20 +66,25 @@
       </div>
 
       <div class="bw-example-row">
-        <p class="bw-eyebrow">Step 2 &mdash; The process, in detail</p>
-        <p>Before listing anything, Maya pictures what actually happens. Not "write the updates"
-        &mdash; finding last week's numbers, opening the template, checking what changed since
-        Friday, then writing.</p>
-      </div>
-
-      <div class="bw-example-row">
-        <p class="bw-eyebrow">Step 3 &mdash; The workflow</p>
+        <p class="bw-eyebrow">Step 2 &mdash; The workflow</p>
+        <p>She stops summarising and writes down what actually happens, with the tool each step
+        happens in.</p>
         <ol>
           <li>Pull last week's delivery numbers &mdash; <em>Asana, Harvest</em></li>
           <li>Check the shared inbox for anything unresolved &mdash; <em>Gmail</em></li>
           <li>Write a 4-paragraph update per client &mdash; <em>Google Docs</em></li>
           <li>Reformat into the client's preferred channel &mdash; <em>Gmail, Slack</em></li>
         </ol>
+      </div>
+
+      <div class="bw-example-row">
+        <p class="bw-eyebrow">Step 3 &mdash; The version she wants</p>
+        <p><strong>Ideal outcome.</strong> "Monday morning stops being a write-up shift. The
+        numbers are already gathered and a first draft is waiting, so the time goes on the
+        judgment calls instead of the typing."</p>
+        <p><strong>AI's role.</strong> "Pull the figures from the usual places and draft the
+        routine paragraphs, so what reaches me is a first pass to react to rather than a blank
+        page."</p>
       </div>
 
       <div class="bw-example-row">
@@ -354,24 +360,24 @@ write [MISSING: metric name] and keep going.</pre>
       <button type="button" class="bw-step-head" id="bw-head-2" aria-expanded="false" aria-controls="bw-panel-2" disabled>
         <span class="bw-step-num"><span>2</span></span>
         <span class="bw-step-titles">
-          <span class="bw-h2">Describe the workflow in full</span>
-          <span class="bw-step-sub">Picture the process as it really is</span>
+          <span class="bw-h2">Map the workflow and tools</span>
+          <span class="bw-step-sub">Break the task into the steps you actually perform</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
         <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
-      <!-- Retired from the journey. The learner sees no prompt until Deploy, so
-           stage 2 is reading only and this panel never opens in the timeline.
-           The draft is still generated into it, which is what keeps V1 available
-           as the coach's context and keeps the /role/draft preview working. -->
       <div class="bw-step-panel" id="bw-panel-2" role="region" aria-labelledby="bw-head-2" hidden>
+        <p class="bw-step-intro">
+          Walk through it the way you'd explain it to a new hire on their first day. One action per
+          card, plus wherever that action happens. Two steps minimum &mdash; most tasks have four or five.
+        </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-2" hidden></div>
-        <div id="bw-draft-wrap">
-          <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
+        <div id="bw-workflow-wrap">
+          <div class="bw-cards" id="bw-cards"></div>
           <div class="bw-actions">
-            <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
+            <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
             <span class="bw-spacer"></span>
-            <button type="button" class="bw-btn" data-next="2">Next: map the workflow</button>
+            <button type="button" class="bw-btn" data-next="2">Next: picture the better version</button>
           </div>
         </div>
         <div class="bw-notice bw-notice-warn" id="bw-warn-2" hidden></div>
@@ -383,22 +389,49 @@ write [MISSING: metric name] and keep going.</pre>
       <button type="button" class="bw-step-head" id="bw-head-3" aria-expanded="false" aria-controls="bw-panel-3" disabled>
         <span class="bw-step-num"><span>3</span></span>
         <span class="bw-step-titles">
-          <span class="bw-h2">Map the workflow and tools</span>
-          <span class="bw-step-sub">Break the task into the steps you actually perform</span>
+          <span class="bw-h2">Picture the better version</span>
+          <span class="bw-step-sub">Define the outcome first, then AI's part in it</span>
         </span>
         <span class="bw-chip" data-chip>Locked</span>
         <span class="bw-step-caret" aria-hidden="true">&#9662;</span>
       </button>
       <div class="bw-step-panel" id="bw-panel-3" role="region" aria-labelledby="bw-head-3" hidden>
-        <p class="bw-step-intro">
-          Walk through it the way you'd explain it to a new hire on their first day. One action per
-          card, plus wherever that action happens. Two steps minimum &mdash; most tasks have four or five.
-        </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-3" hidden></div>
-        <div id="bw-workflow-wrap">
-          <div class="bw-cards" id="bw-cards"></div>
+        <div id="bw-envision-wrap">
+          <label class="bw-field">
+            <span class="bw-label">Picture the ideal outcome</span>
+            <span class="bw-field-help">
+              If this workflow worked exactly the way you wanted, what would be different?
+              Describe the end state, not the technology &mdash; what becomes faster, easier,
+              more consistent, less manual, or more useful?
+            </span>
+            <textarea id="bw-ideal-outcome" rows="4" maxlength="600"
+              placeholder="Monday mornings stop being a write-up shift. The numbers are already pulled and the first draft is waiting, so I spend the time on the judgement calls instead."></textarea>
+          </label>
+
+          <label class="bw-field">
+            <span class="bw-label">Define AI's role</span>
+            <span class="bw-field-help">
+              What would you want AI to do to help create that outcome? Stay at the role level
+              for now &mdash; don't worry about writing perfect instructions yet.
+            </span>
+            <textarea id="bw-ai-role" rows="4" maxlength="600"
+              placeholder="Gather the numbers from the usual places and draft the routine parts, so what reaches me is a first pass to react to rather than a blank page."></textarea>
+          </label>
+
+          <section class="bw-vision" id="bw-vision-summary" hidden aria-live="polite">
+            <h4 class="bw-vision-head">Your envisioned workflow</h4>
+            <div class="bw-vision-row">
+              <p class="bw-vision-label">Ideal outcome</p>
+              <p class="bw-vision-text" id="bw-vision-outcome"></p>
+            </div>
+            <div class="bw-vision-row">
+              <p class="bw-vision-label">AI's role</p>
+              <p class="bw-vision-text" id="bw-vision-role"></p>
+            </div>
+          </section>
+
           <div class="bw-actions">
-            <button type="button" class="bw-btn bw-btn-ghost" id="bw-add-step">+ Add step</button>
             <span class="bw-spacer"></span>
             <button type="button" class="bw-btn" data-next="3">Next: sharpen it with the coach</button>
           </div>
@@ -420,9 +453,9 @@ write [MISSING: metric name] and keep going.</pre>
       </button>
       <div class="bw-step-panel" id="bw-panel-4" role="region" aria-labelledby="bw-head-4" hidden>
         <p class="bw-step-intro">
-          The coach already has your problem, your steps, and your tools. It will push on the vague
-          parts. Answer in whatever detail you'd give a colleague &mdash; this is where a generic prompt
-          becomes yours.
+          The coach already has your problem, your steps, your tools and the version you just
+          described. It will push on the vague parts. Answer in whatever detail you'd give a
+          colleague &mdash; this is where a generic prompt becomes yours.
         </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-4" hidden></div>
         <div id="bw-chat-wrap">
@@ -488,6 +521,18 @@ write [MISSING: metric name] and keep going.</pre>
       </div>
     </li>
   </ol>
+
+  <!-- Retired from the journey: the learner sees no prompt before Deploy. It
+       lives outside the step list so no stage can accidentally show it, and is
+       revealed only by the /role/draft preview. The draft is still written on
+       every change, which is what keeps V1 current for the coach's context. -->
+  <div class="bw-retired" id="bw-draft-wrap" hidden>
+    <div class="bw-notice bw-notice-info" id="bw-prereq-draft" hidden></div>
+    <div class="bw-prompt" id="bw-prompt-v1" aria-live="polite"></div>
+    <div class="bw-actions">
+      <button type="button" class="bw-btn bw-btn-ghost" data-copy="bw-prompt-v1">Copy draft</button>
+    </div>
+  </div>
 
   <div class="bw-notice bw-notice-info" id="bw-handoff" hidden></div>
 

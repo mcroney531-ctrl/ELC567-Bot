@@ -48,7 +48,7 @@ try {
   check('step2 locked at start', await page.locator('.bw-step[data-step="2"]').getAttribute('data-state') === 'locked');
   check('and the map names the new order',
     (await page.locator('.bw-mini-label').allTextContents()).join('|') ===
-    '01 Identify|02 Describe|03 Map|04 Refine|05 Deploy',
+    '01 Identify|02 Map|03 Envision|04 Refine|05 Deploy',
     (await page.locator('.bw-mini-label').allTextContents()).join('|'));
 
   // Stage 1 opens on its lesson: artwork and prose, and nothing to fill in.
@@ -87,28 +87,20 @@ try {
   check('step1 marked done', await page.locator('.bw-step[data-step="1"]').getAttribute('data-done') === 'true');
   check('the chat closes behind it', !(await page.locator('#bw-chat-panel').isVisible()));
 
-  // Stage 2 is reading and nothing else: Continue leaves the stage rather than
-  // uncovering a panel.
-  check('stage 2 is a reading', await page.locator('#bw-lesson-body').isVisible());
-  check('with no workspace behind it', !(await page.locator('#bw-cards').isVisible()));
+  // Stage 2 is Map: two readings - stop summarising, then get specific - and
+  // then the form that applies them.
+  check('stage 2 opens on the first of two readings',
+    await page.locator('#bw-lesson-body').isVisible() &&
+    (await page.locator('#bw-lesson-count').textContent()) === '1 of 2',
+    await page.locator('#bw-lesson-count').textContent());
+  check('with the builder still behind them', !(await page.locator('#bw-cards').isVisible()));
   check('and no prompt shown to the learner yet',
     !(await page.locator('#bw-prompt-v1').isVisible()));
-  await page.click('#bw-lesson-next');
-  await page.waitForTimeout(700);
-  check('reading it through moves on to stage 3',
-    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '3',
-    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
-  check('stage 2 ticks off on being read',
-    await page.locator('.bw-step[data-step="2"]').getAttribute('data-done') === 'true');
+  check('both pages read reaches the builder', await readLesson(page) === 2, 'pages read');
+  check('which is the workspace stage 2 is for', await page.locator('#bw-cards').isVisible());
 
-  check('stage 3 opens on its lesson, not its builder',
-    await page.locator('#bw-lesson-body').isVisible() &&
-    !(await page.locator('#bw-cards').isVisible()));
-  check('read through it reaches the builder', await readLesson(page) === 1, 'pages read');
-  check('which is the workspace stage 3 is for', await page.locator('#bw-cards').isVisible());
-
-  await page.click('[data-next="3"]');
-  check('empty cards blocked', !(await page.locator('#bw-warn-3').isHidden()));
+  await page.click('[data-next="2"]');
+  check('empty cards blocked', !(await page.locator('#bw-warn-2').isHidden()));
   const cards = () => page.locator('#bw-cards .bw-card');
   check('starts with 2 cards', await cards().count() === 2);
   check('remove disabled at minimum', await cards().nth(0).locator('.bw-card-remove').isDisabled());
@@ -130,6 +122,35 @@ try {
   await page.click('#bw-add-step');
   await cards().nth(3).locator('input').nth(0).fill(rows[3][0]);
   await cards().nth(3).locator('input').nth(1).fill(rows[3][1]);
+  await page.click('[data-next="2"]');
+  await page.waitForTimeout(700);
+
+  // Stage 3 is Envision: a short reading, then two answers the learner writes.
+  check('stage 3 is Envision',
+    (await page.locator('#bw-ls-name').textContent()) === 'Envision',
+    await page.locator('#bw-ls-name').textContent());
+  check('opening on its reading', await page.locator('#bw-lesson-body').isVisible());
+  await readLesson(page);
+  check('which leads to two fields, not a chat',
+    await page.locator('#bw-ideal-outcome').isVisible() &&
+    await page.locator('#bw-ai-role').isVisible() &&
+    !(await page.locator('#bw-chat-panel').isVisible()));
+  check('and still no prompt anywhere', !(await page.locator('#bw-prompt-v1').isVisible()));
+  await page.click('[data-next="3"]');
+  check('empty vision blocked', !(await page.locator('#bw-warn-3').isHidden()));
+  await page.fill('#bw-ideal-outcome', 'better');
+  await page.click('[data-next="3"]');
+  check('and a thin answer blocked too', !(await page.locator('#bw-warn-3').isHidden()));
+  await page.fill('#bw-ideal-outcome',
+    'Monday mornings stop being a write-up shift; the numbers are gathered and a first draft is waiting.');
+  await page.fill('#bw-ai-role',
+    'Gather the figures from the usual places and draft the routine paragraphs so I react to a first pass.');
+  await page.waitForTimeout(250);
+  check('the summary mirrors what they wrote, nothing generated',
+    (await page.locator('#bw-vision-outcome').textContent()) ===
+      'Monday mornings stop being a write-up shift; the numbers are gathered and a first draft is waiting.' &&
+    (await page.locator('#bw-vision-role').textContent()) ===
+      'Gather the figures from the usual places and draft the routine paragraphs so I react to a first pass.');
   await page.click('[data-next="3"]');
   await page.waitForTimeout(600);
   check('step4 open', await page.locator('.bw-step[data-step="4"]').getAttribute('data-state') === 'active');

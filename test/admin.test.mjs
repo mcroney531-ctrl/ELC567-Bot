@@ -142,9 +142,16 @@ try {
   check('the journey map agrees with the jump row',
     (await mapStates()) === (await jumpStates()),
     (await mapStates()) + ' vs ' + (await jumpStates()));
+  /* Map's completion line counts the steps it was actually given, so it is the
+     one that would show admin text if the filler were writing labels rather
+     than filling the form the learner fills. */
   check('completion lines are the real computed ones, not admin text',
-    (await page.locator('.bw-station[data-stage="3"] .bw-card-status').textContent())
+    (await page.locator('.bw-station[data-stage="2"] .bw-card-status').textContent())
       === 'Complete · 4 steps mapped',
+    await page.locator('.bw-station[data-stage="2"] .bw-card-status').textContent());
+  check('and Envision reports its own state, not a count',
+    (await page.locator('.bw-station[data-stage="3"] .bw-card-status').textContent())
+      === 'Complete · Future state defined',
     await page.locator('.bw-station[data-stage="3"] .bw-card-status').textContent());
 
   // ============ the artifact it leaves behind is the real one ============

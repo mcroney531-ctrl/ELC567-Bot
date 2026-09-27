@@ -2,8 +2,13 @@
 
 **For:** GPT, working in this repo
 **Repo:** `mcroney531-ctrl/ELC567-Bot`, branch `main`, deployed from `main`/root via GitHub Pages
-**Date:** 2026-09-26
-**State:** the reorder is done, deployed, and green at 491 assertions across nine suites.
+**Date:** 2026-09-27
+**State:** the five-stage journey — Identify / Map / Envision / Refine / Deploy — is
+implemented, deployed and green across twelve suites. Run `npm test` for the current totals.
+
+This document was written when the journey was mid-restructure. It has been brought forward
+to describe what is now built; where it records a decision and the reasoning behind it, that
+is kept, because the reasoning is the part that is expensive to rediscover.
 
 Line numbers are as of the current `main` and will drift — the identifiers won't, so grep
 for those. `docs/HANDOFF.md` is the cold-start orientation for the whole codebase; this
@@ -19,11 +24,17 @@ in the array is the step number; `place` alternates and is the composition, not 
 ```
 #  name        accent      art         place   done() line
 1  Identify    identify    identify    above   "Complete · Task defined"
-2  Describe    describe    describe    below   "Complete · Process in view"
-3  Map         map         map         above   "Complete · N steps mapped"   ← counts filledSteps()
+2  Map         map         map         below   "Complete · N steps mapped"   ← counts filledSteps()
+3  Envision    envision    envision    above   "Complete · Future state defined"
 4  Refine      refine      refine      below   "Complete · Coach review finished"
 5  Deploy      deploy      deploy      above   "Complete · Master prompt ready"
 ```
+
+The count is not written down anywhere else. `stageNumbers()`, `stageCount()`,
+`lastStage()` and `ownedSteps()` all read `STATIONS`, the rail's waypoints are
+`(i + 0.5) * (100 / n)`, and the map's grid comes from `--station-count`. Adding or removing
+a station touches none of the arithmetic; `test/station-count.test.mjs` serves the activity
+one station short to prove it.
 
 Per-stage tables, all keyed by step number:
 
@@ -33,8 +44,8 @@ Per-stage tables, all keyed by step number:
 | `STAGE_ART` | 3057 | the workspace illustration (keyed by `art`, not by number) |
 | `STAGE_INFO` | 3117 | the info strip — only 1 and 4 have one |
 | `STAGE_EXAMPLES` | 3102 | starter cards — only key `1`, which **no longer renders anywhere** (see §7) |
-| `STAGE_LESSON` | 3573 | the reading |
-| `STAGE_COACH` | 3462 | `{1: true, 4: true}` — which stages hand off to a coach |
+| `STAGE_LESSON` | 3803 | the reading — stages 1, 2 (two pages) and 3 |
+| `STAGE_COACH` | 3862 | `{1: true, 4: true}` — which stages hand off to a coach |
 | `STAGE_CONVO` | 131 | step → conversation key |
 
 `statusOf(n)` (`2711`) derives all four presentation states from `progress` and nothing
@@ -43,44 +54,56 @@ showing stage state, it calls `statusOf()` too — that invariant is asserted by
 
 ---
 
-## 2. What the reorder changed
+## 2. How the journey got here
 
-**Before:** Identify → Map(form) → Envision(auto-built draft prompt, read-only) → Refine(coach) → Deploy
-**After:** Identify → Describe(reading) → Map(reading→form) → Refine(coach) → Deploy
+**Originally:** Identify → Map(form) → Envision(auto-built draft prompt, read-only) → Refine(coach) → Deploy
+**Then, briefly:** Identify → Describe(reading) → Map(reading→form) → Refine(coach) → Deploy
+**Now:** Identify → Map(reading ×2 → form) → Envision(reading → form) → Refine(coach) → Deploy
 
-Concretely:
+The middle structure lasted a day. Splitting the two readings into two stations put a stage
+number between a reading and the work it set up, which is what made the step-number hazard
+below a hazard. Merging them back was a data change: `STAGE_LESSON[2]` became a `pages` list
+and the standalone station went.
 
-- The two readings that were pages 1 and 2 of one lesson became two stages.
-  `STAGE_2_LESSON` (3544) is "Describe the workflow in full"; `STAGE_3_LESSON` (3513) is
-  "Map the workflow and tools". **Note the numbering is not the authoring order** —
-  `STAGE_3_LESSON` is declared first because it was written first.
-- The draft-prompt screen is **retired from the journey**. Its markup still lives in
-  `#bw-panel-2` (`index.html`), behind a reading-only stage, so it never opens.
-  `renderPromptV1()` still writes `#bw-prompt-v1` every render — that keeps
-  `workflowData.masterPromptV1` current and keeps the `/role/draft` preview working.
-- Accent token `envision` → `describe` across `css/tokens.css`, `css/stage.css`,
-  `css/home.css`. There is no `envision` identifier left anywhere except inside the
-  author's own prose in `STAGE_2_LESSON` ("Take a moment to envision each specific step"),
-  which is intentional.
+What that leaves:
 
-### The hazard: step numbers and stage names came apart
+- **Map is `pages: [MAP_PAGE_THINK_SMALLER, MAP_PAGE_GET_SPECIFIC]` then the form.** Page one
+  retitles the workspace (`title`/`sub` on the page); page two falls back to the stage's own
+  heading. The two readings are one cognitive move — stop summarising, then get specific —
+  and the form is its application.
+- **Envision is `blocks: ENVISION_LESSON` then a two-field form** (`#bw-ideal-outcome`,
+  `#bw-ai-role`). It is the only stage that captures the learner's own words without a
+  conversation.
+- **The draft-prompt screen is retired from the journey and out of the step list.** It lives
+  in `<div class="bw-retired" id="bw-draft-wrap" hidden>` in `index.html`, revealed only by
+  `/role/draft`. `renderPromptV1()` still writes `#bw-prompt-v1` every render, which keeps
+  `workflowData.masterPromptV1` current and the preview honest. A walk of all five stages
+  asserts no learner ever sees it.
+- **The accent token `envision` is back**, and `describe` is gone, across `css/tokens.css`,
+  `css/stage.css` and `css/home.css`.
 
-Step 2 is the reading, step 3 is the form. **Five places key off the step number and must
-agree.** Change one, change all five:
+### The hazard, and what is left of it
+
+Step 2 now means Map's form and step 3 means Envision's two fields — the number and the
+stage agree again. The **coupling** did not go away, though: five places key off the step
+number and must be changed together.
 
 | What | Where | Now says |
 |---|---|---|
-| `stepValid` | `1888` | `case 2: return true` (reading); `case 3:` filledSteps + tools |
-| `warningFor` | `1903` | the form's warning is `case 3` |
-| `GATES` | `1812` | `workflow` gate → step 3; `draft` gate → step 2; `artifact` needs `stepValid(3)` |
-| `ROLES` | `71` | `workflow`/`coach-workflow`/`coach-tools` → `steps: [3]`; `draft` → `steps: [2]` |
-| `render()` re-validation | `2003` | `[1, 3].forEach(...)` un-ticks stages that no longer validate |
+| `stepValid` | `2014` | `case 2:` filledSteps + tools; `case 3:` `visionOK("idealOutcome") && visionOK("aiRole")` |
+| `warningFor` | `2030` | the form's warning is `case 2`; the vision's is `case 3` |
+| `GATES` | `1929` | `workflow` gate → step 2; `draft` gate → step 0 (out of the list); `artifact` needs `stepValid(1) && stepValid(2)` |
+| `ROLES` | `72` | `workflow`/`coach-workflow`/`coach-tools` → `steps: [2]`; `draft` → `steps: []` |
+| `render()` re-validation | `2131` | `[1, 2, 3].forEach(...)` un-ticks stages that no longer validate |
 
-Plus two smaller ones that also moved: `applyRole()`'s capture-chat relocation now targets
-`#bw-panel-3`/`#bw-warn-3`, and `openStep()`'s `maybeStartConversation` trigger is
-`n === 3 && isCaptureChat`.
+`test/journey-contract.test.mjs` exercises all five through the UI and names which one
+drifted. Two smaller couplings moved with them: `applyRole()`'s capture-chat relocation
+targets `#bw-panel-2`/`#bw-warn-2`, and `openStep()`'s `maybeStartConversation` trigger is
+`n === 2 && isCaptureChat`.
 
----
+Because `draft` now owns no step, two guards that used to test `!ROLE.steps.length` had to
+change to `CONFIG.blockRole === "intro"` — otherwise the draft preview was misclassified as
+the intro block and lost cross-block sync.
 
 ## 3. The lesson content model
 
@@ -91,20 +114,20 @@ Nothing goes through `innerHTML`.
 { type: "h",    text }                          // the question a section answers
 { type: "p",    text }
 { type: "list", lead?, items: [] }              // bulleted
-{ type: "defs", lead?, items: [{term, text, note?}] }   // the arrow pairs on stage 3
+{ type: "defs", lead?, items: [{term, text, note?}] }   // the arrow pairs on Map's page 2
 { type: "turn", label, text }                   // the handoff, accented, sits above Continue
 ```
 
 Two structural flags on a `STAGE_LESSON` entry:
 
 - **`pages: [...]`** — a multi-page reading. A single-page lesson may be written as the
-  page itself, which is what all three lessons do today. **So the multi-page path (the
-  `1 of 2` counter, the Back button, `lessonPage` advance/retreat) is built, correct, and
-  currently exercised by no content.** `lessonPages()` at `3585` normalises both shapes.
-- **`work: false`** — the stage *is* the reading. `advanceLesson()` (`3272`) calls
-  `goNext(n)` instead of revealing the panel. Only stage 2 sets it, and it matters
-  specifically because stage 2's panel is the retired draft prompt — the one screen a
-  learner must not see.
+  page itself, which is what stages 1 and 3 do. Map uses two pages, so the `1 of 2` counter
+  and the Back button are live content now rather than untested machinery.
+  `lessonPages()` normalises both shapes.
+- **`work: false`** — the stage *is* the reading; `advanceLesson()` calls `goNext(n)` instead
+  of revealing the panel. **Nothing sets it today.** It existed for the standalone Describe
+  stage, whose panel was the retired draft prompt. That panel is now outside the step list
+  entirely, which is a better guarantee than a flag.
 
 `onLessonPage(n)` (`3598`) is "is reading", which is a **different question** from
 `stageLesson(n)` ("has a lesson"). Both `renderLesson()` and `placeWorkspaceExtras()` need
@@ -127,13 +150,15 @@ key in the page, and that constraint is stated in the source at `CONFIG.botHeade
 
 **One chat DOM, many conversations.** `sKey()` (`133`) returns
 `STAGE_CONVO[progress.current]`, so the single chat component serves every stage by keying
-on whichever is open. `STAGE_CONVO` is `{1:"identify", 2:"describe", 3:"map", 4:"all",
+on whichever is open. `STAGE_CONVO` is `{1:"identify", 2:"map", 3:"envision", 4:"all",
 5:"deploy"}` — **every stage needs an entry even without a coach**, because the fallback is
 `"all"` and that would put stage 4's transcript on screen at stage 2.
 
-**What the coach is given** — `contextInjection()` (`2164`): the problem, the numbered
-steps, the tools. Not the V1 text. That's why retiring the draft screen cost the coach
-nothing.
+**What the coach is given** — `contextInjection()`: the problem, the numbered steps, the
+tools, **and the learner's stated outcome and AI role**, plus an instruction not to propose a
+vision of its own. Not the V1 text, which is why retiring the draft screen cost the coach
+nothing. The scripted coach's opening (`mockOpening()`) reads the vision back
+deterministically, so offline reviewers see the same handoff a live model would work from.
 
 **Scripted script shape** (`SCRIPTS`, `1407`):
 
@@ -155,7 +180,9 @@ reply so the acknowledgement doesn't contradict the `[NEEDS DETAIL]` mark.
 
 ## 5. Building the 04 coach — the contract you'd be authoring against
 
-This is the open build. The author's sketch, close to verbatim:
+Still the open build, and now with less to invent: Envision hands Refine a stated outcome and
+a stated AI role, so the coach's first move is to reflect a vision it was given rather than
+to elicit one. The author's sketch, close to verbatim:
 
 > Coach opens with something like *"Okay, so here's my understanding. \_\_\_\_\_ Here are a
 > few ways that AI might be able to help in your process \_\_\_\_\_. What would the overall
@@ -167,6 +194,13 @@ This is the open build. The author's sketch, close to verbatim:
 
 Three moves in order: **reflect back → propose → ask for the ideal end-state and the split
 of responsibility.**
+
+What changed under it: the third move is no longer where the end-state gets decided. Envision
+already has it. Refine's job is to turn *"the numbers are already gathered and a first draft is
+waiting"* into which step is handed over, what a good result looks like, what stays with the
+learner, and what the AI must never invent. The scripted opening does the reflecting today:
+`mockOpening()` quotes the problem, lists the steps, reads the outcome and the AI role back,
+and asks which step they would hand over first.
 
 ### What the finished conversation has to produce
 
@@ -205,9 +239,10 @@ The "here are a few ways AI might help" move is the whole problem.
 
 - **Live:** the model reads the actual tools and proposes real integrations. Works.
 - **Scripted:** cannot invent. The honest ceiling is keyword-matching `workflowData.toolsAll`
-  against the five pairs in `STAGE_3_LESSON`'s `defs` block (Spreadsheet→Email, PDF
+  against the five pairs in `MAP_PAGE_GET_SPECIFIC`'s `defs` block (Spreadsheet→Email, PDF
   Reader→File Storage, File Storage→Calendar, Video Conferencing→Task System, Claude
-  Connector→CRM) and naming the closest shape.
+  Connector→CRM) and naming the closest shape. It now also has the learner's own `aiRole`
+  sentence to work from, which is a stated intention rather than a guess.
 
 Since `botEndpoint` is `null`, **the scripted version is what ships today**. Designing only
 for live means the deployed activity does something visibly weaker than the design.
@@ -216,10 +251,12 @@ for live means the deployed activity does something visibly weaker than the desi
 
 ## 6. Where AI actually appears
 
-`STAGE_COACH = {1: true, 4: true}`. Stages 2, 3 and 5 have no conversation. Worth seeing
-plainly: in an activity about AI, three of five stations are reading, a form, and a
-textarea. That's the correct consequence of the decisions in §7, not a mistake — but it's
-the kind of thing that's invisible from inside the build.
+`STAGE_COACH = {1: true, 4: true}`. Stages 2, 3 and 5 have no conversation: Map is
+reading→form, Envision is reading→form, Deploy is an artifact to read and edit. Worth seeing
+plainly: in an activity about AI, three of five stations have no AI in them. That is the
+correct consequence of the decisions in §7 — the learner does the thinking and AI helps make
+it precise — but it is the kind of thing that is invisible from inside the build, so it is
+written down rather than assumed to be obvious.
 
 ---
 
@@ -227,7 +264,7 @@ the kind of thing that's invisible from inside the build.
 
 Settled unless someone argues. The reasoning is the part worth keeping.
 
-**Stage 3 is a form, not a coach.** A conversational version exists and is wired out:
+**Map is a form, not a coach.** A conversational version exists and is wired out:
 `SCRIPTS.workflow` / `SCRIPTS.tools`, `captureFromUser`, `splitIntoActions`,
 `parseToolPairs`, `ACTION_REPLIES`, `TOOL_REPLIES`, `isConfirm`, `resolveStep` — ~350 lines
 plus `test/capture-chat.test.mjs` (35 assertions). It is reachable **only** under
@@ -238,14 +275,22 @@ It lost on merit: the output is structured data (ordered action/tool pairs) that
 downstream generates from; a form makes all of it visible and editable at once; and
 prose→records was a bug farm — *"oh and then I email it"* became a step named *"Oh and then
 I email it"*, *"yes that looks right"* parsed as a new step. Both fixed, but that class of
-bug is inherent and buys nothing here. Stage 3's own copy also tells the learner to
+bug is inherent and buys nothing here. Map's own copy also tells the learner to
 enumerate, which a numbered form *is* and a chat box actively works against.
 
 **The master prompt is hidden until 05.** Showing a half-built prompt at the old stage 3
 made the activity feel finished early and gave the learner something to fiddle with instead
-of a question to answer.
+of a question to answer. This is why Envision reaches the artifact **transformed** rather than
+as a section of its own: the learner writes a future state, not a draft prompt.
 
-**One claim was rescoped.** Stage 3 used to say *"Other times, AI might pick up on one or
+**Envision is a reading and a form, not a coach.** Decided 2026-09-27. It sidesteps the
+live-vs-scripted asymmetry in §5 entirely, and it keeps the learner doing the imagining
+rather than asking AI to imagine for them. Its two answers are **top-level learner data**
+(`idealOutcome`, `aiRole`) and not `botAnswers`, because `botAnswers` means "what a coach got
+out of them" and these are the learner's own words. The read-back under the fields quotes
+them verbatim; nothing paraphrases.
+
+**One claim was rescoped.** Map's second page used to say *"Other times, AI might pick up on one or
 present a workaround"* — which read as a promise about this activity's coach. It now reads
 *"If you're brainstorming with AI in a session, the model might…"*. Consequence:
 **spotting integrations is now unclaimed work.** The 04 sketch would re-promise it. Fine,
@@ -261,9 +306,9 @@ don't mistake it for live surface.
 | Thing | Status |
 |---|---|
 | The capture-chat subsystem (above) | no production route; `/role/coach-workflow`, `/role/coach-tools` only |
-| `#bw-panel-2`'s draft prompt | rendered every tick, never shown in the timeline; `/role/draft` previews it |
+| The retired draft prompt (`.bw-retired #bw-draft-wrap`) | rendered every tick, outside the step list, never shown in the timeline; `/role/draft` previews it |
 | `STAGE_EXAMPLES[1]` | written for stage 1's retired textarea; renders on no screen today |
-| Multi-page lessons | machinery live, no content uses it |
+| `work: false` on a lesson | supported by `advanceLesson()`; no lesson sets it |
 | Coaching-card types `example`, `refinement` | render correctly from the typed shape; nothing emits them |
 | `/role/<name>`, `/frames/<a,b,c>` | test-harness routes in `serveSite()`; **404 on Pages** |
 
@@ -274,116 +319,126 @@ it produces are indistinguishable from real ones.
 
 ---
 
-## 8.5. Superseded by the Map merge decision
+## 8.5. The five-stage journey, as built
 
-**DECIDED (2026-09-26):** Describe is not a standalone stage. The Describe reading and the
-Map reading are two halves of one cognitive move, and the form is its application, so they
-become one Map stage: two lesson pages, then the existing form. The form stays a form; the
-retired conversational workflow capture stays retired.
-
-**SETTLED IN PRINCIPLE (2026-09-26):** five stages.
+**DECIDED 2026-09-26, IMPLEMENTED 2026-09-27.**
 
 ```
-01 Identify   define the problem worth solving
-02 Map        understand reality at tiny step + tool level
-03 Envision   define the ideal outcome, then what AI does in that better version
-04 Refine     turn that vision into responsibilities, standards, context, guardrails
-05 Deploy     review, edit and use the finished prompt
+01 Identify   define the problem worth solving              lesson -> coach
+02 Map        understand reality at tiny step + tool level   lesson x2 -> form
+03 Envision   define the ideal outcome, then AI's part in it lesson -> form
+04 Refine     turn that vision into responsibilities,        lesson -> coach
+              standards, context and guardrails
+05 Deploy     review, edit and use the finished prompt       artifact
 ```
 
-Envision returns as a **future-state design stage**, not the retired draft-prompt screen.
-That screen stays retired and the learner still sees no prompt before Deploy.
+Describe is not a standalone stage: its reading and Map's reading are two halves of one
+cognitive move, and the form is its application, so they are one stage with two pages. The
+form stays a form; the retired conversational workflow capture stays retired. Envision returns
+as a **future-state design stage**, not the retired draft-prompt screen — that screen stays
+retired and the learner still sees no prompt before Deploy.
 
-Two caveats on "settled in principle": the Describe + Map merge is not implemented yet, and
-**Envision's exact interaction and data contract remain open.**
+The division of labour this rests on: **Envision says what the better workflow should become;
+Refine makes it precise enough for an AI to operate inside.**
 
-The architecture question no longer blocks the design conversation. The station count is
-now derived from `STATIONS` rather than written down in a dozen places, so four and five
-are both structurally viable and no implementation debt is voting for either.
+### Envision, as implemented
 
-### Envision — current design lean, not decided
+- **Reading → two-field form.** `ENVISION_LESSON` is deliberately short: the thinking belongs
+  in the answers, not in more prose. The one idea that has to survive any rewrite of it is the
+  order — **outcome first, technology second**.
+- **Two questions**, in that order: *"Picture the ideal outcome"* (what would be different if
+  this worked the way you wanted — the end state, not the technology) and *"Define AI's role"*
+  (what you would want AI to do to create that outcome, at the role level).
+- **Stored as top-level learner data**: `idealOutcome`, `aiRole`. Not `botAnswers`.
+- **Validated by the same thin-answer heuristic the coach uses** (`visionOK` → `answerQuality`),
+  so "faster" and "idk" are refused but a learner is not held to an arbitrary character count.
+  Both answers are required before Refine unlocks.
+- **A deterministic read-back** under the fields quotes both answers, appearing only once both
+  are real.
+- **No AI call anywhere on the stage**, and no prompt visible on it.
+- **It reaches the artifact transformed, in the six sections that were already there.** The
+  outcome goes into `## CONTEXT` as `What I am trying to get to:` — it is what the work is
+  for. The role goes under `## WHAT I NEED YOU TO DO` as `In broad terms:`, framing the task
+  line rather than replacing it. **No seventh section, and no field label from the form appears
+  in the output.** Both lines are conditional, which is why `generateMasterPromptV2()` is built
+  as a list with `out.push()` rather than one concatenation.
+- **Refine's coach is given both answers** through `contextInjection()`, with an instruction not
+  to propose a different vision.
 
-Recorded so the next implementation pass knows the direction and knows it is a lean:
+### Persistence: version 3
 
-- **Reading → small form, not a coach.** Sidesteps the live-vs-scripted asymmetry entirely,
-  and keeps the learner doing the imagining rather than asking AI to imagine for them.
-- **Two questions.** *"Picture the better version — what would be different if this
-  workflow worked exactly the way you wanted?"* then *"Where does AI fit — what would you
-  want AI to do in that better version?"*
-- **Output is new top-level learner data**, not `botAnswers`, because the learner produced
-  it rather than a coach. Provisionally `idealOutcome` and `aiRole`, possibly only those two.
-- **It reaches the final prompt transformed, not verbatim, and not as a new section.**
-  `idealOutcome` informs `## CONTEXT` and `## OUTPUT I EXPECT`; `aiRole` informs
-  `## WHAT I NEED YOU TO DO`. Refine then makes those intentions precise. The learner should
-  be able to recognise their Envision thinking in the finished prompt.
-
-The division of labour that falls out of this: **Envision says what the better workflow
-should become; Refine makes it precise enough for an AI to operate inside.**
-
-This supersedes questions 1 and 2 below, which asked about stage 2's name and whether it
-earned a station. See `docs/design/map-merge-orientation.md` for the technical read of the
-merge, and §5 of this file for the Refine coach contract that Envision would feed.
+`defaultData().version` is `3`. `migrateV2()` upgrades a v2 payload rather than discarding it,
+and `load()` writes the upgrade straight back so a learner who opens the page and leaves is not
+left on the old shape. It carries authored work, `botAnswers`, `pushedBack` and every transcript
+whose key still means the same conversation; starts the vision empty; and **re-derives
+progression from the work itself** rather than copying it. A v2 learner who had finished the old
+journey lands on Envision as *available*, not *current* — the upgrade does not pretend they have
+been into a stage that did not exist. `test/envision-stage.test.mjs` holds this with a v2
+fixture.
 
 ## 9. Open questions
 
-Framed as decisions, with what each one costs in code.
+Framed as decisions, with what each one costs in code. The ones the restructure answered are
+recorded as answered rather than deleted, so nobody re-opens them by accident.
 
-1. **Station names.** `Describe` is a placeholder, as are its blurb ("Picture the process as
-   it really is.") and quote ("The blueprint comes before the build.") — all three written
-   in the build session, not authored. The five names are meant to read as transferable
-   practice. Does the set still hang together with `Envision` gone?
-   *Cost: `STATIONS`, `STAGE_CONTEXT`, the accent token trio in three CSS files, and the
-   name assertions in `timeline` / `learning-stage` / `scripted-coach`.*
+1. **Station names.** `Describe` is gone; the five are Identify / Map / Envision / Refine /
+   Deploy, and they are meant to read as transferable practice. Envision's blurb ("Picture the
+   better version.") and Map's ("Break the process into real steps.") were written in the build
+   session, not authored — they are the remaining placeholders.
+   *Cost of changing one: `STATIONS`, `STAGE_CONTEXT`, the accent token trio in three CSS
+   files, and the name assertions in `timeline` / `learning-stage` / `journey-contract`.*
 
-2. **Is stage 2 worth a station?** One screen of reading, equal weight on the map to stages
-   with real work, and it ticks "Complete · Process in view" for being read. Leave it, fold
-   it back into stage 3 as a first page, or give it something to do?
-   *Cost of folding: delete the `STAGE_LESSON[2]` entry, move its blocks into a `pages`
-   array on 3, and the five-places list in §2 again — in reverse.*
+2. ~~**Is stage 2 worth a station?**~~ **Answered:** no — it was folded into Map as its first
+   page. Done.
 
-3. **How much should the design lean on the live coach?** (§5.) Design for live and accept
-   the scripted version is a shadow; design something both can do honestly; or make the
-   scripted coach's limits visible to the learner.
+3. **How much should the design lean on the live coach?** (§5.) Still open. Design for live and
+   accept the scripted version is a shadow; design something both can do honestly; or make the
+   scripted coach's limits visible to the learner. Envision narrowed this a little: the coach no
+   longer has to invent a future state, only to sharpen a stated one.
 
 4. **The 04 opening and the "I want \_\_\_\_\_" starters.** Do you want to author these? The
-   contract is §5. They should line up with the five `defs` pairs in `STAGE_3_LESSON`.
+   contract is §5. They should line up with the five `defs` pairs in `MAP_PAGE_GET_SPECIFIC`.
+   The scripted opening currently reflects the vision and asks which step they would hand over
+   first; the "here are a few ways AI might help" move is not built.
 
-5. **A line that is now slightly wrong.** `STAGE_2_LESSON`'s `turn` block ends *"…write each
-   specific step and behavior below."* The form is a Continue away, on stage 3 — not below.
-   Kept verbatim rather than silently edited.
+5. ~~**A line that is now slightly wrong.**~~ **Answered:** Map's `turn` block no longer sends
+   the learner "below" — the form is past the reading in the same stage, and the copy says so.
 
-6. **Three phases vs five stages.** `index.html` Course Overview: *"structured around three
-   phases: defining your problem and workflow, refining your approach through conversation,
-   and exporting a production-ready prompt."* The map shows five. They reconcile
-   (define = 1+2+3, refine = 4, export = 5) but a learner reads "three" and counts five.
+6. ~~**Three phases vs five stages.**~~ **Answered:** the Course Overview now walks the same five
+   stages the map shows, in the same order. `journey-contract` asserts the count and the order.
 
 7. **Two product names.** Landing: *"Brainstorm an AI-Powered Workflow."* Home: *"AI Workflow
-   Builder — Turn Ideas Into Impact."*
+   Builder — Turn Ideas Into Impact."* Still open.
 
-8. **Theme split.** The landing is the last screen on the light lavender theme; home and
-   every stage are the dark shell family.
+8. **Theme split.** The landing is the last screen on the light lavender theme; home and every
+   stage are the dark shell family. Still open.
 
-9. **Lessons for 04 and 05.** No copy. Stages 1–3 have theirs.
+9. **Lessons for 04 and 05.** No copy. Stages 1, 2 and 3 have theirs.
 
----
+10. **Does Deploy want a coach?** `STAGE_CONVO` maps it to `deploy` and `STAGES` has an entry,
+    but the stage is an artifact to read, edit and copy. Nothing is missing today; it is a
+    question rather than a gap.
 
 ## 10. Working in here
 
 ```bash
 npm start     # http://127.0.0.1:8080   (and /admin/ for the review bar)
-npm test      # nine suites, 491 assertions, ~3 min, stops at the first failing suite
+npm test      # twelve suites, ~4 min, stops at the first failing suite
 node test/timeline.test.mjs    # iterate on one
 ```
 
 | Suite | Asserts | Covers |
 |---|---|---|
-| `timeline` | 93 | map, four states, navigation |
-| `learning-stage` | 92 | shell, mini strip, lessons, step-card geometry |
-| `scripted-coach` | 90 | the whole walkthrough offline |
-| `coach-phase` | 69 | the coach as a mode, per-stage transcripts, the pinned rail |
-| `admin` | 47 | `?admin=1`, and that its states match real ones |
+| `learning-stage` | 105 | shell, mini strip, multi-page reading, lessons, step-card geometry |
+| `scripted-coach` | 94 | the whole walkthrough offline |
+| `timeline` | 94 | map, four states, navigation, per-station accents |
+| `chat-stage` | 69 | the coach as a mode, per-stage transcripts, the pinned rail |
+| `envision-stage` | 53 | stage 3 end to end, the carry into Refine and Deploy, the v2→v3 upgrade |
+| `admin` | 48 | `?admin=1`, and that its states match real ones |
+| `journey-contract` | 42 | the journey the learner is told about, and the five coupled step-number definitions |
 | `capture-chat` | 35 | the retired prose→structure parser |
 | `live-endpoint` | 30 | the adapter, wire format, failures |
+| `station-count` | 25 | that the journey's length is data |
 | `answer-quality` | 21 | thin-answer heuristics |
 | `hardening` | 14 | charset, clipboard fallbacks, dark mode, two-press confirms |
 

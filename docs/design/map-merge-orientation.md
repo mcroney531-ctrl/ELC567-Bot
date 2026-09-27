@@ -1,9 +1,14 @@
 # Map merge — technical orientation
 
-**Status:** orientation only. Nothing in the production journey was changed.
+**Status:** **implemented as Branch B on 2026-09-27.** This document is kept as the record of
+the orientation that preceded the build — what was spiked, what the alternative would have
+cost, and which couplings were found. Where it describes work as pending, read it as history;
+the notes marked **LANDED** say what actually happened.
 **Base:** `e69da1f` on `main`.
 **Method:** the two load-bearing claims below were spiked in a throwaway copy of the
 repo and run, not reasoned about. The spike was discarded; the production tree is clean.
+
+For the journey as built, see `docs/design/restructure-brief.md` §8.5 and `docs/HANDOFF.md`.
 
 ---
 
@@ -22,8 +27,11 @@ would have cost and because the count-decoupling work it prompted has since land
 `STATIONS` is now the only place the journey's length is written, so §4c's broken
 four-station map no longer happens. Read Branch A as history, not as an option.
 
-**Still open:** Envision's exact interaction and data contract. See
-`docs/design/restructure-brief.md` §8.5 for the current lean.
+**LANDED.** Envision's interaction and data contract were decided and built: a reading, then
+two fields (`idealOutcome`, `aiRole`) stored as top-level learner data, validated by the
+coach's own thin-answer heuristic, reaching Refine through `contextInjection()` and the final
+prompt transformed rather than as a new section. `docs/design/restructure-brief.md` §8.5 has
+the detail.
 
 ---
 
@@ -61,6 +69,12 @@ the `work: false` branch stay in the code and go unused again — the same posit
 multi-page path was in until today. Leave them; they are four lines and this journey has
 already needed both.
 
+**LANDED as described.** The spike's shape is what shipped, with the blocks renamed
+`MAP_PAGE_THINK_SMALLER` / `MAP_PAGE_GET_SPECIFIC` and the entry moved to stage 2. No change
+to the lesson layer was needed. `work: false` is now unused, and the retired draft prompt is
+no longer behind a lesson at all — it moved out of the step list into `.bw-retired`, which is
+a stronger guarantee than the flag was.
+
 ---
 
 ## 3. Proposed merged Map flow
@@ -94,6 +108,9 @@ exist on the current stage 3 and move with it.
 
 The `describe` accent token (`--id-describe` / `--done-describe`, amber) becomes
 **unused in Branch A** and is the natural token for the new station in Branch B.
+
+**LANDED:** Branch B, and the token went back to being called `envision` rather than being
+reused under the `describe` name.
 
 ---
 
@@ -193,16 +210,18 @@ one-line change. It is exactly the kind of refactor your brief told me not to do
 number, so **any renumber silently reinterprets an in-flight learner's saved progress** —
 a save that said "stage 3 done" would mean the form in Branch A and Envision in Branch B.
 
-There is no per-step migration code and none is needed. Bump `version` to `3` in
-`defaultData()` and in the `readStored()` guard, and every existing save is discarded
-cleanly on next load. (`CONFIG.storageKey` has a suffix mechanism for the same purpose;
-`version` is the cheaper of the two and is already checked.)
+**LANDED — and not as a discard.** The version was bumped to `3`, but `migrateV2()` upgrades
+an existing save instead of throwing it away: authored work, `botAnswers`, `pushedBack` and
+every transcript whose key still means the same conversation are carried across, the vision
+starts empty, and **progression is re-derived from the work itself** rather than reinterpreted.
+That is what makes the renumber safe — a save that said "stage 3 done" is not trusted to mean
+anything; the steps are re-checked and the tick is re-earned. `load()` writes the upgrade back
+immediately so no learner is left on the old shape, and a v2 fixture in
+`test/envision-stage.test.mjs` holds it.
 
-Cost of discarding: a learner mid-activity loses their work. Given there is no account
-system, no cohort has been through this yet, and the stage a save refers to would
-otherwise be wrong, discarding is the honest option. **Flagging it rather than deciding
-it** — if a cohort is already in flight, say so and I will write a mapping migration
-instead.
+The original note read: *"There is no per-step migration code and none is needed… discarding
+is the honest option."* It was cheaper to write the migration than to decide whether anyone
+was mid-activity.
 
 One smaller note: `conversations` and `mockProgress` are keyed by conversation *name*, not
 number, so they survive a renumber untouched. Only `progress` is at risk.
@@ -211,8 +230,14 @@ number, so they survive a renumber untouched. Only `progress` is at risk.
 
 ## 7. Tests that would intentionally change
 
-`test/journey-contract.test.mjs` is written as a temporary contract and says so in its
-header. On the merge these **should fail and be rewritten**, not patched:
+**LANDED: every item below happened, and the suites were rewritten rather than patched.**
+`journey-contract` now describes the settled journey (42 assertions), `timeline` (93),
+`learning-stage` (105), `chat-stage` (69) and `admin` (48) were updated, and
+`envision-stage` (53) is new. `capture-chat`, `live-endpoint`, `answer-quality`, `hardening`
+and `scripted-coach` needed nothing beyond a v3 fixture, as predicted.
+
+The original list, for the record — on the merge these **should fail and be rewritten**,
+not patched:
 
 - `stepValid(2): reading stage 2 finishes it, with nothing filled in` — stage 2 becomes
   the form; this assertion inverts.
@@ -250,7 +275,8 @@ they key off conversation names and behaviour, not step numbers.
 6. **Copy flagged, not changed:** page 1's turn block ("Next, you'll turn what you just
    pictured into explicit steps…") becomes a page turn rather than a stage turn. It reads
    acceptably either way, but it was written three days ago for the split and is worth a
-   glance when the merge lands.
+   glance when the merge lands. **LANDED unchanged** — it reads correctly as a page turn, and
+   `journey-contract` asserts it does not send the learner "below".
 7. **`STAGE_EXAMPLES[1]` and `STAGE_INFO[1]`** remain unreachable dead data. Untouched —
    dead-code cleanup is an open decision.
 

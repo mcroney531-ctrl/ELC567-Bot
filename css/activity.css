@@ -309,3 +309,31 @@
   .bw-step-sub { display: none; }
   .bw-msg { max-width: 96%; }
 }
+
+/* ---- Envision: the two answers, and the summary they produce ----
+   The summary is the learner's own words set as text. Nothing is generated
+   here and no prompt appears - Deploy is still the first time they see one. */
+.bw-field-help {
+  display: block; margin: 3px 0 8px;
+  font-size: .8125rem; line-height: 1.5; color: var(--bw-text-muted);
+  font-weight: 400; text-transform: none; letter-spacing: 0;
+}
+#bw-envision-wrap .bw-field + .bw-field { margin-top: 22px; }
+
+.bw-vision {
+  margin-top: 24px; padding: 16px 18px; border-radius: var(--bw-radius-sm);
+  background: var(--bw-surface); border: 1px solid var(--bw-border);
+}
+.bw .bw-vision-head {
+  margin: 0 0 12px; font-size: .75rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--bw-text-faint);
+}
+.bw-vision-row + .bw-vision-row { margin-top: 14px; }
+.bw-vision-label {
+  margin: 0 0 4px; font-size: .8125rem; font-weight: 700; color: var(--bw-text);
+}
+.bw-vision-text { margin: 0; font-size: .9375rem; line-height: 1.55; color: var(--bw-text-muted); }
+
+/* The retired draft screen. Reachable only through the /role/draft preview,
+   which unhides it; no stage can show it. */
+.bw-retired[hidden] { display: none !important; }

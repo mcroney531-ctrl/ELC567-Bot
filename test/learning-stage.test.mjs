@@ -18,13 +18,15 @@ const server = await serveSite(PORT);
 const browser = await chromium.launch();
 
 const SEED = {
-  version: 2,
+  version: 3,
   problem: 'Every Monday I rebuild eleven client status decks by hand and it eats the whole morning.',
   steps: [{ action: 'Pull the delivery numbers', tools: 'Tableau' },
           { action: 'Draft each client update', tools: 'Word' },
           { action: 'Reformat into the deck', tools: 'PowerPoint' }],
   toolsAll: ['Tableau', 'Word', 'PowerPoint'],
   masterPromptV1: '', masterPromptV2: '', v2Source: '',
+  idealOutcome: 'The decks go out before lunch without me rebuilding each one by hand.',
+  aiRole: 'Assemble the routine parts from the numbers so I am reviewing rather than retyping.',
   conversations: {}, mockProgress: {},
   botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] }
 };
@@ -161,7 +163,7 @@ try {
     await page.locator('.bw-mini-label').first().textContent());
   check('in the journey order',
     (await page.locator('.bw-mini-label').allTextContents()).join('|') ===
-    '01 Identify|02 Describe|03 Map|04 Refine|05 Deploy');
+    '01 Identify|02 Map|03 Envision|04 Refine|05 Deploy');
   check('the open stage is marked for assistive tech',
     await page.locator('.bw-mini-item[data-stage="1"] .bw-mini-node')
       .getAttribute('aria-current') === 'step');
@@ -172,10 +174,9 @@ try {
     }));
   await ctx.close();
 
-  // ---- a stage can be its reading and nothing else ----
-  /* Stage 2 is reading only: Continue leaves the stage rather than uncovering a
-     panel. Its panel still exists - it holds the retired draft prompt - which is
-     exactly why "has a lesson" is not the same question as "is reading". */
+  // ---- a stage can read more than once before it asks for anything ----
+  /* Map is one job in two passes: stop summarising, then get specific. Both
+     pages are reading, and only past the last one does the form appear. */
   const lessonState = () => page.evaluate(() => ({
     reading: !document.querySelector('#bw-lesson-body').hidden,
     panel: !document.querySelector('.bw-steps').hidden,
@@ -186,35 +187,37 @@ try {
   }));
   ({ ctx, page } = await openStage({ unlocked: 2, current: 2, open: 2, done: [1], entered: [1, 2] }));
   let L = await lessonState();
-  check('a reading-only stage opens on its page', L.reading && !L.panel, JSON.stringify(L));
-  check('titled for the stage it is in',
+  check('a two-page stage opens on its first page', L.reading && !L.panel, JSON.stringify(L));
+  check('retitled for the pass it is on',
     L.title === 'Describe the workflow in full', L.title);
-  check('one page needs no counter and no way back', L.count === null && !L.back,
-    JSON.stringify(L));
+  check('a multi-page lesson says where you are', L.count === '1 of 2', String(L.count));
+  check('with no way back from the first page', !L.back, JSON.stringify(L));
   check('and the retired draft is not shown behind it',
     !(await page.locator('#bw-prompt-v1').isVisible()));
   await page.click('#bw-lesson-next');
-  await page.waitForTimeout(700);
-  check('continue leaves the stage rather than uncovering its panel',
-    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '3',
-    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
-  await ctx.close();
-
-  // ---- and a stage can read, then work ----
-  ({ ctx, page } = await openStage(
-    { unlocked: 3, current: 3, open: 3, done: [1, 2], entered: [1, 2, 3] }));
+  await page.waitForTimeout(600);
   L = await lessonState();
-  check('stage 3 opens on its reading', L.reading && !L.panel, JSON.stringify(L));
-  check('titled for the mapping it is about to ask for',
+  check('continue turns the page rather than leaving the stage',
+    L.reading && !L.panel && L.count === '2 of 2', JSON.stringify(L));
+  check('the second page can go back', L.back, JSON.stringify(L));
+  check('and reads as the stage it is in rather than keeping the first page\'s title',
     L.title === 'Map the workflow and tools', L.title);
   check('the arrow pairs render as term and definition',
     await page.locator('.bw-lesson-def').count() === 5,
     String(await page.locator('.bw-lesson-def').count()));
   check('one of which carries a human-in-the-loop note',
     await page.locator('.bw-lesson-def-note').count() === 1);
-
+  check('the claim about a coach noticing a connection is kept conditional',
+    (await page.locator('#bw-lesson-copy').textContent())
+      .includes('If you\'re brainstorming with AI in a session'),
+    'conditional phrasing missing');
+  await page.click('#bw-lesson-back');
+  await page.waitForTimeout(600);
+  check('back returns to the first page, retitled again',
+    (await lessonState()).title === 'Describe the workflow in full',
+    (await lessonState()).title);
   await readLesson(page);
-  check('past the last page the stage\'s own workspace takes over',
+  check('past the last page the mapping form takes over',
     await page.locator('#bw-cards').isVisible());
   check('and its stage icon, with no explainer card',
     await page.locator('#bw-ls-art svg').isVisible() &&
@@ -226,14 +229,15 @@ try {
      those pages, so there is no progress to resume. */
   await page.click('#bw-to-map');
   await page.waitForTimeout(550);
-  await page.click('.bw-station[data-stage="3"] .bw-station-card');
+  await page.click('.bw-station[data-stage="2"] .bw-station-card');
   await page.waitForTimeout(800);
   L = await lessonState();
-  check('re-entering the stage starts its reading over', L.reading, JSON.stringify(L));
+  check('re-entering the stage starts its reading over',
+    L.reading && L.count === '1 of 2', JSON.stringify(L));
   await readLesson(page);
   check('save draft sits next to that stage\'s continue', await page.evaluate(() => {
     const save = document.querySelector('#bw-save-draft');
-    const next = document.querySelector('[data-next="3"]');
+    const next = document.querySelector('[data-next="2"]');
     return save && next && save.parentElement === next.parentElement;
   }));
 
@@ -274,6 +278,47 @@ try {
   check('and the number is still inside the card',
     c.num.l >= c.card.left && c.num.l < c.card.right, JSON.stringify(c.num));
   check('with the label still on one line', c.label.h < 26, String(c.label.h));
+  await ctx.close();
+
+  // ---- reading into a form, with no coach in between ----
+  /* Envision is the one stage that captures the learner's own words without a
+     conversation: one page of reading, then two questions. */
+  ({ ctx, page } = await openStage(
+    { unlocked: 3, current: 3, open: 3, done: [1, 2], entered: [1, 2, 3] }));
+  L = await lessonState();
+  check('Envision opens on its reading', L.reading && !L.panel, JSON.stringify(L));
+  check('titled for what it asks the learner to picture',
+    L.title === 'Picture the better version', L.title);
+  check('one page needs no counter and no way back', L.count === null && !L.back,
+    JSON.stringify(L));
+  check('the reading puts the outcome before the technology',
+    /outcome[^.]*not the technology/i.test(await page.locator('#bw-lesson-copy').textContent()),
+    'ordering claim missing');
+  await readLesson(page);
+  check('past the reading the two questions take over',
+    await page.locator('#bw-ideal-outcome').isVisible() &&
+    await page.locator('#bw-ai-role').isVisible());
+  check('and no coach was opened on the way',
+    !(await page.locator('#bw-chat-panel').isVisible()));
+  check('each question carries its own help text, not one wall of prose',
+    await page.locator('#bw-envision-wrap .bw-field-help').count() === 2,
+    String(await page.locator('#bw-envision-wrap .bw-field-help').count()));
+  /* This fixture already carries a vision, so the form comes back filled and
+     the read-back is showing. Blank and thin answers are the Envision suite's
+     business. */
+  check('the fields come back carrying what was stored',
+    (await page.locator('#bw-ideal-outcome').inputValue()).startsWith('The decks go out') &&
+    (await page.locator('#bw-ai-role').inputValue()).startsWith('Assemble the routine'));
+  check('and the summary reads them back rather than paraphrasing',
+    (await page.locator('#bw-vision-outcome').textContent()) ===
+      (await page.locator('#bw-ideal-outcome').inputValue()) &&
+    (await page.locator('#bw-vision-role').textContent()) ===
+      (await page.locator('#bw-ai-role').inputValue()));
+  check('save draft sits next to this stage\'s continue', await page.evaluate(() => {
+    const save = document.querySelector('#bw-save-draft');
+    const next = document.querySelector('[data-next="3"]');
+    return save && next && save.parentElement === next.parentElement;
+  }));
   await ctx.close();
 
   // Stage 4 is a panel stage with an info strip, which is where that machinery
@@ -318,7 +363,7 @@ try {
   check('the open stage is stage 3',
     await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage') === '3');
   check('the context panel followed it',
-    (await page.locator('#bw-ls-name').textContent()) === 'Map',
+    (await page.locator('#bw-ls-name').textContent()) === 'Envision',
     await page.locator('#bw-ls-name').textContent());
   check('as did the progress cue',
     (await page.locator('#bw-ls-step').textContent()) === 'Step 3 of 5');

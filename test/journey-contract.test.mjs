@@ -9,16 +9,16 @@
  * when the form had moved to the next stage. Nothing caught either, because
  * every suite tested behaviour and none read what the page says.
  *
- * The coupling. The step numbers and the stage names came apart in the reorder:
- * step 2 is the reading, step 3 is the form. Five places key off the number and
- * have to agree - stepValid, warningFor, GATES, ROLES, and render()'s
- * re-validation list. Changing one and missing the others gives a journey that
- * validates the wrong stage, which is invisible until a learner is stuck. The
- * second half of this file exercises all five through the UI, so drift fails
- * loudly without anything needing to be refactored first.
+ * The coupling. Several definitions key off a stage number and have to agree
+ * about what that number means - stepValid, warningFor, GATES, ROLES, and
+ * render()'s re-validation list. Changing one and missing the others gives a
+ * journey that validates the wrong stage, which is invisible until a learner is
+ * stuck. The second half of this file exercises all of them through the UI, so
+ * drift fails loudly without anything needing to be refactored first.
  *
- * Deliberately loose where the product is unsettled: stage 2's name, blurb and
- * quote are placeholder, so nothing here asserts them.
+ * The journey is Identify, Map, Envision, Refine, Deploy. Map is one stage: it
+ * reads twice and then asks for the steps, so the reading and the form share a
+ * number rather than sitting either side of one.
  */
 import { serveSite, makeReporter, loadChromium, readLesson } from './helpers.mjs';
 
@@ -49,12 +49,14 @@ async function open(path = '', seed = null) {
 
 /* A learner's whole journey, finished, for the checks that need one. */
 const FINISHED = {
-  version: 2,
+  version: 3,
   problem: 'Every Monday I rebuild eleven client status decks by hand and it eats the morning.',
   steps: [{ action: 'Pull the delivery numbers', tools: 'Tableau' },
           { action: 'Draft each client update', tools: 'Word' }],
   toolsAll: ['Tableau', 'Word'],
   masterPromptV1: '', masterPromptV2: '', v2Source: '',
+  idealOutcome: 'The decks go out before lunch without me rebuilding each one by hand.',
+  aiRole: 'Assemble the routine parts from the numbers so I am reviewing rather than retyping.',
   conversations: {}, mockProgress: {},
   botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
   progress: { current: 1, unlocked: 5, done: { 1: true, 2: true, 3: true, 4: true },
@@ -73,6 +75,13 @@ try {
     !/three phases/i.test(landing), landing.match(/.{0,60}three phases.{0,60}/i)?.[0]);
   check('it counts the journey as five',
     /five stages/i.test(landing), landing.match(/.{0,80}stages.{0,40}/i)?.[0]);
+  check('and walks them in the order the map does', await page.evaluate(() => {
+    const t = document.body.innerText.toLowerCase();
+    const at = s => t.indexOf(s);
+    return at('identifying the task') < at('mapping how it actually') &&
+           at('mapping how it actually') < at('picturing the better version') &&
+           at('picturing the better version') < at('refining that into specifics');
+  }));
 
   /* The worked example walks the journey. Its step labels are the easiest thing
      to leave behind in a reorder, because nothing else reads them. */
@@ -83,21 +92,28 @@ try {
     JSON.stringify(eyebrows));
   check('numbered in order',
     eyebrows.every((t, i) => t.trim().startsWith('Step ' + (i + 1))), JSON.stringify(eyebrows));
-  check('with the workflow at step 3, where the form now lives',
-    /workflow/i.test(eyebrows[2]), eyebrows[2]);
+  check('with the workflow at step 2, where the mapping now lives',
+    /workflow/i.test(eyebrows[1]), eyebrows[1]);
+  check('the version she wants at step 3',
+    /wants|version/i.test(eyebrows[2]), eyebrows[2]);
   check('and the finished prompt at step 5',
     /prompt/i.test(eyebrows[4]), eyebrows[4]);
   check('it no longer walks the learner through a draft prompt before the end',
     !eyebrows.slice(0, 4).some(t => /draft/i.test(t)), JSON.stringify(eyebrows));
+  check('the worked step 3 shows both halves of the vision, not one', await page.evaluate(() => {
+    const row = [...document.querySelectorAll('.bw-example .bw-eyebrow')]
+      .find(e => /step 3/i.test(e.textContent)).parentElement.innerText.toLowerCase();
+    return row.includes('ideal outcome') && row.includes("ai's role");
+  }));
 
   await page.click('#bw-start');
   await page.waitForTimeout(800);
   check('the map shows five stations', (await names()).length === 5, JSON.stringify(await names()));
-  check('Map is the third', (await names())[2] === 'Map', JSON.stringify(await names()));
-  check('Envision is not a station any more',
-    !(await names()).some(n => /envision/i.test(n)), JSON.stringify(await names()));
-  check('and the word does not survive anywhere the learner can read it',
-    !/envision/i.test(await visibleText()));
+  check('in the settled order',
+    (await names()).join(',') === 'Identify,Map,Envision,Refine,Deploy',
+    JSON.stringify(await names()));
+  check('Describe is not a station of its own any more',
+    !(await names()).some(n => /describe/i.test(n)), JSON.stringify(await names()));
 
   // ================== no prompt reaches the learner before Deploy ==================
   /* Walked rather than asserted statically: the draft element still exists and
@@ -123,45 +139,67 @@ try {
   check('Deploy is where a prompt finally appears',
     await page.locator('#bw-prompt-v2').isVisible());
 
-  // ========================= the stage 2 handoff is honest =========================
+  // ===================== Map's reading hands off to Map's form =====================
   await open('', FINISHED);
   await page.click('.bw-station[data-stage="2"] .bw-station-card');
   await page.waitForTimeout(700);
   const turn = await page.locator('.bw-lesson-turn').textContent();
-  check('stage 2 does not tell the learner to write anything below it',
+  check('Map\'s first page does not tell the learner to write anything below it',
     !/below/i.test(turn), turn);
   check('it points at the mapping that actually comes next',
-    /step/i.test(turn) && /tool/i.test(turn), turn);
+    /step/i.test(turn) && /next/i.test(turn), turn);
   check('and there is nothing on that screen to write in',
     await page.locator('#bw-lesson-body input, #bw-lesson-body textarea').count() === 0);
+  await readLesson(page);
+  check('the form is in the same stage the reading was, not the next one',
+    await page.locator('#bw-cards').isVisible() &&
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '2',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
+  check('and it is panel 2 that holds it', await page.evaluate(() =>
+    document.querySelector('#bw-panel-2 #bw-cards') !== null));
 
-  // =========== the five places that must agree about steps 2 and 3 ===========
+  // ============= the places that must agree about what each number means =============
   /* Behavioural, not structural: each check below fails if one of the coupled
      definitions drifts away from the others, without depending on how any of
      them is written. */
 
-  // stepValid(2): reading is the whole of finishing stage 2, with nothing filled in.
+  // stepValid(2): the steps are the whole of finishing Map. Reading is not enough.
   await open('', { ...FINISHED,
     steps: [{ action: '', tools: '' }, { action: '', tools: '' }], toolsAll: [],
-    progress: { current: 2, unlocked: 3, done: { 1: true }, entered: { 1: true } } });
+    progress: { current: 2, unlocked: 2, done: { 1: true }, entered: { 1: true } } });
   await page.click('.bw-station[data-stage="2"] .bw-station-card');
   await page.waitForTimeout(700);
-  // One explicit Continue rather than readLesson(): if stage 2 stops completing
-  // on being read, this has to say so, not time out looking for more pages.
-  await page.click('#bw-lesson-next');
-  await page.waitForTimeout(700);
-  check('stepValid(2): reading stage 2 finishes it, with nothing filled in',
-    await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('brainstorm_workflow_data')).progress.done['2'] === true));
-
-  // warningFor + the panel wiring: the form's complaint belongs to step 3.
-  // Continue landed on stage 3's reading; read through it to reach the form.
   await readLesson(page);
-  check('warningFor(3): the empty form complains as step 3',
+  check('stepValid(2): reading Map does not finish it while the form is empty',
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('brainstorm_workflow_data')).progress.done['2'] !== true));
+  check('warningFor(2): the empty form complains as step 2',
     await page.locator('#bw-cards').isVisible());
+  await page.click('[data-next="2"]');
+  await page.waitForTimeout(300);
+  check('  and shows the step 2 warning', !(await page.locator('#bw-warn-2').isHidden()));
+  check('  about the steps and their tools',
+    /steps/i.test(await page.locator('#bw-warn-2').textContent()),
+    await page.locator('#bw-warn-2').textContent());
+  check('  not a step 3 one', await page.locator('#bw-warn-3').isHidden());
+
+  // stepValid(3): Envision needs both answers, and its complaint is step 3's.
+  await open('', { ...FINISHED, idealOutcome: '', aiRole: '',
+    progress: { current: 3, unlocked: 3, done: { 1: true, 2: true },
+                entered: { 1: true, 2: true } } });
+  await page.click('.bw-station[data-stage="3"] .bw-station-card');
+  await page.waitForTimeout(700);
+  await readLesson(page);
+  check('stepValid(3): reading Envision does not finish it either',
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('brainstorm_workflow_data')).progress.done['3'] !== true));
   await page.click('[data-next="3"]');
   await page.waitForTimeout(300);
-  check('  and shows the step 3 warning', !(await page.locator('#bw-warn-3').isHidden()));
+  check('warningFor(3): the empty vision shows the step 3 warning',
+    !(await page.locator('#bw-warn-3').isHidden()));
+  check('  about the outcome, which is the first thing missing',
+    /better about the finished workflow/i.test(await page.locator('#bw-warn-3').textContent()),
+    await page.locator('#bw-warn-3').textContent());
   check('  not a step 2 one', await page.locator('#bw-warn-2').isHidden());
 
   /* ROLES: the slices render the panels their step numbers now point at. Seeded
@@ -169,37 +207,61 @@ try {
      next check, not this one. */
   await open('role/workflow', FINISHED);
   check('ROLES.workflow renders the card form', await page.locator('#bw-cards').isVisible());
-  check('  which is panel 3', await page.evaluate(() =>
-    document.querySelector('#bw-panel-3 #bw-cards') !== null));
+  check('  which is panel 2', await page.evaluate(() =>
+    document.querySelector('#bw-panel-2 #bw-cards') !== null));
   await open('role/draft', FINISHED);
   check('ROLES.draft renders the retired draft', await page.locator('#bw-prompt-v1').isVisible());
-  check('  which is panel 2', await page.evaluate(() =>
-    document.querySelector('#bw-panel-2 #bw-prompt-v1') !== null));
+  check('  from outside the step list, so no stage can show it', await page.evaluate(() =>
+    document.querySelector('.bw-retired #bw-prompt-v1') !== null &&
+    document.querySelector('.bw-steps #bw-prompt-v1') === null));
+
+  /* The preview role is the only thing that reveals the retired container. The
+     full activity must leave it hidden, whatever stage is open. */
+  await open('', FINISHED);
+  const leaked = [];
+  for (const stage of [1, 2, 3, 4, 5]) {
+    await page.click(`.bw-station[data-stage="${stage}"] .bw-station-card`);
+    await page.waitForTimeout(700);
+    if (!(await page.locator('#bw-draft-wrap').evaluate(e => e.hidden))) {
+      leaked.push('stage ' + stage);
+    }
+    await page.click('#bw-to-map');
+    await page.waitForTimeout(550);
+  }
+  check('the retired draft container stays hidden in the full activity',
+    leaked.length === 0, leaked.join(', '));
 
   /* GATES: with nothing named, the workflow slice hides its form behind the
-     step 3 notice. The gate's step number and its notice id have to match, and
+     step 2 notice. The gate's step number and its notice id have to match, and
      they are written as a pair in GATES. */
   await open('role/workflow');
   check('GATES: an unfilled workflow slice hides its form',
     !(await page.locator('#bw-workflow-wrap').isVisible()));
-  check('  behind the step 3 notice', await page.evaluate(() => {
-    const n = document.querySelector('#bw-prereq-3');
+  check('  behind the step 2 notice', await page.evaluate(() => {
+    const n = document.querySelector('#bw-prereq-2');
     return !!n && !n.hidden && /name the task/i.test(n.textContent);
   }));
-  check('  and not a step 2 one', await page.evaluate(() => {
-    const n = document.querySelector('#bw-prereq-2');
+  check('  and not a step 3 one', await page.evaluate(() => {
+    const n = document.querySelector('#bw-prereq-3');
     return !n || n.hidden;
   }));
 
-  // render() re-validation: breaking the steps un-ticks 3, and leaves 2 alone.
+  // render() re-validation: each stage that can break loses its own tick only.
   await open('', { ...FINISHED,
     steps: [{ action: 'only one', tools: 'Excel' }], toolsAll: ['Excel'] });
   const states = () => page.locator('.bw-station')
     .evaluateAll(els => els.map(e => e.dataset.state).join(','));
-  check('render(): a stage 3 that no longer validates loses its tick',
+  check('render(): a Map that no longer validates loses its tick',
+    (await states()).split(',')[1] !== 'completed', await states());
+  check('  while Identify, which still validates, keeps its own',
+    (await states()).split(',')[0] === 'completed', await states());
+
+  await open('', { ...FINISHED, aiRole: '' });
+  check('render(): half a vision is not a finished Envision',
     (await states()).split(',')[2] !== 'completed', await states());
-  check('  while stage 2, which cannot break, keeps its own',
-    (await states()).split(',')[1] === 'completed', await states());
+  check('  and the stages either side are untouched',
+    (await states()).split(',')[1] === 'completed' &&
+    (await states()).split(',')[3] === 'completed', await states());
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);
 }

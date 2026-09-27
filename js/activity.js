@@ -29,7 +29,7 @@
     // everything downstream is written from this sentence.
     minProblemChars: 25,
 
-    // Minimum filled-in workflow cards before Step 3 counts as answered.
+    // Minimum filled-in workflow cards before Step 2 counts as answered.
     minWorkflowSteps: 2,
 
     // Minimum learner replies in Step 4 before Step 5 unlocks.
@@ -74,10 +74,12 @@
     intro:              { steps: [],              intro: true,  label: "",                  stage: null },
     capture:            { steps: [1, 2, 3],       intro: true,  label: "Set it up",         stage: null },
     problem:            { steps: [1],             intro: false, label: "Name it",           stage: null },
-    workflow:           { steps: [3],             intro: false, label: "Map it",            stage: null },
-    "coach-workflow":   { steps: [3],             intro: false, label: "Walk me through it", stage: "workflow" },
-    "coach-tools":      { steps: [3],             intro: false, label: "Where it happens",   stage: "tools" },
-    draft:              { steps: [2],             intro: false, label: "Your draft",        stage: null },
+    workflow:           { steps: [2],             intro: false, label: "Map it",            stage: null },
+    "coach-workflow":   { steps: [2],             intro: false, label: "Walk me through it", stage: "workflow" },
+    "coach-tools":      { steps: [2],             intro: false, label: "Where it happens",   stage: "tools" },
+    // The retired draft screen is not a stage any more; its preview reveals a
+    // container that lives outside the step list.
+    draft:              { steps: [],              intro: false, label: "Your draft",        stage: null },
     "coach-handoff":    { steps: [4],             intro: false, label: "Hand it over",      stage: "handoff" },
     "coach-standards":  { steps: [4],             intro: false, label: "Set the bar",       stage: "standards" },
     "coach-guardrails": { steps: [4],             intro: false, label: "Set the guardrails", stage: "guardrails" },
@@ -95,8 +97,8 @@
     workflow:   { answers: [], minTurns: 1, owns: "actions" },
     tools:      { answers: [], minTurns: 1, owns: "tools" },
     identify:   { answers: [],                                                minTurns: 2, owns: "problem" },
-    describe:   { answers: [],                                                minTurns: 1 },
     map:        { answers: [],                                                minTurns: 1 },
+    envision:   { answers: [],                                                minTurns: 1 },
     deploy:     { answers: [],                                                minTurns: 1 },
     handoff:    { answers: ["handoff"],                                       minTurns: 1 },
     standards:  { answers: ["output", "keep"],                                minTurns: 2 },
@@ -106,7 +108,8 @@
   var ownsTools = function () { return STAGE && STAGES[STAGE].owns === "tools"; };
 
   var OWNED_FIELDS = {
-    all:      ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2", "v2Source"],
+    all:      ["problem", "steps", "toolsAll", "idealOutcome", "aiRole",
+               "masterPromptV1", "masterPromptV2", "v2Source"],
     capture:  ["problem", "steps", "toolsAll", "masterPromptV1"],
     problem:  ["problem"],
     workflow: ["steps", "toolsAll"],
@@ -135,7 +138,7 @@
      bound to follows whichever stage is open. */
   /* Every stage needs an entry even when it has no coach: sKey() falls back to
      "all" without one, which would put stage 4's transcript on screen. */
-  var STAGE_CONVO = { 1: "identify", 2: "describe", 3: "map", 4: "all", 5: "deploy" };
+  var STAGE_CONVO = { 1: "identify", 2: "map", 3: "envision", 4: "all", 5: "deploy" };
 
   function sKey() {
     if (!TIMELINE) return STAGE;
@@ -204,18 +207,22 @@
 
   function defaultData() {
     return {
-      version: 2,
+      version: 3,
       problem: "",
       steps: [{ action: "", tools: "" }, { action: "", tools: "" }],
       toolsAll: [],
+      // Envision's two answers. Top-level rather than in botAnswers because the
+      // learner wrote them; botAnswers is what a coach got out of them.
+      idealOutcome: "",
+      aiRole: "",
       masterPromptV1: "",
       masterPromptV2: "",
       v2Source: "",          // "bot" | "template" | "user"
       // One transcript per stage, so several chat blocks are separate
       // conversations that still build one shared master prompt.
-      conversations: { all: [], identify: [], describe: [], map: [], workflow: [], tools: [],
+      conversations: { all: [], identify: [], map: [], envision: [], workflow: [], tools: [],
                        deploy: [], handoff: [], standards: [], guardrails: [] },
-      mockProgress:  { all: 0,  identify: 0,  describe: 0,  map: 0,  workflow: 0,  tools: 0,
+      mockProgress:  { all: 0,  identify: 0,  map: 0,  envision: 0,  workflow: 0,  tools: 0,
                        deploy: 0,  handoff: 0,  standards: 0,  guardrails: 0 },
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
@@ -235,7 +242,9 @@
     if (!raw) return null;
     try {
       var saved = JSON.parse(raw);
-      if (!saved || typeof saved !== "object" || saved.version !== 2) return null;
+      if (!saved || typeof saved !== "object") return null;
+      if (saved.version === 2) { saved = migrateV2(saved); migrated = true; }
+      if (!saved || saved.version !== 3) return null;
       var fresh = defaultData();
       Object.keys(fresh).forEach(function (k) {
         if (saved[k] !== undefined && saved[k] !== null) fresh[k] = saved[k];
@@ -265,9 +274,75 @@
     } catch (e) { return null; }   /* corrupt payload - start clean */
   }
 
+  /* v2 saves were written when stage 2 was a reading and stage 3 was the
+     workflow form. Under v3 stage 2 is the form and stage 3 is Envision, so the
+     old per-stage ticks mean different things and must not be carried across by
+     number. Everything the learner actually wrote is kept; progression is
+     re-derived from that work, conservatively.
+
+     Envision cannot have been finished - its two fields did not exist - so the
+     journey resumes there, and nothing after it stays ticked. */
+  function migrateV2(old) {
+    var next = defaultData();
+
+    // Authored work, carried straight over.
+    ["problem", "steps", "toolsAll", "masterPromptV1", "masterPromptV2", "v2Source"]
+      .forEach(function (k) {
+        if (old[k] !== undefined && old[k] !== null) next[k] = old[k];
+      });
+    if (old.botAnswers && typeof old.botAnswers === "object") {
+      Object.keys(next.botAnswers).forEach(function (k) {
+        if (old.botAnswers[k] !== undefined && old.botAnswers[k] !== null) {
+          next.botAnswers[k] = old.botAnswers[k];
+        }
+      });
+    }
+    // Transcripts survive under the keys that still mean the same conversation.
+    // "describe" is gone and its stage never had a coach, so there is nothing
+    // to bring across from it.
+    if (old.conversations && typeof old.conversations === "object") {
+      Object.keys(next.conversations).forEach(function (k) {
+        if (Array.isArray(old.conversations[k])) next.conversations[k] = old.conversations[k];
+      });
+    }
+    if (old.mockProgress && typeof old.mockProgress === "object") {
+      Object.keys(next.mockProgress).forEach(function (k) {
+        if (typeof old.mockProgress[k] === "number") next.mockProgress[k] = old.mockProgress[k];
+      });
+    }
+    if (old.pushedBack && typeof old.pushedBack === "object") next.pushedBack = old.pushedBack;
+
+    /* Progression re-derived from the work itself rather than copied. The two
+       tests below are the v3 meanings of stages 1 and 2; stageValidFromData is
+       used rather than stepValid because this runs before any of it is wired. */
+    var done = {};
+    var problemOK = String(next.problem || "").trim().length >= CONFIG.minProblemChars;
+    var filled = (next.steps || []).filter(function (st) {
+      return String(st && st.action || "").trim() && String(st && st.tools || "").trim();
+    });
+    if (problemOK) done[1] = true;
+    if (problemOK && filled.length >= CONFIG.minWorkflowSteps) done[2] = true;
+
+    var resume = done[2] ? 3 : (done[1] ? 2 : 1);
+    next.progress = {
+      current: resume,
+      unlocked: resume,
+      done: done,
+      entered: Object.keys(done).reduce(function (acc, k) { acc[k] = true; return acc; }, {})
+    };
+    next.version = 3;
+    return next;
+  }
+
+  var migrated = false;   // set by readStored() when it upgrades a v2 payload
+
   function load() {
     var stored = readStored();
     if (stored) workflowData = stored;
+    /* Write the upgrade straight back. Otherwise a learner who opens the page
+       and leaves still has a v2 payload, and a sibling block reading storage
+       would see the old shape and the old stage meanings. */
+    if (migrated) { migrated = false; writeNow(); }
   }
 
   var saveTimer = null;
@@ -433,7 +508,7 @@
      have been throttled offscreen comes back to life. */
   function wireCrossBlockSync() {
     if (CONFIG.blockRole === "all") return;   // single block: no siblings to track
-    if (!ROLE.steps.length) return;           // the intro block holds no state
+    if (CONFIG.blockRole === "intro") return;  // framing only; nothing to sync
     lastSeenRaw = currentRaw();
 
     window.addEventListener("storage", function (e) {
@@ -477,7 +552,7 @@
   }
 
   function adoptExternal() {
-    if (ownsStep(3) && !isCaptureChat) renderCards();
+    if (ownsStep(2) && !isCaptureChat) renderCards();
     if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(); }
     render();
     maybeStartConversation();
@@ -1107,16 +1182,29 @@
     var context = [(a.context || "").trim()].concat(notes).filter(Boolean).join("\n");
     var weak = weakSections();
 
-    return [
+    /* Envision reaches the artifact transformed, not copied, and not as a
+       section of its own. The outcome belongs with the context - it is what the
+       work is for - and the role they want AI to play frames the task line. A
+       learner should recognise their own thinking here without finding a
+       worksheet field pasted into a prompt. */
+    var outcome = (data.idealOutcome || "").trim();
+    var role = (data.aiRole || "").trim();
+
+    /* Built as a list rather than one expression: the two Envision lines are
+       conditional, and a concat chain around them reads worse than this does. */
+    var out = [
       "## CONTEXT",
       ((data.problem || "").trim() || "(describe the task here)"),
       "",
       "My current process, end to end:",
       stepsAsList(),
       "",
-      "Tools involved: " + toolsAsList() + ".",
-      "",
-      "## WHAT I NEED YOU TO DO",
+      "Tools involved: " + toolsAsList() + "."
+    ];
+    if (outcome) out.push("", "What I am trying to get to: " + outcome);
+    out.push("", "## WHAT I NEED YOU TO DO");
+    if (role) out.push("In broad terms: " + role, "");
+    out.push(
       markThin("handoff", buildTaskLine()),
       "",
       "## WHAT STAYS WITH ME",
@@ -1138,7 +1226,8 @@
           "the questions that would pin " + (weak.length > 1 ? "those sections" : "that section") +
           " down, and wait for my answers before producing anything."
         : ""
-    ].join("\n").replace(/\n{3,}/g, "\n\n");
+    );
+    return out.join("\n").replace(/\n{3,}/g, "\n\n");
   }
 
   /* Pull a ```master-prompt fenced block out of coach text. Tagged blocks win;
@@ -1301,10 +1390,22 @@
   }
 
   /* Stage 0 is the opening message; it is generated without user input. */
+  /* Reads back their own vision rather than proposing one. Every line comes
+     from something they wrote, so the scripted coach and a live model open on
+     the same footing - no improvisation is required to make this work. */
   function mockOpening() {
     var list = filledSteps().map(function (s, i) {
       return "  " + (i + 1) + ". " + s.action.trim() + "  (" + s.tools.trim() + ")";
     }).join("\n");
+    var outcome = String(workflowData.idealOutcome).trim();
+    var role = String(workflowData.aiRole).trim();
+
+    var vision = outcome
+      ? ["Here's the version you want: \u201c" + shortQuote(outcome, 26) + "\u201d",
+         role ? "With AI: \u201c" + shortQuote(role, 22) + "\u201d" : "",
+         "",
+         "Let's work out exactly what that means in practice."].filter(Boolean)
+      : ["Before we write anything, I need to know where the weight is."];
 
     return [
       "Right \u2014 here's what you gave me.",
@@ -1313,16 +1414,19 @@
       "",
       "And the process looks like this:",
       list,
-      "",
-      "Before we write anything, I need to know where the weight is.",
+      ""
+    ].concat(vision).concat([
       "",
       "**Which of those steps would you hand over first, and what makes that one the drain?** " +
       "Give me the number and a sentence."
-    ].join("\n");
+    ]).join("\n");
   }
 
+  /* The scripted coach's turns inside one conversation. "Turn" rather than
+     "stage" on purpose: these are steps through Refine's chat, not stations on
+     the journey, and the two numbering schemes used to read as one. */
   var MOCK_STAGES = [
-    // stage 1 - after they answer "which step"
+    // turn 1 - after they answer "which step"
     {
       capture: "handoff",
       reply: function (answer) {
@@ -1338,7 +1442,7 @@
         ].join("\n");
       }
     },
-    // stage 2 - after they describe the output
+    // turn 2 - after they describe the output
     {
       capture: "output",
       reply: function (answer) {
@@ -1353,7 +1457,7 @@
         ].join("\n");
       }
     },
-    // stage 3 - after they name what stays theirs
+    // turn 3 - after they name what stays theirs
     {
       capture: "keep",
       reply: function (answer) {
@@ -1369,7 +1473,7 @@
         ].join("\n");
       }
     },
-    // stage 4 - after they give context: emit the prompt
+    // turn 4 - after they give context: emit the prompt
     {
       capture: "context",
       reply: function () {
@@ -1688,6 +1792,7 @@
     el.reset = $("bw-reset");
     el.prereq2 = $("bw-prereq-2");
     el.prereq3 = $("bw-prereq-3");
+    el.prereqDraft = $("bw-prereq-draft");
     el.workflowWrap = $("bw-workflow-wrap");
     el.draftWrap = $("bw-draft-wrap");
     el.prereq4 = $("bw-prereq-4");
@@ -1749,11 +1854,11 @@
   function applyRole() {
     if (CONFIG.blockRole === "all") return;
 
-    /* Two of the chats belong to step 3 rather than step 4, so the markup moves
+    /* Two of the chats belong to step 2 rather than step 4, so the markup moves
        to them. One chat panel serves every stage; only its home changes. */
     if (isCaptureChat) {
-      var panel2 = document.getElementById("bw-panel-3");
-      var warn2 = document.getElementById("bw-warn-3");
+      var panel2 = document.getElementById("bw-panel-2");
+      var warn2 = document.getElementById("bw-warn-2");
       var acts2 = document.querySelector("#bw-workflow-wrap .bw-actions");
       panel2.insertBefore(el.chatWrap, warn2);
       panel2.insertBefore(el.chatError, warn2);
@@ -1777,11 +1882,18 @@
       if (nextBtn && copy.next) nextBtn.textContent = copy.next;
     }
 
+    /* The retired draft screen has no step to be hidden or shown with, so its
+       preview reveals the container directly. Nothing else can reach it: it is
+       hidden in the markup and lives outside the step list. */
+    if (CONFIG.blockRole === "draft" && el.draftWrap) el.draftWrap.hidden = false;
+
     var hero = document.querySelector(".bw-hero");
     if (hero && !ROLE.intro) hero.hidden = true;
 
     // The intro block is framing only: no steps, no progress, nothing to save.
-    if (!ROLE.steps.length) {
+    // Tested by name, not by step count - the retired draft preview also
+    // renders no steps, and it very much does hold state.
+    if (CONFIG.blockRole === "intro") {
       [".bw-steps", ".bw-progress", ".bw-foot"].forEach(function (sel) {
         var node = document.querySelector(sel);
         if (node) node.hidden = true;
@@ -1804,7 +1916,7 @@
       // Single-step blocks are never "locked"; they gate on the capture block
       // being filled in instead, which applyPrereqState handles.
       workflowData.progress.unlocked = lastStage();
-      workflowData.progress.current = ROLE.steps[0];
+      workflowData.progress.current = ROLE.steps[0] || 1;
     }
   }
 
@@ -1818,34 +1930,34 @@
      needs, and re-checks on every storage sync - so it opens itself the moment
      the section above is done. */
   var GATES = {
-    workflow: { step: 3, hide: "workflowWrap", notice: "prereq3",
+    workflow: { step: 2, hide: "workflowWrap", notice: "prereq2",
                 needs: function () { return stepValid(1); },
                 msg: "Name the task in the section above first \u2014 the workflow map builds on what " +
                      "you write there. This opens on its own once you've done that." },
-    draft:    { step: 2, hide: "draftWrap", notice: "prereq2",
-                needs: function () { return stepValid(1) && stepValid(3); },
+    draft:    { step: 0, hide: "draftWrap", notice: "prereqDraft",
+                needs: function () { return stepValid(1) && stepValid(2); },
                 msg: "Your draft prompt is written from the two sections above. Fill those in and it " +
                      "appears here." },
     artifact: { step: 5, hide: "finalWrap", notice: "prereq5",
-                needs: function () { return stepValid(1) && stepValid(3); },
+                needs: function () { return stepValid(1) && stepValid(2); },
                 msg: "Your master prompt builds itself from the sections above. Finish those and it " +
                      "appears here." }
   };
   if (isCaptureChat) {
-    // These two chats live in step 3, and each waits on the one before it.
+    // These two chats live in step 2, and each waits on the one before it.
     GATES[CONFIG.blockRole] = ownsActions()
-      ? { step: 3, hide: "chatWrap", notice: "prereq3",
+      ? { step: 2, hide: "chatWrap", notice: "prereq2",
           needs: function () { return stepValid(1); },
           msg: "Name the task in the section above first \u2014 the coach maps the workflow around " +
                "it. This opens on its own once you've done that." }
-      : { step: 3, hide: "chatWrap", notice: "prereq3",
+      : { step: 2, hide: "chatWrap", notice: "prereq2",
           needs: function () { return filledSteps().length >= CONFIG.minWorkflowSteps; },
           msg: "Walk the coach through your steps in the section above first \u2014 this one asks " +
                "where each of them happens. It opens on its own once they're down." };
   } else if (isSplitCoach) {
     GATES[CONFIG.blockRole] = {
       step: 4, hide: "chatWrap", notice: "prereq4",
-      needs: function () { return stepValid(1) && stepValid(3); },
+      needs: function () { return stepValid(1) && stepValid(2); },
       msg: "Map your workflow in the sections above first \u2014 the coach needs your problem and your " +
            "steps before it can ask anything useful. This opens on its own once you've done that."
     };
@@ -1893,16 +2005,26 @@
     return sMeta().minTurns;
   }
 
+  /* Envision's two answers are held to the same bar the coach holds its own
+     answers to: not a length, but whether there is anything in there to act on.
+     answerQuality() already decides that, so this reuses it rather than
+     inventing a second standard. */
+  function visionOK(field) {
+    var t = String(workflowData[field] || "").trim();
+    return !!t && !answerQuality(t).thin;
+  }
+
   function stepValid(n) {
     switch (n) {
       case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
-      // Stage 2 is reading. There is nothing to get wrong, so reaching the end
-      // of it is the whole of finishing it.
-      case 2: return true;
       // The block that maps the workflow is done once the steps are down; every
       // other block needs the tools too, because the prompt is built from both.
-      case 3: return filledSteps().length >= CONFIG.minWorkflowSteps &&
+      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps &&
                      (ownsActions() || toolsCaptured());
+      // Envision needs both answers, and needs them to say something. The same
+      // thin-answer heuristic the coach uses decides "says something", so a
+      // learner is not held to an arbitrary character count.
+      case 3: return visionOK("idealOutcome") && visionOK("aiRole");
       case 4: return userTurns() >= turnsNeeded();
       default: return true;
     }
@@ -1914,7 +2036,7 @@
         return String(workflowData.problem).trim()
           ? "Give it a little more \u2014 what the task is, how often, and what it costs you. About a sentence and a half."
           : "Describe the task before moving on. Rough words are fine.";
-      case 3:
+      case 2:
         if (ownsActions())
           return "Walk the coach through at least " + CONFIG.minWorkflowSteps +
             " steps first \u2014 everything below is built from that list.";
@@ -1922,6 +2044,12 @@
           return "Tell the coach where these steps happen before moving on.";
         return "Fill in at least " + CONFIG.minWorkflowSteps +
           " steps, each with both the action and the tool you do it in.";
+      case 3:
+        if (!visionOK("idealOutcome"))
+          return "Describe what would actually be better about the finished workflow \u2014 " +
+                 "what changes for you when it works the way you want.";
+        return "Describe the role you want AI to play in getting you there. The level of " +
+               "\"draft the routine parts\" is enough; the details come next.";
       case 4:
         return turnsNeeded() === 1
           ? "Answer the coach's question first \u2014 that answer is what makes the final prompt yours."
@@ -1982,7 +2110,7 @@
         node.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       }
     }
-    if (TIMELINE ? stageHasCoach(n) : (n === 4 || (n === 3 && isCaptureChat))) maybeStartConversation();
+    if (TIMELINE ? stageHasCoach(n) : (n === 4 || (n === 2 && isCaptureChat))) maybeStartConversation();
     if (n === lastStage()) refreshV2(false);
   }
 
@@ -2009,8 +2137,11 @@
   /* ---- render ---- */
 
   function render() {
-    // Steps 1 and 3 can be edited after the fact - un-tick them if they break.
-    [1, 3].forEach(function (n) {
+    /* The stages a learner can still edit after finishing them, and so the ones
+       that can stop being true: the problem (via the coach), the workflow form,
+       and Envision's two fields. Stage 4 is a transcript and stage 5 is the
+       artifact; neither can be un-answered. */
+    [1, 2, 3].forEach(function (n) {
       if (workflowData.progress.done[n] && !stepValid(n)) workflowData.progress.done[n] = false;
     });
 
@@ -2155,6 +2286,44 @@
   /* Named for the step it used to be. The form it wires is step 3 now; the
      name is left alone because renaming it is a refactor and the journey is
      still being decided. Trust the number in the marker above, not the name. */
+  /* ---- step 3: Envision ---- */
+
+  /* The summary is the learner's own two sentences, set as text. Nothing is
+     generated, nothing is asked of a model, and no prompt appears - Deploy is
+     still the first time they see one. */
+  function renderVision() {
+    var box = document.getElementById("bw-vision-summary");
+    if (!box) return;
+    var outcome = String(workflowData.idealOutcome || "").trim();
+    var role = String(workflowData.aiRole || "").trim();
+    var ready = visionOK("idealOutcome") && visionOK("aiRole");
+    box.hidden = !ready;
+    if (!ready) return;
+    setText("bw-vision-outcome", outcome);
+    setText("bw-vision-role", role);
+  }
+
+  function wireVisionField(id, field) {
+    var node = document.getElementById(id);
+    if (!node) return;
+    node.value = workflowData[field] || "";
+    autosize(node);
+    node.addEventListener("input", function () {
+      workflowData[field] = node.value;
+      autosize(node);
+      if (stepValid(3)) showWarning(3, "");
+      renderVision();
+      render();
+      save();
+    });
+  }
+
+  function wireStep3() {
+    wireVisionField("bw-ideal-outcome", "idealOutcome");
+    wireVisionField("bw-ai-role", "aiRole");
+    renderVision();
+  }
+
   function wireStep2() {
     renderCards();
     recomputeTools();
@@ -2183,7 +2352,16 @@
       "",
       "Tools they use: " + toolsAsList(),
       "",
-      "Now help them think through which steps AI could handle and what specific prompt would work."
+      /* They have already decided what better looks like. Refine's job is to
+         make that executable, not to invent a future state of its own. */
+      "The outcome they want: " +
+        (String(workflowData.idealOutcome).trim() || "(not stated)"),
+      "The role they want AI to play: " +
+        (String(workflowData.aiRole).trim() || "(not stated)"),
+      "",
+      "Work from their stated outcome and AI role. Do not propose a different vision - " +
+      "help them turn that one into specifics: what AI actually takes over, what stays " +
+      "theirs, what a good result looks like, and what it needs to know."
     ].join("\n");
   }
 
@@ -2677,7 +2855,7 @@
   var ART = {
     identify: '<circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 21 21"/>',
     map: '<circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h5a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h7"/>',
-    describe: '<path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 1.9v.2h5.2v-.2c0-.7.3-1.4.9-1.9A6 6 0 0 0 12 3Z"/>',
+    envision: '<path d="M9.5 18h5M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5.9 1.2.9 1.9v.2h5.2v-.2c0-.7.3-1.4.9-1.9A6 6 0 0 0 12 3Z"/>',
     refine: '<path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/>',
     deploy: '<path d="M5 13.5 19.5 4.5 15 20l-3.9-5.4L5 13.5Z"/><path d="M11.1 14.6 19.5 4.5"/>'
   };
@@ -2695,15 +2873,15 @@
     { step: 1, name: "Identify", accent: "identify", art: "identify", place: "above",
       blurb: "Define the problem worth solving.",
       done: function () { return "Complete · Task defined"; } },
-    { step: 2, name: "Describe", accent: "describe", art: "describe", place: "below",
-      blurb: "Picture the process as it really is.",
-      done: function () { return "Complete · Process in view"; } },
-    { step: 3, name: "Map", accent: "map", art: "map", place: "above",
+    { step: 2, name: "Map", accent: "map", art: "map", place: "below",
       blurb: "Break the process into real steps.",
       done: function () {
         var k = filledSteps().length;
         return "Complete · " + k + (k === 1 ? " step" : " steps") + " mapped";
       } },
+    { step: 3, name: "Envision", accent: "envision", art: "envision", place: "above",
+      blurb: "Picture the better version.",
+      done: function () { return "Complete · Future state defined"; } },
     { step: 4, name: "Refine", accent: "refine", art: "refine", place: "below",
       blurb: "Sharpen ideas into specifics.",
       done: function () { return "Complete · Coach review finished"; } },
@@ -3100,7 +3278,7 @@
       '<circle cx="66" cy="34" r="7" class="a-fill"/>' +
       '<circle cx="48" cy="64" r="7" class="a-fill"/>' +
       '<path d="M37 41 61 37M35 44 44 58M62 40 53 58" class="a-line"/>',
-    describe:
+    envision:
       '<rect x="20" y="24" width="60" height="52" rx="9" class="a-soft"/>' +
       '<path d="M50 26a15 15 0 0 0-8.6 27.3c1.4 1 2.1 2.6 2.1 4.3v.6h13v-.6c0-1.7.7-3.3 2.1-4.3A15 15 0 0 0 50 26Z" class="a-line"/>' +
       '<path d="M44 66h12M45.5 72h9" class="a-line"/>',
@@ -3121,10 +3299,10 @@
   var STAGE_CONTEXT = {
     1: { framing: "Define the problem worth solving.",
          quote: "Clarity today. Impact tomorrow." },
-    2: { framing: "Picture the process as it really is, in detail.",
-         quote: "The blueprint comes before the build." },
-    3: { framing: "Understand the context and the tools involved.",
+    2: { framing: "Understand the context and the tools involved.",
          quote: "People, process, and data create the full picture." },
+    3: { framing: "Decide what better looks like, then AI's part in it.",
+         quote: "Outcome first. Technology second." },
     4: { framing: "Design, validate, and plan the workflow.",
          quote: "Turn ideas into a clear plan." },
     5: { framing: "Put it into action and drive impact.",
@@ -3151,9 +3329,9 @@
   var STAGE_INFO = {
     1: "In this stage you name the task. The steps, the tools and what good looks " +
        "like come later - one thing at a time.",
-    4: "The coach already has your problem, your steps and your tools. It will ask " +
-       "about the parts a prompt cannot guess: what to hand over, what good looks " +
-       "like, and what must stay with you."
+    4: "The coach already has your problem, your steps and your tools, and the outcome " +
+       "you just described. It will ask about the parts a prompt cannot guess: what to " +
+       "hand over, what good looks like, and what must stay with you."
   };
 
   var miniNodes = [];
@@ -3542,9 +3720,9 @@
     }
   };
 
-  /* Stage 3's reading: why naming the tools is worth doing, and what having
-     named them can turn up. The mapping form is what Continue reaches. */
-  var STAGE_3_LESSON = [
+  /* Map, page two: why naming the tools is worth doing, and what having named
+     them can turn up. The mapping form is what Continue reaches. */
+  var MAP_PAGE_GET_SPECIFIC = [
     { type: "p", text:
       "Many programs already talk to each other, and include integration-friendly features " +
       "that are now more accessible with AI. With many organizations adapting to the AI " +
@@ -3575,7 +3753,7 @@
     ] }
   ];
 
-  var STAGE_2_LESSON = [
+  var MAP_PAGE_THINK_SMALLER = [
     { type: "p", text:
       "Working with AI often happens in a chat interface, which makes it easy to treat it " +
       "like other off-the-cuff messaging, like sending a text or ping. As a result, a common " +
@@ -3604,12 +3782,39 @@
       "pictured into explicit steps \u2014 each one with the tool it happens in." }
   ];
 
+  /* Envision's reading. Short on purpose: the thinking belongs in the two
+     answers underneath it, not in more prose. The one idea that has to survive
+     any rewrite is the order - outcome first, technology second. */
+  var ENVISION_LESSON = [
+    { type: "h", text: "Picture the better version" },
+    { type: "p", text:
+      "You've mapped what happens today. Before deciding exactly what AI should do, step " +
+      "out of the mechanics for a moment." },
+    { type: "p", text:
+      "If this workflow worked exactly the way you wanted, what would be different? Start " +
+      "with the outcome \u2014 not the technology. Then think about the role you would want AI " +
+      "to play in helping you get there." },
+    { type: "p", text:
+      "It is tempting to start from what AI can do and work backwards. That tends to produce " +
+      "a workflow shaped around the tool rather than around what you actually needed. Decide " +
+      "what better looks like first, and the tool's job becomes obvious." },
+    { type: "turn", label: "Your turn:", text:
+      "Two questions on the next screen: the outcome you want, and the part you'd want AI to " +
+      "play in reaching it." }
+  ];
+
   var STAGE_LESSON = {
     1: { blocks: STAGE_1_LESSON, card: "plan" },
-    // Reading only: work: false says Continue leaves the stage rather than
-    // uncovering a panel. Stage 2's panel holds the retired draft prompt.
-    2: { blocks: STAGE_2_LESSON, work: false },
-    3: { blocks: STAGE_3_LESSON }
+    /* Map is one job in two passes: stop summarising, then get specific. The
+       form is where that thinking gets applied, so it follows the reading
+       rather than sitting in a stage of its own. */
+    2: { pages: [
+      { title: "Describe the workflow in full",
+        sub: "Picture the process as it really is",
+        blocks: MAP_PAGE_THINK_SMALLER },
+      { blocks: MAP_PAGE_GET_SPECIFIC }
+    ] },
+    3: { blocks: ENVISION_LESSON }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }
@@ -3894,6 +4099,12 @@
       { action: "Write a four paragraph update per client", tools: "Google Docs" },
       { action: "Reformat into the client's preferred channel", tools: "Gmail, Slack" }
     ],
+    idealOutcome:
+      "Monday mornings stop being a write-up shift. The numbers are already pulled and a " +
+      "first draft is waiting, so the hours go on the judgement calls instead of the typing.",
+    aiRole:
+      "Gather the figures from the usual places and draft the routine paragraphs, so what " +
+      "reaches me is a first pass to react to rather than a blank page.",
     answers: {
       handoff: "The first draft of each client update, once I paste in the week's numbers.",
       output: "Four short paragraphs, no bullets, under 200 words, direct client-facing tone " +
@@ -3957,12 +4168,20 @@
       if (el.problem) el.problem.value = workflowData.problem;
       updateProblemCount();
       adminSeedConvo("identify", ADMIN_SAMPLE.turns.identify);
-    } else if (n === 3) {
+    } else if (n === 2) {
       workflowData.steps = ADMIN_SAMPLE.steps.map(function (s) {
         return { action: s.action, tools: s.tools };
       });
       recomputeTools();
       renderCards();
+    } else if (n === 3) {
+      workflowData.idealOutcome = ADMIN_SAMPLE.idealOutcome;
+      workflowData.aiRole = ADMIN_SAMPLE.aiRole;
+      var io = document.getElementById("bw-ideal-outcome");
+      var ar = document.getElementById("bw-ai-role");
+      if (io) io.value = workflowData.idealOutcome;
+      if (ar) ar.value = workflowData.aiRole;
+      renderVision();
     } else if (n === 4) {
       var a = ADMIN_SAMPLE.answers;
       Object.keys(a).forEach(function (k) { workflowData.botAnswers[k] = a[k]; });
@@ -4145,6 +4364,11 @@
     el.problem.value = "";
     updateProblemCount();
     renderCards();
+    ["bw-ideal-outcome", "bw-ai-role"].forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node) node.value = "";
+    });
+    renderVision();
     showChatError("");
     renderChatLog();
     el.promptV2.value = "";
@@ -4184,6 +4408,7 @@
     recomputeTools();
     wireStep1();
     wireStep2();
+    wireStep3();
     wireStep4();
     wireStep5();
     wireGlobal();
