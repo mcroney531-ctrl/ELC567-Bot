@@ -202,6 +202,102 @@ try {
     await page.locator('#bw-warn-3').textContent());
   check('  not a step 2 one', await page.locator('#bw-warn-2').isHidden());
 
+  /* Map's validation has to say what Map's copy says. A looser rule - enough
+     actions plus one tool anywhere - let two steps with one tool between them
+     pass, which contradicted the warning on screen and disagreed with what the
+     v2 upgrade counts as mapped. */
+  await open('', { ...FINISHED,
+    steps: [{ action: 'Pull the delivery numbers', tools: 'Tableau' },
+            { action: 'Draft each client update', tools: '' }],
+    toolsAll: ['Tableau'],
+    progress: { current: 2, unlocked: 2, done: { 1: true }, entered: { 1: true } } });
+  await page.click('.bw-station[data-stage="2"] .bw-station-card');
+  await page.waitForTimeout(700);
+  await readLesson(page);
+  await page.click('[data-next="2"]');
+  await page.waitForTimeout(300);
+  check('a step without its tool does not count as mapped',
+    !(await page.locator('#bw-warn-2').isHidden()) &&
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '2',
+    await page.locator('#bw-warn-2').textContent());
+  check('and the map agrees it is unfinished', await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('brainstorm_workflow_data')).progress.done['2'] !== true));
+  await page.fill('#bw-cards .bw-card:nth-child(2) .bw-card-tools textarea, ' +
+    '#bw-cards .bw-card:nth-child(2) .bw-card-tools input', 'Word');
+  await page.waitForTimeout(300);
+  await page.click('[data-next="2"]');
+  await page.waitForTimeout(700);
+  check('giving it one finishes the stage',
+    (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '3',
+    await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
+
+  /* Enough complete rows, plus one left half-written: still not done, and the
+     complaint has to stop saying "at least two" to someone who has three. */
+  await open('', { ...FINISHED,
+    steps: [{ action: 'Pull the delivery numbers', tools: 'Tableau' },
+            { action: 'Draft each client update', tools: 'Word' },
+            { action: 'Reformat into the deck', tools: '' }],
+    toolsAll: ['Tableau', 'Word'],
+    progress: { current: 2, unlocked: 2, done: { 1: true }, entered: { 1: true } } });
+  await page.click('.bw-station[data-stage="2"] .bw-station-card');
+  await page.waitForTimeout(700);
+  await readLesson(page);
+  await page.click('[data-next="2"]');
+  await page.waitForTimeout(300);
+  check('a half-written row holds the stage even with enough finished ones',
+    !(await page.locator('#bw-warn-2').isHidden()));
+  check('and the complaint names the real problem',
+    /other half/i.test(await page.locator('#bw-warn-2').textContent()),
+    await page.locator('#bw-warn-2').textContent());
+
+  /* The upgrade and the live journey have to mean the same thing by "mapped".
+     A v2 save of action-only rows must not arrive with Map already ticked. */
+  await open('', { version: 2,
+    problem: FINISHED.problem,
+    steps: [{ action: 'Pull the delivery numbers', tools: '' },
+            { action: 'Draft each client update', tools: '' }],
+    toolsAll: [], masterPromptV1: '', masterPromptV2: '', v2Source: '',
+    conversations: {}, mockProgress: {},
+    botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
+    progress: { current: 3, unlocked: 3, done: { 1: true, 2: true },
+                entered: { 1: true, 2: true } } });
+  check('the upgrade and live validation agree about what counts as mapped',
+    await page.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem('brainstorm_workflow_data'));
+      return d.progress.done['2'] !== true;
+    }));
+  check('which is what the learner is shown',
+    (await page.locator('.bw-station').evaluateAll(
+      els => els.map(e => e.dataset.state).join(','))).split(',')[1] !== 'completed',
+    await page.locator('.bw-station').evaluateAll(
+      els => els.map(e => e.dataset.state).join(',')));
+
+  /* Start over has to clear every warning, not the ones a previous ordering
+     happened to list. This is the shape of bug the whole file exists for. */
+  await open('', { ...FINISHED,
+    steps: [{ action: '', tools: '' }, { action: '', tools: '' }], toolsAll: [],
+    idealOutcome: '', aiRole: '',
+    progress: { current: 2, unlocked: 2, done: { 1: true }, entered: { 1: true } } });
+  await page.click('.bw-station[data-stage="2"] .bw-station-card');
+  await page.waitForTimeout(700);
+  await readLesson(page);
+  await page.click('[data-next="2"]');
+  await page.waitForTimeout(300);
+  check('a warning is showing before the reset',
+    !(await page.locator('#bw-warn-2').isHidden()));
+  await page.click('#bw-reset');
+  await page.click('#bw-reset');          // inline confirm: the second press commits
+  await page.waitForTimeout(800);
+  check('start over leaves no warning behind on any stage',
+    await page.evaluate(() => [1, 2, 3, 4, 5]
+      .map(n => document.getElementById('bw-warn-' + n))
+      .filter(Boolean)
+      .every(box => box.hidden && !box.textContent)),
+    await page.evaluate(() => [1, 2, 3, 4, 5]
+      .map(n => document.getElementById('bw-warn-' + n))
+      .filter(Boolean)
+      .map(b => b.id + '=' + (b.hidden ? 'hidden' : 'SHOWING')).join(' ')));
+
   /* ROLES: the slices render the panels their step numbers now point at. Seeded
      past the gates, because an unfilled slice hides its own body - that is the
      next check, not this one. */

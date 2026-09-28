@@ -90,7 +90,7 @@ number and must be changed together.
 
 | What | Where | Now says |
 |---|---|---|
-| `stepValid` | `2014` | `case 2:` filledSteps + tools; `case 3:` `visionOK("idealOutcome") && visionOK("aiRole")` |
+| `stepValid` | `2014` | `case 2:` `completeSteps() >= min` and no row half-written; `case 3:` `visionOK("idealOutcome") && visionOK("aiRole")` |
 | `warningFor` | `2030` | the form's warning is `case 2`; the vision's is `case 3` |
 | `GATES` | `1929` | `workflow` gate → step 2; `draft` gate → step 0 (out of the list); `artifact` needs `stepValid(1) && stepValid(2)` |
 | `ROLES` | `72` | `workflow`/`coach-workflow`/`coach-tools` → `steps: [2]`; `draft` → `steps: []` |

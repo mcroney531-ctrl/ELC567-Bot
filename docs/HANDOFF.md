@@ -107,6 +107,14 @@ Map is one stage that reads twice and then asks for the steps — the reading an
 share a number rather than sitting either side of one. Envision is the only stage that
 captures the learner's own words without a coach.
 
+**What "mapped" means is one rule, and the copy on screen is it.** `stepValid(2)` wants at
+least `minWorkflowSteps` rows carrying *both* the action and the tool it happens in, and no
+row left half-written (`completeSteps()` / `startedSteps()`). It used to accept enough
+actions plus one tool anywhere, which contradicted the warning the learner is shown and
+disagreed with what `migrateV2()` counts as mapped. The one exception is the
+`coach-workflow` slice, which takes down actions alone because its sibling slice is what
+asks where each one happens.
+
 Completion copy is **always computed from structured state, never from typed text**. This
 is deliberate and tested.
 
@@ -168,7 +176,7 @@ lesson.
 workflowData = {
   version: 3,
   problem: "",                       // stage 1's output
-  steps: [{ action, tools }, ...],   // stage 2's output, min 2 filled
+  steps: [{ action, tools }, ...],   // stage 2's output, min 2 complete rows
   toolsAll: [],                      // deduped across steps
   idealOutcome: "", aiRole: "",      // stage 3's output - the learner's own words
   masterPromptV1: "", masterPromptV2: "", v2Source: "",  // "bot" | "template" | "user"

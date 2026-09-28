@@ -617,6 +617,22 @@
            workflowData.toolsAll.length > 0;
   }
 
+  /* A row the learner has touched, and a row they have finished. Map's contract
+     is "each step with the tool it happens in", so a half-filled row is started
+     work rather than mapped work, and the two counts have to match before Map
+     is done. Empty rows are neither - the form ships with two of them. */
+  function startedSteps() {
+    return workflowData.steps.filter(function (s) {
+      return String(s.action).trim() || String(s.tools).trim();
+    });
+  }
+
+  function completeSteps() {
+    return workflowData.steps.filter(function (s) {
+      return String(s.action).trim() && String(s.tools).trim();
+    });
+  }
+
   function stepsAsList() {
     var list = filledSteps();
     if (!list.length) return "(not mapped yet)";
@@ -2017,10 +2033,17 @@
   function stepValid(n) {
     switch (n) {
       case 1: return String(workflowData.problem).trim().length >= CONFIG.minProblemChars;
-      // The block that maps the workflow is done once the steps are down; every
-      // other block needs the tools too, because the prompt is built from both.
-      case 2: return filledSteps().length >= CONFIG.minWorkflowSteps &&
-                     (ownsActions() || toolsCaptured());
+      /* Map is done when the rows say what the copy promises: at least
+         minWorkflowSteps of them, each carrying both the action and the tool it
+         happens in, and nothing left half-written. A looser rule let two actions
+         with one tool between them pass, which contradicted the warning the
+         learner is shown and disagreed with what migrateV2() counts as mapped.
+         The capture-chat slice that takes down actions alone is the exception:
+         its sibling slice is what asks where each one happens. */
+      case 2: return ownsActions()
+                     ? filledSteps().length >= CONFIG.minWorkflowSteps
+                     : completeSteps().length >= CONFIG.minWorkflowSteps &&
+                       completeSteps().length === startedSteps().length;
       // Envision needs both answers, and needs them to say something. The same
       // thin-answer heuristic the coach uses decides "says something", so a
       // learner is not held to an arbitrary character count.
@@ -2042,6 +2065,12 @@
             " steps first \u2014 everything below is built from that list.";
         if (ownsTools())
           return "Tell the coach where these steps happen before moving on.";
+        /* Two complaints, because there are two ways to be short: not enough
+           mapped steps, or a row started and left half-written. Saying "at
+           least two" to someone who already has three would read as nonsense. */
+        if (completeSteps().length >= CONFIG.minWorkflowSteps)
+          return "One of your steps is missing its other half — give every step both " +
+            "the action and the tool it happens in, or remove the row.";
         return "Fill in at least " + CONFIG.minWorkflowSteps +
           " steps, each with both the action and the tool you do it in.";
       case 3:
@@ -4374,7 +4403,9 @@
     el.promptV2.value = "";
     el.v2Source.hidden = true;
     el.handoff.hidden = true;
-    [1, 3, 4].forEach(function (n) { showWarning(n, ""); });
+    // Every stage, not a list that has to be re-checked after each reorder -
+    // showWarning() no-ops on a stage with no warning box of its own.
+    stageNumbers().forEach(function (n) { showWarning(n, ""); });
     render();
     maybeStartConversation();
   }

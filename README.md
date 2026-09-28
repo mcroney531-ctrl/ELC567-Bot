@@ -350,7 +350,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `botTimeoutMs` | `45000` | When to give up on a coach request. |
 | `storageKey` | `"brainstorm_workflow_data"` | localStorage key. Change the suffix to invalidate saved data after a breaking edit. |
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
-| `minWorkflowSteps` | `2` | Filled-in cards Step 2 needs. Also the floor for the remove button. |
+| `minWorkflowSteps` | `2` | Complete cards (action **and** tool) Step 2 needs. Also the floor for the remove button. |
 | `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
 | `blockRole` | `"all"` | Which slice to render. `"all"` is the whole activity and is what ships; see **Slices** above. |
 | `syncPollMs` | `1200` | How often a slice re-checks storage for another slice's work. Unused when `blockRole` is `"all"`. |
