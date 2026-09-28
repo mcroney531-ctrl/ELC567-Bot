@@ -38,18 +38,26 @@ try {
 
   // ---- 2. dark mode must not leak into a light Rise lesson ----
   server = await serveSite(8127);
+  /* Probed on the landing's reading surface rather than on #bw. The landing is
+     the product's dark shell now and is dark under every OS scheme by design;
+     what must not follow the OS is the light surface a learner reads on, which
+     is what the token set controls. */
   const bgOf = async (colorScheme, dark) => {
     const ctx = await browser.newContext({ colorScheme });
     const p = await ctx.newPage();
     await p.goto('http://127.0.0.1:8127/' + (dark ? '?dark=1' : ''));
     await p.waitForTimeout(300);
-    const bg = await p.locator('#bw').evaluate(n => getComputedStyle(n).backgroundColor);
+    const bg = await p.locator('.bw-orient').evaluate(n => getComputedStyle(n).backgroundColor);
     await ctx.close();
     return bg;
   };
   const light = v => { const m = v.match(/\d+/g); return m && Number(m[0]) > 200; };
-  check('light OS renders light', light(await bgOf('light')));
-  check('dark OS still renders light by default', light(await bgOf('dark')), await bgOf('dark'));
+  const underLight = await bgOf('light');
+  const underDark = await bgOf('dark');
+  check('light OS renders light', light(underLight), underLight);
+  check('dark OS still renders light by default', light(underDark), underDark);
+  check('and the two are identical - the activity ignores the OS unless asked',
+    underLight === underDark, underLight + ' vs ' + underDark);
   server.close();
   server = await serveSite(8127, { followSystemDarkMode: 'true' });
   check('dark mode still available when opted in', !light(await bgOf('dark')));

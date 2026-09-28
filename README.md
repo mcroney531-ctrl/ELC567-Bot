@@ -1,4 +1,4 @@
-# Brainstorm an AI-Powered Workflow
+# AI Workflow Builder
 
 A five-stage interactive activity that walks someone from a task that eats their Monday to a
 master prompt they can paste into an LLM and use that afternoon. It is a standalone web app served

@@ -657,6 +657,15 @@ routes worth knowing:
 `withConfig(overrides)` rewrites `CONFIG` in the served copy of `activity.js` — that is
 how a suite points the app at the stub endpoint.
 
+**`serveSite()` injects `<base href="/">` at the *start* of `<head>`.** It used to go in
+before `</head>`, which is after the stylesheet links — so on a `/role/x` page every `<link>`
+had already resolved against `/role/x`, the requests went to `/role/css/*.css`, and this very
+handler answered them with the HTML page because the path starts with `/role/`. A stylesheet
+served as `text/html` is ignored silently, with no failing request to notice. **Every slice
+preview rendered with no CSS at all**, for as long as the route has existed. Behaviour suites
+never saw it because `isVisible()` and text assertions do not need styling; it surfaced the
+moment a test asked what colour something was.
+
 `seedState(overrides)` builds a v3 save; `seedThroughStage3(page)` seeds it via
 `addInitScript` so a suite can open at stage 4 without walking the whole activity. Used by
 `live-endpoint`, because stage 1 now has its own live coach whose calls would otherwise land
@@ -870,15 +879,52 @@ package cut every board on the explainer board's five-column grid, but those boa
 use other layouts, so about a dozen tiles are clipped at the edges. Re-cut them from
 the boards before using any of them.
 
-### Copy and naming inconsistencies flagged to the user, not yet resolved
-- The landing says **"Brainstorm an AI-Powered Workflow"**; home says **"AI Workflow
-  Builder / Turn Ideas Into Impact"**.
-- **Theme:** the landing is the last screen still on the light lavender theme; home and
-  the stage are the dark shell family. Open question, not a bug.
+### One product, one shell, three jobs
+Settled 2026-09-28. The learner used to meet a light lavender page called "Brainstorm an
+AI-Powered Workflow", press Start, and arrive in a dark product called "AI Workflow Builder" —
+the name and the theme changing in the same moment, so it read as two generations of the thing
+stitched together.
 
-The Course Overview's old "three phases" line is gone — it now walks the same five stages
-the map shows, in the same order, and `journey-contract` asserts both the count and the
-order so the landing cannot drift behind the journey again.
+**The principle:** one dark shell, two light surfaces with different jobs, the map as the
+connective environment between them.
+
+| View | Ground | Light surface | The question it answers |
+|---|---|---|---|
+| Landing | dark shell | `.bw-orient`, the orientation surface | Why am I here, and what will I learn? |
+| Journey | dark shell, opened into the map | none — the map *is* the content | Where am I, and what's next? |
+| Stage | dark shell | the workbench | What am I doing right now? |
+
+**`.bw-landing` owns its own treatment.** It does not lean on
+`html[data-bw-view="landing"]` for anything load-bearing: a `/role/` slice never calls
+`setView()`, so an embedded preview gets no view attribute, and a component that needed one
+would render half-styled. The view selector only makes the browser's own ground agree with the
+component. `journey-contract` checks the landing under `/role/intro`, with no view attribute,
+and requires the shell to be **painted** — a transparent background computes to luminance 0 and
+would otherwise pass a naive "is it dark?" test while rendering nothing.
+
+**There is one dark, deliberately.** The old `prefers-color-scheme` rule that repainted the
+landing `#14121f` is gone; it existed because the landing was the one light screen, and became
+a second, different dark fighting the shell the moment it stopped being one. A test fails if it
+comes back.
+
+**The scenery is authored for this page, not borrowed.** `.bw-lc` is a restrained pair of
+corner SVGs in the journey's visual language. The map's three `svg.bw-circ` blocks are authored
+against `fitMap()`'s fixed 1280×720 frame and cannot be reused in normal document flow — do not
+move or duplicate them.
+
+**The two heroes have different jobs.** The landing owns the product promise ("Turn Ideas Into
+Impact"); home is functional ("Your Workflow Journey"). They shared a hero before, so Start
+looked like it had reloaded the same screen on a new background.
+
+**Counts are structure, not prose.** `STATIONS` decides how long the journey is and the map
+shows it; the landing and home no longer write "five stages" or "5-step" into marketing copy,
+so neither goes stale when the number changes. The one exception is Maya's worked example,
+which still says "all five steps" — her walkthrough was deliberately left as written, and the
+test excludes it by name rather than pretending the rule is universal.
+
+The Course Overview's old "three phases" line is gone — the orientation surface now walks the
+same journey the map shows, in the same order, and `journey-contract` asserts that order so the
+landing cannot drift behind the journey again.
 
 ### Mobile
 No horizontal overflow at 360 px on any view, and that is tested. Home scales as one

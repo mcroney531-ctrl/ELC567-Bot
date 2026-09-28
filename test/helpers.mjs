@@ -59,9 +59,15 @@ export function serveSite(port, overrides = {}, transform = null) {
     const role = url.pathname.startsWith('/role/') ? url.pathname.slice(6).replace(/\/$/, '') : null;
     if (url.pathname === '/' || role) {
       let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-      // A page served from /role/x resolves its relative css and js one level
-      // deeper unless it is told otherwise.
-      html = html.replace('</head>', '<base href="/">\n</head>');
+      /* A page served from /role/x resolves its relative css and js one level
+         deeper unless it is told otherwise - and the base has to come FIRST in
+         the head, before the stylesheet links. Injected at the end, it arrived
+         too late: every <link> had already resolved against /role/x, so the
+         requests went to /role/css/*.css, which this very handler answers with
+         the HTML page (it starts with /role/). A stylesheet served as text/html
+         is ignored silently, with no failing request to notice, so every slice
+         preview rendered with no CSS at all. */
+      html = html.replace('<head>', '<head>\n<base href="/">');
       if (role) html = html.replace('src="js/activity.js"', 'src="js/activity.js?role=' + role + '"');
       return send(html, TYPES['.html']);
     }

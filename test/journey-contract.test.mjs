@@ -73,14 +73,26 @@ try {
 
   check('the overview does not promise a different number of phases than the map shows',
     !/three phases/i.test(landing), landing.match(/.{0,60}three phases.{0,60}/i)?.[0]);
-  check('it counts the journey as five',
-    /five stages/i.test(landing), landing.match(/.{0,80}stages.{0,40}/i)?.[0]);
-  check('and walks them in the order the map does', await page.evaluate(() => {
-    const t = document.body.innerText.toLowerCase();
+  /* The count is not written into marketing prose any more. It is structure -
+     STATIONS decides it, the map shows it - and copy that hardcodes a number
+     the code derives is copy that goes stale the day the number changes. */
+  /* Maya's walkthrough is excluded: it still says "all five steps", and her
+     example was deliberately left as written. The rule is about the product's
+     own prose, not about content the author has not revised. */
+  const orientProse = () => page.evaluate(() => {
+    const clone = document.querySelector('#bw-landing .bw-orient').cloneNode(true);
+    clone.querySelectorAll('.bw-example').forEach(n => n.remove());
+    return document.querySelector('#bw-landing .bw-hero').innerText + '\n' + clone.innerText;
+  });
+  check('it does not hardcode the journey length in prose',
+    !/\bfive stages\b|\b5-step\b|\bfive steps\b/i.test(await orientProse()),
+    (await orientProse()).match(/.{0,50}(five stages|5-step|five steps).{0,30}/i)?.[0]);
+  check('but it still walks the journey in the order the map does', await page.evaluate(() => {
+    const t = document.querySelector('#bw-landing .bw-orient').innerText.toLowerCase();
     const at = s => t.indexOf(s);
-    return at('identifying the task') < at('mapping how it actually') &&
-           at('mapping how it actually') < at('picturing the better version') &&
-           at('picturing the better version') < at('refining that into specifics');
+    return at('map how it happens today') < at('picture the version you want') &&
+           at('picture the version you want') < at('decide exactly where ai fits') &&
+           at('decide exactly where ai fits') < at('turn those decisions into instructions');
   }));
 
   /* The worked example walks the journey. Its step labels are the easiest thing
@@ -106,8 +118,76 @@ try {
     return row.includes('ideal outcome') && row.includes("ai's role");
   }));
 
+  /* ================= one product, one shell, three jobs =================
+
+     The learner used to meet a light page called "Brainstorm an AI-Powered
+     Workflow", press Start, and land in a dark product called something else -
+     the name and the theme changing in the same moment, so it read as two
+     products rather than one with an entrance. */
+  check('the browser tab names the product', (await page.title()) === 'AI Workflow Builder',
+    await page.title());
+  check('and the old activity title is gone from anywhere a learner reads',
+    !/Brainstorm an AI-Powered Workflow/i.test(await visibleText()) &&
+    !/Brainstorm an AI-Powered Workflow/i.test(await page.title()));
+  check('the landing names the product and owns the promise',
+    (await page.locator('.bw-hero-eyebrow').textContent()).trim() === 'AI Workflow Builder' &&
+    (await page.locator('#bw-landing h1').textContent()).trim() === 'Turn Ideas Into Impact');
+  check('its orientation heading asks what they will do, not what the course is',
+    /What you'll do/i.test(await page.locator('#bw-landing .bw-orient').textContent()) &&
+    !/Course Overview/i.test(await visibleText()));
+  check('the objectives describe the journey as it now runs',
+    await page.locator('.bw-objectives li').count() === 5,
+    String(await page.locator('.bw-objectives li').count()));
+  check('and not a framework the activity never teaches',
+    !/procedural and decision-making/i.test(await visibleText()));
+  check('the way in is labelled as building, not as coursework',
+    (await page.locator('#bw-start').textContent()).trim() === 'Start building',
+    await page.locator('#bw-start').textContent());
+  check('and the worked example reads as product, not curriculum',
+    (await page.locator('.bw-example summary').textContent()).trim() ===
+      'See a completed workflow',
+    await page.locator('.bw-example summary').textContent());
+
+  /* The shell itself: dark ground, one light reading surface on it. */
+  /* Painted, not merely transparent: an unpainted element computes to
+     rgba(0,0,0,0), whose channels average to 0 and would sail through a
+     "is it dark?" test while rendering nothing at all. */
+  const GROUND = `(() => {
+    const read = el => {
+      if (!el) return null;
+      const m = getComputedStyle(el).backgroundColor.match(/[\\d.]+/g);
+      if (!m) return null;
+      const a = m.length > 3 ? Number(m[3]) : 1;
+      return { lum: (Number(m[0]) + Number(m[1]) + Number(m[2])) / 3, opaque: a >= 1 };
+    };
+    return { landing: read(document.getElementById('bw-landing')),
+             surface: read(document.querySelector('.bw-orient')),
+             page: read(document.body),
+             view: document.documentElement.getAttribute('data-bw-view') };
+  })()`;
+  const dark = g => !!g && g.opaque && g.lum < 40;
+  const light = g => !!g && g.opaque && g.lum > 200;
+
+  const shell = await page.evaluate(GROUND);
+  check('the landing paints the product\'s dark shell itself',
+    dark(shell.landing), JSON.stringify(shell));
+  check('with the reading held on a light surface inside it',
+    light(shell.surface), JSON.stringify(shell));
+  check('and the browser page matches the shell rather than framing it',
+    dark(shell.page), JSON.stringify(shell));
+
   await page.click('#bw-start');
   await page.waitForTimeout(800);
+  /* Start has to advance the learner, not redraw the same hero on a new ground:
+     the landing owns the promise, home answers "where am I, what's next". */
+  check('home names the same product',
+    (await page.locator('.bw-map-eyebrow').textContent()).trim() === 'AI Workflow Builder');
+  check('but does not repeat the landing\'s promise',
+    (await page.locator('.bw-map-title').textContent()).trim() === 'Your Workflow Journey',
+    await page.locator('.bw-map-title').textContent());
+  check('and tells them how to move through it',
+    /work through each stage in order/i.test(await page.locator('.bw-map-sub').textContent()),
+    await page.locator('.bw-map-sub').textContent());
   check('the map shows five stations', (await names()).length === 5, JSON.stringify(await names()));
   check('in the settled order',
     (await names()).join(',') === 'Identify,Map,Envision,Refine,Deploy',
@@ -314,6 +394,27 @@ try {
   check('  from outside the step list, so no stage can show it', await page.evaluate(() =>
     document.querySelector('.bw-retired #bw-prompt-v1') !== null &&
     document.querySelector('.bw-steps #bw-prompt-v1') === null));
+
+  /* ---- the landing has to stand up where setView() never runs ----
+     A /role/ slice gets no data-bw-view on <html>, so anything that leaned on
+     that selector for its shell would render half-styled in preview. The
+     component owns its own treatment; the view selector only makes the browser
+     ground agree with it. */
+  await open('role/intro');
+  const solo = await page.evaluate(GROUND);
+  check('a slice really does render without a view attribute', solo.view === null,
+    String(solo.view));
+  check('and the landing still paints its own dark shell there',
+    dark(solo.landing), JSON.stringify(solo));
+  check('with the light reading surface on it', light(solo.surface), JSON.stringify(solo));
+
+  /* One intentional shell. The old landing had a prefers-color-scheme rule
+     painting it a second, different dark - written when the landing was the one
+     light screen, and a contradiction once it stopped being one. */
+  const css = await (await fetch(BASE + 'css/timeline.css')).text();
+  check('no second dark competes with the shell',
+    !/prefers-color-scheme[^}]*}[^}]*data-bw-view="landing"/s.test(css) &&
+    !/#14121f/i.test(css), (css.match(/.{0,60}#14121f.{0,30}/i) || [''])[0]);
 
   /* The preview role is the only thing that reveals the retired container. The
      full activity must leave it hidden, whatever stage is open. */

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Brainstorm an AI-Powered Workflow</title>
+<title>AI Workflow Builder</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/activity.css">
 <link rel="stylesheet" href="css/timeline.css">
@@ -21,41 +21,70 @@
 <!-- What they read before they start, and can come back to from home. -->
 <section class="bw-landing" id="bw-landing" hidden>
 
-  <header class="bw-hero">
-    <h1>Brainstorm an AI-Powered Workflow</h1>
+  <!-- Scenery, in the journey's visual language but authored for this page:
+       normal document flow, no dependence on fitMap()'s fixed frame. Quieter
+       than the map on purpose - it establishes continuity around the light
+       surface rather than competing with it. Decorative throughout. -->
+  <svg class="bw-lc bw-lc-tr" viewBox="0 0 220 180" aria-hidden="true" focusable="false">
+    <path class="lc-trace" d="M220 26 H168 L146 48 V96"/>
+    <path class="lc-trace" d="M196 120 H160"/>
+    <circle class="lc-pad" cx="146" cy="96" r="4.5"/>
+    <rect class="lc-sq" x="176" y="60" width="26" height="26" rx="6"/>
+    <g class="lc-dots">
+      <circle cx="120" cy="18" r="1.5"/><circle cx="133" cy="18" r="1.5"/><circle cx="146" cy="18" r="1.5"/>
+      <circle cx="120" cy="31" r="1.5"/><circle cx="133" cy="31" r="1.5"/><circle cx="146" cy="31" r="1.5"/>
+    </g>
+  </svg>
+  <svg class="bw-lc bw-lc-bl" viewBox="0 0 160 200" aria-hidden="true" focusable="false">
+    <path class="lc-trace" d="M0 52 H42 L62 72 V140"/>
+    <circle class="lc-pad" cx="62" cy="140" r="4.5"/>
+    <rect class="lc-sq" x="14" y="96" width="30" height="30" rx="7"/>
+    <g class="lc-dots">
+      <circle cx="96" cy="164" r="1.5"/><circle cx="109" cy="164" r="1.5"/><circle cx="122" cy="164" r="1.5"/>
+      <circle cx="96" cy="177" r="1.5"/><circle cx="109" cy="177" r="1.5"/><circle cx="122" cy="177" r="1.5"/>
+    </g>
+  </svg>
 
-    <h2 class="bw-intro-h">Course Overview</h2>
-    <p class="bw-lede">
-      This activity helps learners identify potential areas in their normal work where AI could
-      assist them. You'll map exactly how you solve a real problem today and work through what an
-      AI-assisted version looks like&mdash;one step at a time, with clarity about what AI handles
-      and what you keep.
+  <header class="bw-hero">
+    <p class="bw-hero-eyebrow">AI Workflow Builder</p>
+    <h1>Turn Ideas Into Impact</h1>
+    <p class="bw-hero-sub">
+      Build one practical AI-assisted workflow from work you already do &mdash; then leave with a
+      reusable prompt grounded in your process, judgment, and standards.
     </p>
+  </header>
+
+  <!-- The orientation surface. The shell says what the product is; this says
+       what the learner is about to do, and it is light because reading is a
+       different job from navigating. -->
+  <div class="bw-orient">
+    <h2 class="bw-intro-h">What you'll do</h2>
     <p class="bw-lede">
-      The activity moves through five stages: identifying the task, mapping how it actually
-      works today step by step, picturing the better version you want and AI's part in it,
-      refining that into specifics with a coach, and leaving with a prompt you can use
-      immediately.
+      Start with one real task from your work. Map how it happens today, picture the version you
+      want instead, decide exactly where AI fits, and turn those decisions into instructions you
+      can actually use.
     </p>
 
     <h2 class="bw-intro-h">Learning Objectives</h2>
     <p class="bw-lede">After completing this activity, you will be able to:</p>
     <ul class="bw-objectives">
-      <li>Identify workflow steps suitable for AI assistance by distinguishing between procedural
-        and decision-making tasks</li>
-      <li>Document a workflow systematically, including the tools and data involved at each step</li>
-      <li>Specify what you want AI to handle and what you prefer to retain in your process</li>
-      <li>Generate a structured prompt that you can use immediately with an LLM to begin
-        implementation</li>
+      <li>Identify a repeatable, well-defined work task where AI could reduce manual effort
+        without replacing the judgment that still matters.</li>
+      <li>Map a current workflow step by step, including where each action happens and the tools
+        involved.</li>
+      <li>Define the better outcome you want and the role you want AI to play in helping create
+        it.</li>
+      <li>Specify what AI should handle, what should stay with you, what a good result looks
+        like, and what context or rules AI needs to follow.</li>
+      <li>Review, use, and improve a reusable prompt built from those workflow decisions.</li>
     </ul>
-  </header>
 
-  <div class="bw-start-row">
-    <button type="button" class="bw-btn bw-btn-start" id="bw-start">Start the activity</button>
-  </div>
+    <div class="bw-start-row">
+      <button type="button" class="bw-btn bw-btn-start" id="bw-start">Start building</button>
+    </div>
 
-  <details class="bw-example">
-    <summary>See the whole thing done first</summary>
+    <details class="bw-example">
+      <summary>See a completed workflow</summary>
     <div class="bw-example-body">
       <p><strong>Maya</strong> manages client success for a mid-size agency. Here's her run through all five steps.</p>
 
@@ -121,7 +150,8 @@ write [MISSING: metric name] and keep going.</pre>
         <p class="bw-small">Two hours became twenty minutes. The judgment stayed with Maya.</p>
       </div>
     </div>
-  </details>
+    </details>
+  </div>
 
 </section>
 
@@ -189,12 +219,15 @@ write [MISSING: metric name] and keep going.</pre>
     <span class="bw-stage-where">Journey map</span>
   </div>
 
+  <!-- The landing owns the product promise; home answers "where am I, what's
+       next". Repeating "Turn Ideas Into Impact" here made Start look like it
+       had reloaded the same screen on a different background. -->
   <header class="bw-map-head">
     <p class="bw-map-eyebrow">AI Workflow Builder</p>
-    <h2 class="bw-map-title">Turn Ideas Into Impact</h2>
+    <h2 class="bw-map-title">Your Workflow Journey</h2>
     <p class="bw-map-sub">
-      A guided 5-step experience to help you design, refine, and deploy effective AI workflows
-      for real work.
+      Work through each stage in order. Completed stages stay open if you want to revisit your
+      thinking.
     </p>
   </header>
 

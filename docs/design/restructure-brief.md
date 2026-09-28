@@ -431,11 +431,14 @@ recorded as answered rather than deleted, so nobody re-opens them by accident.
 6. ~~**Three phases vs five stages.**~~ **Answered:** the Course Overview now walks the same five
    stages the map shows, in the same order. `journey-contract` asserts the count and the order.
 
-7. **Two product names.** Landing: *"Brainstorm an AI-Powered Workflow."* Home: *"AI Workflow
-   Builder — Turn Ideas Into Impact."* Still open.
+7. ~~**Two product names.**~~ **Answered 2026-09-28:** the product is AI Workflow Builder
+   everywhere — browser title, landing, home, stage. The landing owns the promise ("Turn Ideas
+   Into Impact"); home is functional ("Your Workflow Journey"), so Start advances the learner
+   instead of redrawing the same hero. Still open.
 
-8. **Theme split.** The landing is the last screen on the light lavender theme; home and every
-   stage are the dark shell family. Still open.
+8. ~~**Theme split.**~~ **Answered 2026-09-28:** one dark shell across all three views, with
+   two light surfaces that have different jobs — orientation on the landing, the workbench
+   inside a stage. See HANDOFF, "One product, one shell, three jobs". Still open.
 
 9. ~~**Lessons for 04 and 05.**~~ **Answered:** Deploy has one, written by the author.
    Refine deliberately has none — its interaction is the instruction, and a reading in front

@@ -58,7 +58,7 @@ try {
   check('it opens on the landing', await page.locator('#bw-landing').isVisible());
   check('which is not the map', !(await page.locator('#bw-map').isVisible()));
   check('the objectives are there to read',
-    await page.locator('.bw-objectives li').count() === 4);
+    await page.locator('.bw-objectives li').count() === 5);
   check('and a start button under them', await page.locator('#bw-start').isVisible());
   { const g = await pageGround();
     check('the landing has no white page around it', noWhitePage(g), JSON.stringify(g)); }
@@ -313,7 +313,7 @@ try {
   await page.waitForTimeout(500);
   check('the back arrow reaches the landing', await page.locator('#bw-landing').isVisible());
   check('the objectives are still readable there',
-    await page.locator('.bw-objectives li').count() === 4);
+    await page.locator('.bw-objectives li').count() === 5);
   await start();
   check('starting again returns to home', await page.locator('#bw-map').isVisible());
   check('and progress is exactly where it was', await stateOf(1) === 'completed', await stateOf(1));
