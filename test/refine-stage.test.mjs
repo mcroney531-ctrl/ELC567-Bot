@@ -182,6 +182,45 @@ try {
   check('the map agrees Refine is unfinished', await page.evaluate(() =>
     JSON.parse(localStorage.getItem('brainstorm_workflow_data')).progress.done['4'] !== true));
 
+  /* The destructive case: restarting Refine AFTER it has been completed. The
+     check above restarts before the handoff, so progress.done[4] was never
+     true; here it is, and clearing the four decisions has to take the tick and
+     Deploy's unlock with it. Otherwise a learner can throw the work away and
+     still walk back into a finished prompt. */
+  turns = 0;
+  await openRefine();
+  for (const key of ['handoff', 'keep', 'output', 'context']) await say(ANSWERS[key]);
+  await page.click('[data-action="save-and-continue"]');
+  await page.waitForTimeout(800);
+  let p4 = (await stored()).progress;
+  check('finishing Refine ticks it and unlocks Deploy',
+    p4.done['4'] === true && p4.unlocked >= 5, JSON.stringify(p4));
+  check('and Deploy is reachable from the map', await page.evaluate(async () => {
+    document.getElementById('bw-to-map').click();
+    await new Promise(r => setTimeout(r, 600));
+    return document.querySelector('.bw-station[data-stage="5"]').dataset.state !== 'locked';
+  }));
+
+  await page.click('.bw-station[data-stage="4"] .bw-station-card');
+  await page.waitForTimeout(800);
+  await page.click('#bw-coach-restart');
+  await page.click('#bw-coach-restart');
+  await waitBots(page, 1);
+  check('restarting a finished Refine clears the four decisions',
+    await railDone() === 0, String(await railDone()));
+  p4 = (await stored()).progress;
+  check('and un-ticks the stage', p4.done['4'] !== true, JSON.stringify(p4.done));
+  check('and takes Deploy\'s unlock back with it', p4.unlocked <= 4, String(p4.unlocked));
+  check('so the map no longer offers Deploy', await page.evaluate(async () => {
+    document.getElementById('bw-to-map').click();
+    await new Promise(r => setTimeout(r, 600));
+    return document.querySelector('.bw-station[data-stage="5"]').dataset.state === 'locked';
+  }));
+  check('the stages before it are untouched', await page.evaluate(() =>
+    [...document.querySelectorAll('.bw-station')].slice(0, 3)
+      .every(e => e.dataset.state === 'completed')),
+    await page.locator('.bw-station').evaluateAll(e => e.map(x => x.dataset.state).join(',')));
+
   // ==================== a scripted run reaches Deploy ====================
   turns = 0;
   await openRefine();
@@ -232,6 +271,93 @@ try {
   }
   check('a finished Refine still shows no prompt before Deploy', seen.length === 0,
     seen.join(', '));
+
+  /* ============ opening a v3 save: only real acceptance carries over ============
+
+     v3 stored a first thin answer and set pushedBack, then waited for the
+     second answer - the coach was still challenging it. Only acceptance moved
+     mockProgress. Reading text-plus-pushedBack as settled would promote a
+     half-answered question to a finished decision and hand the learner an
+     unlocked Deploy for work they never did. */
+  const v3Save = over => ({
+    version: 3,
+    problem: 'Every Monday I rebuild eleven client status decks by hand and it eats the morning.',
+    steps: [{ action: 'Pull the delivery numbers', tools: 'Tableau' },
+            { action: 'Draft each client update', tools: 'Word' }],
+    toolsAll: ['Tableau', 'Word'],
+    idealOutcome: 'The decks go out before lunch without me rebuilding each one by hand.',
+    aiRole: 'Assemble the routine parts so I am reviewing rather than retyping.',
+    masterPromptV1: '', masterPromptV2: '', v2Source: '',
+    conversations: {}, mockProgress: {},
+    botAnswers: { handoff: '', output: '', keep: '', context: '', notes: [] },
+    pushedBack: {},
+    progress: { current: 4, unlocked: 4, done: { 1: true, 2: true, 3: true },
+                entered: { 1: true, 2: true, 3: true } },
+    ...over
+  });
+
+  async function openV3(save) {
+    if (ctx) await ctx.close();
+    ctx = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+    page = await ctx.newPage();
+    report.watch(page);
+    await page.addInitScript(x => {
+      localStorage.setItem('bw_started', '1');
+      localStorage.setItem('brainstorm_workflow_data', x);
+    }, JSON.stringify(save));
+    await page.goto(`http://127.0.0.1:${PORT}/`);
+    await page.waitForTimeout(600);
+    return page.evaluate(() => JSON.parse(localStorage.getItem('brainstorm_workflow_data')));
+  }
+
+  // Mid-challenge: the answer is down, the push-back has been made, the cursor
+  // has not moved. That decision is not settled.
+  let up = await openV3(v3Save({
+    botAnswers: { handoff: 'faster', output: '', keep: '', context: '', notes: [] },
+    pushedBack: { handoff: true },
+    mockProgress: { all: 0 }
+  }));
+  check('a v3 save is upgraded rather than discarded', up.version === 4, String(up.version));
+  check('a first thin answer that was still being challenged is not settled',
+    up.decided.handoff !== true, JSON.stringify(up.decided));
+  check('the words are kept, so the learner is not retyping from nothing',
+    up.botAnswers.handoff === 'faster', up.botAnswers.handoff);
+  check('and Refine is still open', up.progress.done['4'] !== true,
+    JSON.stringify(up.progress.done));
+
+  // The same thin words, but accepted on the second pass: the cursor moved.
+  up = await openV3(v3Save({
+    botAnswers: { handoff: 'faster', output: '', keep: '', context: '', notes: [] },
+    pushedBack: { handoff: true },
+    mockProgress: { all: 1 }
+  }));
+  check('a thin answer that was actually accepted does carry over',
+    up.decided.handoff === true, JSON.stringify(up.decided));
+  check('and nothing after it is credited',
+    !up.decided.output && !up.decided.keep && !up.decided.context,
+    JSON.stringify(up.decided));
+
+  // A finished v3 Refine, in v3's own order: handoff, output, keep, context.
+  up = await openV3(v3Save({
+    botAnswers: { handoff: 'Steps 1 and 3, the drafting.', output: 'Four short paragraphs.',
+                  keep: 'The judgement call at the end.', context: 'Never invent a figure.',
+                  notes: [] },
+    mockProgress: { all: 4 }
+  }));
+  check('a finished v3 Refine carries all four across',
+    ['handoff', 'keep', 'output', 'context'].every(k => up.decided[k] === true),
+    JSON.stringify(up.decided));
+
+  /* v3's cursor order was handoff, output, keep, context - not the order Refine
+     asks in now. A cursor of 2 means the first two of THAT list. */
+  up = await openV3(v3Save({
+    botAnswers: { handoff: 'Steps 1 and 3, the drafting.', output: 'Four short paragraphs.',
+                  keep: '', context: '', notes: [] },
+    mockProgress: { all: 2 }
+  }));
+  check('and the old cursor is read against the order it was written in',
+    up.decided.handoff === true && up.decided.output === true &&
+    !up.decided.keep && !up.decided.context, JSON.stringify(up.decided));
 
   // ==================== what a live model is told ====================
   const src = readActivity();
@@ -308,8 +434,30 @@ try {
     await lRailDone() === 4, String(await lRailDone()));
   check('and Deploy unlocks for it', await lGate());
   check('a prompt a live model emits anyway never reaches the learner',
-    !/## CONTEXT|master-prompt|```/.test(await lp.locator('.bw-chat-log').textContent()),
+    !/## CONTEXT|master-prompt/.test(await lp.locator('.bw-chat-log').textContent()),
     (await lp.locator('.bw-chat-log').textContent()).slice(-120));
+
+  /* The filter suppresses prompts, not fenced content. A coach discussing
+     standards may legitimately show a format sample; losing it would be
+     collateral damage from a rule that was never about code blocks. */
+  stubState.mode = 'untagged';
+  await lSay('What about an untagged one?');
+  check('an untagged block that looks like the prompt is removed too',
+    !/## CONTEXT|## OUTPUT I EXPECT/.test(await lp.locator('.bw-chat-log').textContent()),
+    (await lp.locator('.bw-chat-log').textContent()).slice(-140));
+  check('and the prose around it survives',
+    (await lp.locator('.bw-msg-bot').last().textContent()).includes('Something like this'),
+    await lp.locator('.bw-msg-bot').last().textContent());
+
+  stubState.mode = 'fencedJson';
+  await lSay('Could you show me the shape?');
+  const jsonReply = await lp.locator('.bw-msg-bot').last().textContent();
+  check('an ordinary fenced example is left alone',
+    jsonReply.includes('"tone": "direct"') && jsonReply.includes('Does that match'),
+    jsonReply.slice(0, 160));
+  check('and still renders as a block rather than being flattened',
+    await lp.locator('.bw-msg-bot').last().locator('pre').count() === 1,
+    String(await lp.locator('.bw-msg-bot').last().locator('pre').count()));
   check('nor does it leak into the transcript it would be lifted from later',
     await lp.evaluate(() => !JSON.parse(localStorage.getItem('brainstorm_workflow_data'))
       .conversations.all.some(m => /## CONTEXT/.test(m.text))));

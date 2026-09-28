@@ -8,11 +8,18 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 const FENCED = 'Here is the finished prompt.\n\n```master-prompt\n## CONTEXT\nLive-endpoint context line.\n\n## WHAT STAYS WITH ME\nThe final judgment call.\n```\n';
+/* An untagged block that looks like the artifact, and one that plainly does
+   not. The defensive filter has to tell them apart: suppressing a prompt is the
+   product rule, suppressing a coach's format example is collateral damage. */
+const UNTAGGED_PROMPT = 'Something like this.\n\n```\n## CONTEXT\nI write weekly updates.\n\n## OUTPUT I EXPECT\nFour paragraphs.\n```\n';
+const FENCED_JSON = 'A shape that works well:\n\n```json\n{ "tone": "direct", "paragraphs": 4 }\n```\n\nDoes that match what you meant?';
 const SHAPES = {
   reply:     () => ({ reply: 'Live reply one. What does a good output look like?' }),
   anthropic: () => ({ content: [{ type: 'text', text: FENCED }] }),
   openai:    () => ({ choices: [{ message: { content: 'OpenAI-shaped reply.' } }] }),
   bare:      () => 'Bare string reply.',
+  untagged:  () => ({ reply: UNTAGGED_PROMPT }),
+  fencedJson: () => ({ reply: FENCED_JSON }),
   junk:      () => ({ nonsense: true })
 };
 export const server = http.createServer((req, res) => {

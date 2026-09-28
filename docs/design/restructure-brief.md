@@ -430,7 +430,7 @@ node test/timeline.test.mjs    # iterate on one
 | `scripted-coach` | 96 | the whole walkthrough offline |
 | `timeline` | 94 | map, four states, navigation, per-station accents |
 | `chat-stage` | 70 | the coach as a mode, per-stage transcripts, the pinned rail |
-| `refine-stage` | 54 | stage 4's four decisions, coverage as the gate, live parity, no prompt before Deploy |
+| `refine-stage` | 73 | stage 4's four decisions, coverage as the gate, live parity, the v3 upgrade, no prompt before Deploy |
 | `envision-stage` | 53 | stage 3 end to end, the carry into Refine and Deploy, the v2→v3 upgrade |
 | `admin` | 49 | `?admin=1`, and that its states match real ones |
 | `journey-contract` | 42 | the journey the learner is told about, and the five coupled step-number definitions |

@@ -241,11 +241,19 @@ What the upgrade does:
 
 `test/envision-stage.test.mjs` holds this with a v2 fixture.
 
-`migrateV3()` adds `decided`, deriving it from what is already there rather than re-asking
-questions the learner answered: an answer that is not thin was accepted when it arrived, and
-a thin one that has already drawn its push-back is what the accept rule leaves behind. The
-only state it misreads is the single turn between a push-back and the reply to it — and the
-coach is still showing that question, so answering it corrects the record.
+`migrateV3()` adds `decided`, and the evidence it reads is **the old scripted cursor, not the
+answer text**. In v3 a first thin answer wrote `botAnswers`, set `pushedBack` and then stopped
+— the coach was still challenging it — and only an accepted answer advanced `mockProgress`. So
+`mockProgress` counts the decisions that were really settled, while text-plus-`pushedBack` is
+exactly the state of someone who closed the browser mid-challenge. Reading that as settled
+handed them an unlocked Deploy for a question they never finished.
+
+`V3_ACCEPTED_ORDER` holds the orders those cursors were written against — `all` ran handoff,
+output, keep, context, and each slice ran its own part. **They are not the order Refine asks in
+now**, which is why they are written down rather than derived from `REFINE_DECISIONS`: they
+describe a shape of save that no longer exists and must not follow the live list when it
+changes. Anything with no cursor evidence stays undecided and is asked again — one answer's
+cost, against a section of prompt the other way.
 
 Whether the learner has started is a **separate key**, `bw_started` — where someone is
 looking is not learner data, and the state engine has no business knowing about it.
@@ -295,6 +303,12 @@ break by accident:
 });
 ```
 A stored tick is never taken at its word.
+
+Restarting Refine is the one place a completed stage is actively revoked. Clearing `decided`
+alone was not enough: `render()` re-validates stages 1 to 3, so a stage 4 that had already been
+ticked kept its tick and Deploy stayed unlocked — a way back into a finished prompt with none
+of the work behind it standing. `restartConversation()` now takes the tick and Deploy's unlock
+with it, scoped to that deliberate act; editing an earlier stage's work behaves as it did.
 
 Stage 4 is the same idea by a different route: `stepValid(4)` is `refineComplete()` — all four
 decisions accepted — not a turn count. A learner can talk for ten turns and still be held, and
@@ -381,10 +395,17 @@ the endpoint already receives; `{system, context, messages}` is unchanged.
 Three layers, because a system prompt is a request:
 1. The scripted coach closes Refine on a recap (`refineRecap()`), never a prompt.
 2. `BOT_SYSTEM_PROMPT` tells a live model not to show one.
-3. `stripPromptBlock()` removes any fenced block from a Refine reply before it is appended,
+3. `stripPromptBlock()` removes **prompt** blocks from a Refine reply before it is appended,
    so a model that ignores the instruction costs the learner nothing. It also catches the
    scripted coach, which is why a regression there shows up as a missing recap rather than a
    leaked prompt.
+
+The rule is *no master prompt before Deploy*, not *no fenced content in Refine*, and the filter
+is written to that: `isPromptBlock()` is the one definition of "this block is a prompt" — a
+`master-prompt` or `prompt` tag, or an untagged block that looks like the artifact —
+and both `stripPromptBlock()` and `parseMasterPrompt()` call it, so the filter and the parser
+cannot come to disagree about what they are looking at. A fenced JSON sample, a snippet of
+code, or a format example a coach writes while discussing standards survives untouched.
 
 A consequence worth knowing: nothing in the journey emits a `master-prompt` block any more,
 so `latestBotPrompt()` never fires and `v2Source` is always `"template"` — assembly from the
@@ -550,7 +571,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `envision-stage.test.mjs` | 53 | Stage 3 end to end: reading→form, what counts as an answer, where it is stored, the carry into Refine's coach and Deploy's prompt, and the v2→v3 upgrade |
-| `refine-stage.test.mjs` | 54 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
+| `refine-stage.test.mjs` | 73 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |

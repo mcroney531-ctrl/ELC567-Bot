@@ -395,20 +395,42 @@
 
   /* v3 saves predate Refine's decision set: they recorded the coach's answers
      but not whether each one had been settled or was still being challenged.
-     Derive it rather than re-asking questions the learner already answered.
 
-     An answer that is not thin was accepted the moment it arrived. A thin one
-     that has already drawn its push-back is what the accept rule leaves behind,
-     so it counts too. The only state this misreads is the single turn between
-     a push-back and the reply to it - and the coach is still showing that
-     question, so the learner answers it and the record corrects itself. */
+     The evidence for "settled" is the old scripted cursor, not the answer text.
+     In v3 a first thin answer wrote botAnswers and set pushedBack, then stopped
+     and waited - deliberately, because the coach was still challenging it - and
+     only an accepted answer advanced mockProgress. So mockProgress is the count
+     of decisions that had really been accepted, and text plus pushedBack is
+     exactly the state of someone who closed the browser mid-challenge. Reading
+     those as settled would hand them an unlocked Deploy for a question they
+     never finished answering.
+
+     The orders below are v3's, which are NOT the order Refine asks in now: the
+     full script ran handoff, output, keep, context, and each slice ran its own
+     part. They are written down here rather than derived, because they describe
+     a shape of save that no longer exists and must not follow the live list
+     when that list changes.
+
+     Anything with no cursor evidence stays undecided and gets asked again. That
+     costs a learner one answer; the other way round costs them a section of
+     their prompt. */
+  var V3_ACCEPTED_ORDER = {
+    all:        ["handoff", "output", "keep", "context"],
+    handoff:    ["handoff"],
+    standards:  ["output", "keep"],
+    guardrails: ["context"]
+  };
+
   function migrateV3(old) {
     var next = old;
     next.decided = {};
-    ["handoff", "keep", "output", "context"].forEach(function (k) {
-      var text = String((next.botAnswers || {})[k] || "").trim();
-      if (!text) return;
-      if (!answerQuality(text).thin || (next.pushedBack || {})[k]) next.decided[k] = true;
+    var seen = (next.mockProgress && typeof next.mockProgress === "object") ? next.mockProgress : {};
+    Object.keys(V3_ACCEPTED_ORDER).forEach(function (convo) {
+      var accepted = typeof seen[convo] === "number" ? seen[convo] : 0;
+      V3_ACCEPTED_ORDER[convo].slice(0, accepted).forEach(function (k) {
+        // A cursor past a key it has no answer for is not evidence of anything.
+        if (String((next.botAnswers || {})[k] || "").trim()) next.decided[k] = true;
+      });
     });
     next.version = 4;
     return next;
@@ -1347,22 +1369,44 @@
      the block contained is not lost - Deploy assembles the prompt from the four
      decisions, which is where it comes from now. */
   function stripPromptBlock(text) {
-    var out = String(text || "").replace(/```[ \t]*[A-Za-z-]*[ \t]*\r?\n[\s\S]*?```/g, "");
+    var out = String(text || "").replace(fenceRe(), function (block, tag, body) {
+      return isPromptBlock(tag, body) ? "" : block;
+    });
     out = out.replace(/\n{3,}/g, "\n\n").trim();
     return out || "That's noted.";
   }
 
-  /* Pull a ```master-prompt fenced block out of coach text. Tagged blocks win;
-     an untagged block is accepted only if it looks like a prompt. */
+  /* A fresh regex each time: it carries /g, and one shared instance would let
+     a half-finished scan in one function skip the start of the next. */
+  function fenceRe() { return /```[ \t]*([A-Za-z-]*)[ \t]*\r?\n([\s\S]*?)```/g; }
+
+  var promptTag = function (tag) { return (tag || "").toLowerCase().replace(/-/g, ""); };
+
+  /* Does this fenced block hold a master prompt? One definition, because two
+     things ask: the parser that lifts a prompt out of a reply, and the filter
+     that keeps one off a Refine screen. If they disagreed, a block could be
+     shown to a learner and then lifted, or stripped and then missed.
+
+     A tag says so outright. An untagged block has to look like the artifact -
+     which is deliberately narrow: a fenced JSON sample, a bit of code, or a
+     format example a coach writes while discussing standards is not a prompt
+     and has no business disappearing. */
+  function isPromptBlock(tag, body) {
+    var t = promptTag(tag);
+    if (t === "masterprompt" || t === "prompt") return true;
+    return !t && /^(##|MASTER PROMPT|CONTEXT\b)/im.test(String(body).trim());
+  }
+
+  /* Pull a master prompt out of coach text. Tagged blocks win over untagged. */
   function parseMasterPrompt(text) {
-    var re = /```[ \t]*([A-Za-z-]*)[ \t]*\r?\n([\s\S]*?)```/g;
+    var re = fenceRe();
     var m, tagged = null, untagged = null;
     while ((m = re.exec(String(text || "")))) {
-      var tag = (m[1] || "").toLowerCase().replace(/-/g, "");
+      var tag = promptTag(m[1]);
       var body = m[2].trim();
-      if (!body) continue;
-      if (tag === "masterprompt" || tag === "prompt") tagged = body;
-      else if (!tag && /^(##|MASTER PROMPT|CONTEXT\b)/im.test(body)) untagged = body;
+      if (!body || !isPromptBlock(m[1], body)) continue;
+      if (tag) tagged = body;
+      else untagged = body;
     }
     return tagged || untagged || null;
   }
@@ -2892,6 +2936,18 @@
         delete workflowData.pushedBack[k];
         delete workflowData.decided[k];
       });
+      /* Restarting Refine is the learner throwing away the four decisions that
+         made Deploy valid, so Deploy goes back behind them. Clearing `decided`
+         alone was not enough: render() re-validates stages 1 to 3, so a stage 4
+         that had already been ticked kept its tick and Deploy stayed unlocked -
+         a way back to a finished prompt with none of the work behind it still
+         standing. Scoped to this deliberate act; editing an earlier stage's
+         work behaves as it did. */
+      if (refineGoverned() && activeScript().decisions) {
+        var n = workflowData.progress.current;
+        delete workflowData.progress.done[n];
+        if (workflowData.progress.unlocked > n) workflowData.progress.unlocked = n;
+      }
       if (ownsProblem()) {
         // This conversation is how the problem statement got written, so
         // clearing it has to clear what it took down - otherwise the coach
