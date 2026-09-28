@@ -373,6 +373,88 @@ try {
     up.decided.handoff === true && up.decided.output === true &&
     !up.decided.keep && !up.decided.context, JSON.stringify(up.decided));
 
+  /* ============ coach copy must not promise a prompt before Deploy ============
+
+     The same contradiction has now been written twice after the rule was
+     locked: a guardrails intro telling the reviewer the coach "hands back the
+     finished prompt at the end", and before it a scripted turn that actually
+     did. Both were caught by reading, not by a test.
+
+     The invariant is narrow on purpose. It is not "coach copy never says
+     prompt" - plenty of it legitimately does, and banning the word would make
+     this guard something people route around. It is that no coach-facing copy
+     before Deploy may promise the learner will be SHOWN the finished prompt. */
+  const PROMISE_PATTERNS = [
+    /hands?\s+(?:it\s+|you\s+|back\s+)*(?:the|your)\s+[^.]{0,20}prompt/i,
+    /(?:shows?|show you|see|preview|read|get)\s+(?:the|your)\s+(?:finished|final|master)\s+prompt/i,
+    /(?:returns?|produces?|writes? out|prints?|gives? you)\s+(?:the|your)\s+[^.]{0,20}prompt/i,
+    /(?:finished|master|final)\s+prompt\s+(?:at the end|here|below|in this conversation)/i,
+    /prompt\s+(?:is|will be)\s+(?:shown|handed|returned|ready|waiting)/i,
+    /here(?:'s| is)\s+(?:the|your)\s+(?:finished|final|master)\s+prompt/i
+  ];
+  const promisesPrompt = text => PROMISE_PATTERNS.some(re => re.test(String(text || '')));
+
+  /* The matcher is checked both ways before it is trusted. A guard that has
+     quietly stopped matching anything passes every run and protects nothing. */
+  check('the guard catches the wording that has twice slipped through',
+    promisesPrompt('Last conversation. Everything you\'ve told the coach so far comes ' +
+      'together here, and it hands back the finished prompt at the end.') &&
+    promisesPrompt('That\'s everything I need. Here\'s your master prompt.') &&
+    promisesPrompt('Once we are done I will show you the finished prompt.'));
+  check('and leaves legitimate mentions of the word alone', [
+    'This is where a generic prompt becomes yours.',
+    'Everything you\'ve told the coach so far comes together here, so the final prompt has ' +
+      'the rules and context it needs.',
+    'Next: your final prompt',
+    'that answer is what makes the final prompt yours.'
+  ].every(t => !promisesPrompt(t)), 'the guard is over-firing on valid copy');
+
+  /* Read off the rendered pages rather than grepped out of the source: what is
+     on screen is what makes or breaks the promise. */
+  async function openAt(path) {
+    if (ctx) await ctx.close();
+    ctx = await browser.newContext({ viewport: { width: 1280, height: 950 } });
+    page = await ctx.newPage();
+    report.watch(page);
+    await page.addInitScript(x => {
+      localStorage.setItem('bw_started', '1');
+      localStorage.setItem('brainstorm_workflow_data', x);
+    }, JSON.stringify(seedState()));
+    await page.goto(`http://127.0.0.1:${PORT}/` + path);
+    await page.waitForTimeout(500);
+  }
+
+  await openAt('');
+  await page.click('.bw-station[data-stage="4"] .bw-station-card');
+  await page.waitForTimeout(700);
+  const journeyCopy = await page.evaluate(() => [
+    document.getElementById('bw-info-strip'),
+    document.querySelector('#bw-panel-4 .bw-step-intro'),
+    document.querySelector('#bw-head-4 .bw-h2'),
+    document.querySelector('#bw-head-4 .bw-step-sub'),
+    document.querySelector('[data-next="4"]'),
+    document.getElementById('bw-ls-framing'),
+    document.getElementById('bw-ls-quote')
+  ].map(n => (n && n.textContent) || ''));
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(700);
+  journeyCopy.push(await page.locator('#bw-focus-text').textContent());
+  const journeyOffender = journeyCopy.find(promisesPrompt);
+  check('Refine\'s own copy promises the learner no prompt', !journeyOffender,
+    String(journeyOffender));
+
+  /* The split-coach slices are preview routes, but a reviewer reads them as the
+     product - which is exactly how the last one got written and stayed. */
+  for (const role of ['coach-handoff', 'coach-standards', 'coach-guardrails']) {
+    await openAt('role/' + role);
+    const sliceCopy = await page.evaluate(() =>
+      [...document.querySelectorAll('.bw-step-intro, .bw-step:not([hidden]) .bw-h2, ' +
+        '.bw-step:not([hidden]) .bw-step-sub')]
+        .filter(n => n.offsetParent !== null).map(n => n.textContent));
+    const offender = sliceCopy.find(promisesPrompt);
+    check('/role/' + role + ' promises none either', !offender, String(offender));
+  }
+
   // ==================== what a live model is told ====================
   const src = readActivity();
   const sys = src.slice(src.indexOf('var BOT_SYSTEM_PROMPT'), src.indexOf('2. STATE + PERSISTENCE'));

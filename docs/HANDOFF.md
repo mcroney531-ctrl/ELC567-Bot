@@ -426,6 +426,18 @@ and both `stripPromptBlock()` and `parseMasterPrompt()` call it, so the filter a
 cannot come to disagree about what they are looking at. A fenced JSON sample, a snippet of
 code, or a format example a coach writes while discussing standards survives untouched.
 
+**The copy is guarded too, not just the behaviour.** The same contradiction was written twice
+after the rule was locked — a guardrails intro promising the coach "hands back the finished
+prompt at the end", and before it a scripted turn that actually did — and both were caught by
+reading rather than by a test. `refine-stage` now checks the rendered coach-facing copy, in the
+journey and in the three split-coach preview routes, against a set of *promise* patterns. The
+invariant is narrow on purpose: not "coach copy never says prompt", which would outlaw
+legitimate lines like "this is where a generic prompt becomes yours" and send people round the
+guard, but "no coach-facing copy before Deploy may promise the learner will be shown the
+finished prompt". The matcher is checked both ways in the same test — it must catch the
+wording that slipped through, and must leave the legitimate lines alone — because a guard that
+has quietly stopped matching anything passes every run and protects nothing.
+
 A consequence worth knowing: nothing in the journey emits a `master-prompt` block any more,
 so `latestBotPrompt()` never fires and `v2Source` is always `"template"` — assembly from the
 four decisions is the normal path now, and the note under the prompt says so rather than
@@ -590,7 +602,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `envision-stage.test.mjs` | 53 | Stage 3 end to end: reading→form, what counts as an answer, where it is stored, the carry into Refine's coach and Deploy's prompt, and the v2→v3 upgrade |
-| `refine-stage.test.mjs` | 76 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
+| `refine-stage.test.mjs` | 82 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
