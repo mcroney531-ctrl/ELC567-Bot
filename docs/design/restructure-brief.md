@@ -259,8 +259,9 @@ The same voice rule is written into `BOT_SYSTEM_PROMPT`, so a live coach does no
 into approving of answers. The retired split-coach slices carried the two retired phrases and
 were updated with them, so neither survives anywhere in the repo.
 
-Still open: the "here are a few ways AI might help" move is not built, and the live-vs-scripted
-asymmetry below is why.
+Settled, and not waiting on anyone: every line of Refine is authored. What is still open is
+one move, not a copy pass — the "here are a few ways AI might help" idea is unbuilt, and the
+live-vs-scripted asymmetry below is why.
 
 ## 6. Where AI actually appears
 
@@ -418,10 +419,11 @@ recorded as answered rather than deleted, so nobody re-opens them by accident.
    scripted coach's limits visible to the learner. Envision narrowed this a little: the coach no
    longer has to invent a future state, only to sharpen a stated one.
 
-4. **The "I want \_\_\_\_\_" starters, and Refine's connective copy.** The four questions are
-   authored; the acknowledgements between them, the recap and the push-backs are not. The
-   "here are a few ways AI might help" move is still unbuilt, and would need to line up with
-   the five `defs` pairs in `MAP_PAGE_GET_SPECIFIC`. See §5.
+4. ~~**Refine's connective copy.**~~ **Answered:** all of it is authored and locked — the
+   four questions, the acknowledgements, the push-backs, the thin-answer line, the recap and
+   the surrounding stage copy. See the Voice section in §5. Still open, separately: the
+   **"here are a few ways AI might help"** move is unbuilt, and would need to line up with
+   the five `defs` pairs in `MAP_PAGE_GET_SPECIFIC`.
 
 5. ~~**A line that is now slightly wrong.**~~ **Answered:** Map's `turn` block no longer sends
    the learner "below" — the form is past the reading in the same stage, and the copy says so.

@@ -821,16 +821,23 @@ coupling.
    `test/helpers.mjs`, which clicks through to the end of the reading rather than
    counting Continues — so adding a page to a lesson does not break them.
 
-3. **Refine's copy is Claude-drafted, not authored.** The four questions come from the
-   user's own brief and should not be reworded without asking, but the acknowledgements
-   between them (`DECISION_ACK`), the recap and the push-back lines were written in the
-   build session. They are the next thing to hand over to the user.
+3. **Refine's voice and copy are settled, not draft.** Authored and locked in the voice
+   pass: the four questions, the acknowledgements (`DECISION_ACK`), the push-backs, the
+   thin-answer line, the recap, and the stage's surrounding copy. None of it is waiting to
+   be handed over. The rules behind it — record the decision rather than praising an answer
+   the coach cannot evaluate, and make a push-back teach the thing it is asking for — are in
+   §4 and in `BOT_SYSTEM_PROMPT`, so a live coach holds to the same voice. Rewording any of
+   it is a request to the author, not a cleanup.
 
-4. **Map's coach.** The `workflow` and `tools` capture scripts exist and `STAGES` has
-   entries for them, but Map is **not** in `STAGE_COACH` and there is no combined
-   workflow-then-tools script for a single conversation. Map captures through its form
-   today. This is the main unfinished piece of the coach story, and it is now a question of
-   whether it is wanted rather than a gap: the form works.
+4. **Map captures through its form, by design.** The `workflow` and `tools` capture scripts
+   exist and `STAGES` has entries for them, but Map is **not** in `STAGE_COACH`, and the
+   five-stage flow needs no conversational Map: the form takes the action and the tool
+   directly, which is the structured data everything downstream is generated from. Those
+   scripts are an **alternate capability, reachable through `/role/coach-workflow` and
+   `/role/coach-tools` for preview** — not an outstanding requirement, and not a thing to
+   finish. Building a combined workflow-then-tools conversation is a product decision the
+   author would have to take deliberately; the reasoning that put the form ahead of it is in
+   `docs/design/restructure-brief.md` §7.
 
 5. **Deploy has no coach and needs none.** Settled: it is a guided review of one finished
    artifact (§5). `STAGE_CONVO` still maps it to `deploy` so `sKey()` has an entry, but no
