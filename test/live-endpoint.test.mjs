@@ -4,7 +4,7 @@
  * unreachable host, unrecognized payload) a learner can hit mid-activity.
  */
 import { server, state } from './coach-stub.mjs';
-import { serveSite, makeReporter, waitBots as wait, loadChromium, seedThroughStage3 } from './helpers.mjs';
+import { serveSite, makeReporter, waitBots as wait, loadChromium, seedThroughStage3, readLesson } from './helpers.mjs';
 
 const chromium = await loadChromium();
 
@@ -152,12 +152,16 @@ try {
   await page.waitForTimeout(500);
   check('learner reaches step 5 with the coach down',
     await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
+  await readLesson(page);   // Deploy reads before it reveals
   const fallbackV2 = await page.locator('#bw-prompt-v2').inputValue();
   check('fallback V2 is assembled from those answers',
     fallbackV2.includes('## CONTEXT') && fallbackV2.includes('under 200 words') &&
     fallbackV2.includes('flag next week'), fallbackV2.slice(0, 120));
-  check('fallback note explains the brackets',
-    (await page.locator('#bw-v2-source').textContent()).includes('[brackets]'));
+  /* Assembled with no coach reply at any point, and the provenance map still
+     tells the learner which stage each section came from. */
+  check('and the map still says where each section came from',
+    await page.locator('#bw-prov-list .bw-prov-name').count() === 6,
+    String(await page.locator('#bw-prov-list .bw-prov-name').count()));
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);
 }

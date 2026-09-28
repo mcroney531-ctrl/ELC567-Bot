@@ -492,6 +492,41 @@ Two bugs already fixed here, worth not reintroducing:
 
 ## 5. The master prompt
 
+### Deploy is a guided review, not a six-field editor
+The order is the design: **read → understand where it came from → inspect gaps → copy or
+deliberately edit → use it → finish**. The artifact stays one canonical textarea, so
+whole-text ownership survives and Deploy does not become another form.
+
+- **It teaches before it reveals.** `STAGE_LESSON[5]` is one page ("Review before you run
+  it"). The paragraph that has to survive any rewrite is the `[NEEDS DETAIL]` one: a learner
+  who reads a marker as a broken result will either stop or paper over it.
+- **`PROMPT_SECTIONS` is the provenance map** — six rows above the artifact saying which
+  stages each section came from. `head` must be exactly what `generateMasterPromptV2()`
+  emits; a map that has drifted is worse than none, so `deploy-stage` compares the rendered
+  rows against the real headings in order. The last row points at where the stop-and-ask
+  instruction lives, which is what makes the lesson's safety claim checkable rather than a
+  reassurance.
+- **Ownership is asked for, not inferred.** The textarea is `readonly` until Edit is pressed;
+  `v2Source` becomes `"user"` on the first divergence from `editBaseline`, not on the click,
+  so opening edit mode to read more closely costs nothing. It is a one-way latch — undoing
+  back to the generated wording does not hand the pen back, because Rebuild's meaning
+  flickering as they type would be worse than it staying honest. Rebuild is hidden until
+  there is something to lose, and returns the field to read-only.
+- **Two independent notices.** `paintDetailNotice()` and `paintEditState()` replaced one slot
+  that returned early, so a learner with a vague section used to be told what was wrong and
+  never told where the thing came from. Provenance is the map now; the notice is only "what
+  still needs attention".
+- **After ownership, nothing grades their prose.** `weakSections()` reads `botAnswers`, which
+  editing never touches, so it is stale in both directions from that point. The only honest
+  signal left is whether `[NEEDS DETAIL]` markers still stand in the text. Delete a marker
+  without adding detail and the warning goes: they took the pen.
+- **Finishing is a learning state, not a clipboard event.** `#bw-finish` sets
+  `done[lastStage()]`; copy no longer does. It used to, which meant the learner who took the
+  Ctrl+C fallback the copy button itself offers ended the journey at four stations of five.
+  Ungated on purpose — Refine was the assessment. Hidden in `/role/artifact`, which previews
+  everything except finishing a journey it is not part of.
+
+
 Two artifacts, both generated, both overridable:
 
 - **V1** (`generateMasterPromptV1`) — built template-style from `problem`, `steps` and
@@ -602,6 +637,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `envision-stage.test.mjs` | 53 | Stage 3 end to end: reading→form, what counts as an answer, where it is stored, the carry into Refine's coach and Deploy's prompt, and the v2→v3 upgrade |
+| `deploy-stage.test.mjs` | 50 | Stage 5 end to end: read before reveal, the provenance map against the real headings, ownership on request, the two notices, and finishing as a learning state |
 | `refine-stage.test.mjs` | 82 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
@@ -724,8 +760,8 @@ coupling.
 
 ### Open work, roughly in priority order
 
-1. **Lessons for stages 4 and 5.** `STAGE_LESSON` covers stages 1, 2 and 3. Stages 4 and 5
-   still open on their original panels. Adding one is an entry plus prose:
+1. **A lesson for stage 4.** `STAGE_LESSON` covers stages 1, 2, 3 and 5. Refine still opens
+   on its panel. Adding one is an entry plus prose:
    ```js
    var STAGE_LESSON = { 1: { blocks: STAGE_1_LESSON, card: "plan" } };
    ```
@@ -733,10 +769,10 @@ coupling.
    user which card goes with which lesson rather than guessing. All the machinery
    (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is already general.
 
-2. **Real lesson copy.** Stages 1, 2 and 3 are written — stage 1 and Map's two pages
-   verbatim as the user supplied them, Envision's short reading written to the user's brief
-   (outcome first, technology second). Stages 4 and 5 have none. **Do not write
-   instructional copy for them without asking** — the user writes it and hands it over.
+2. **Real lesson copy.** Stages 1, 2, 3 and 5 are written — stage 1, Map's two pages and
+   Deploy's reading verbatim as the user supplied them, Envision's short reading written to
+   the user's brief (outcome first, technology second). Stage 4 has none. **Do not write
+   instructional copy for it without asking** — the user writes it and hands it over.
 
    Copy is a list of typed blocks, rendered one node per type by
    `buildLessonBlock()`: `h` (the question a section answers), `p`, `list`
@@ -789,10 +825,10 @@ coupling.
    today. This is the main unfinished piece of the coach story, and it is now a question of
    whether it is wanted rather than a gap: the form works.
 
-5. **Deploy has no coach and probably needs none.** `STAGE_CONVO` maps it to `deploy` and
-   `STAGES` has an entry, but stage 5 is an artifact to read, edit and copy. Ask before
-   adding a conversation to it. Envision deliberately has none — that was a product
-   decision, not an omission.
+5. **Deploy has no coach and needs none.** Settled: it is a guided review of one finished
+   artifact (§5). `STAGE_CONVO` still maps it to `deploy` so `sKey()` has an entry, but no
+   conversation opens there. Envision deliberately has none either — both were product
+   decisions, not omissions.
 
 6. **Three unused coaching-card types** (`example`, `refinement`, and the specificity
    checklist) render correctly from the typed shape, but nothing emits them.

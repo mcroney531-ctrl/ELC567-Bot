@@ -495,28 +495,44 @@ write [MISSING: metric name] and keep going.</pre>
       </button>
       <div class="bw-step-panel" id="bw-panel-5" role="region" aria-labelledby="bw-head-5" hidden>
         <p class="bw-step-intro">
-          Here it is &mdash; your workflow, your judgment, your standards, written as a brief. Read it once
-          and change anything that isn't true. It's editable.
+          Here it is &mdash; one reusable prompt built from the work you did across the journey. See where
+          each section came from, then copy it as-is or edit anything that isn't true.
         </p>
         <div class="bw-notice bw-notice-info" id="bw-prereq-5" hidden></div>
-        <div class="bw-notice bw-notice-info" id="bw-v2-source" hidden></div>
+
+        <!-- Where each section of the prompt came from. Rendered from
+             PROMPT_SECTIONS so the headings cannot drift from the ones the
+             generator actually emits. -->
+        <section class="bw-prov" id="bw-prov" aria-labelledby="bw-prov-head">
+          <h4 class="bw-prov-head" id="bw-prov-head">How this was built</h4>
+          <dl class="bw-prov-list" id="bw-prov-list"></dl>
+        </section>
+
+        <div class="bw-notice bw-notice-warn" id="bw-v2-detail" hidden></div>
         <div class="bw-final-wrap" id="bw-final-wrap">
           <label class="bw-field">
-            <span class="bw-label">Master prompt &mdash; yours to edit</span>
-            <textarea id="bw-prompt-v2" class="bw-mono" spellcheck="false"></textarea>
+            <span class="bw-label">Your master prompt</span>
+            <textarea id="bw-prompt-v2" class="bw-mono" spellcheck="false" readonly></textarea>
           </label>
+          <div class="bw-notice bw-notice-info" id="bw-v2-state" hidden></div>
           <div class="bw-actions">
             <button type="button" class="bw-btn bw-btn-final" id="bw-copy-final">Copy master prompt</button>
-            <button type="button" class="bw-btn bw-btn-ghost" id="bw-regen-v2">Rebuild from my answers</button>
+            <button type="button" class="bw-btn bw-btn-ghost" id="bw-edit-final">Edit prompt</button>
+            <button type="button" class="bw-btn bw-btn-ghost" id="bw-regen-v2" hidden>Rebuild from my decisions</button>
             <span class="bw-spacer"></span>
             <span class="bw-small" id="bw-copy-status" aria-live="polite"></span>
           </div>
         </div>
         <div class="bw-outcome">
-          <strong>Now go.</strong> Paste it into Claude, ChatGPT, or whichever assistant you use.
-          Run it on this week's version of the task. The first output won't be perfect &mdash; tell the AI
-          what was wrong, and fold the correction back into the prompt. That editing loop is the
-          actual skill.
+          <strong>Put it to work.</strong> Copy the prompt into the assistant you use and run it on a
+          real version of the task. The first result does not have to be perfect. Notice what missed,
+          tell the assistant what should change, then fold that correction back into the reusable
+          prompt.
+        </div>
+        <div class="bw-actions bw-finish-row" id="bw-finish-row">
+          <button type="button" class="bw-btn bw-btn-final" id="bw-finish">Finish journey</button>
+          <span class="bw-spacer"></span>
+          <span class="bw-small" id="bw-finish-status" aria-live="polite"></span>
         </div>
       </div>
     </li>

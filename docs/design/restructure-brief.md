@@ -445,7 +445,7 @@ recorded as answered rather than deleted, so nobody re-opens them by accident.
 
 ```bash
 npm start     # http://127.0.0.1:8080   (and /admin/ for the review bar)
-npm test      # thirteen suites, ~5 min, stops at the first failing suite
+npm test      # fourteen suites, ~6 min, stops at the first failing suite
 node test/timeline.test.mjs    # iterate on one
 ```
 
@@ -455,6 +455,7 @@ node test/timeline.test.mjs    # iterate on one
 | `scripted-coach` | 96 | the whole walkthrough offline |
 | `timeline` | 94 | map, four states, navigation, per-station accents |
 | `chat-stage` | 70 | the coach as a mode, per-stage transcripts, the pinned rail |
+| `deploy-stage` | 50 | stage 5's review-first flow, the provenance map, ownership on request, finishing as a learning state |
 | `refine-stage` | 82 | stage 4's four decisions, coverage as the gate, live parity, the v3 upgrade, no prompt before Deploy in behaviour or in copy |
 | `envision-stage` | 53 | stage 3 end to end, the carry into Refine and Deploy, the v2→v3 upgrade |
 | `admin` | 49 | `?admin=1`, and that its states match real ones |

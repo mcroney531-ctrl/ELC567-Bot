@@ -337,3 +337,30 @@
 /* The retired draft screen. Reachable only through the /role/draft preview,
    which unhides it; no stage can show it. */
 .bw-retired[hidden] { display: none !important; }
+
+/* ---- Deploy: where each section came from ----
+   A read-only map, not a second editor. The artifact stays one text field; this
+   only has to make the journey visible in it. */
+.bw-prov {
+  margin: 14px 0; padding: 14px 16px; border-radius: var(--bw-radius-sm);
+  background: var(--bw-surface); border: 1px solid var(--bw-border);
+}
+.bw .bw-prov-head {
+  margin: 0 0 10px; font-size: .75rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--bw-text-faint);
+}
+.bw-prov-list { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; }
+.bw-prov-name {
+  margin: 0; font-family: var(--bw-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: .8125rem; font-weight: 700; color: var(--bw-text); white-space: nowrap;
+}
+.bw-prov-from { margin: 0; font-size: .8125rem; line-height: 1.5; color: var(--bw-text-muted); }
+.bw-notice-body { min-width: 0; }
+.bw-notice-lead { display: block; margin-bottom: 2px; }
+.bw-finish-row { margin-top: 16px; }
+
+/* Narrow: the section name stops sharing a row with its source. */
+@media (max-width: 620px) {
+  .bw-prov-list { grid-template-columns: 1fr; gap: 2px; }
+  .bw-prov-from { margin-bottom: 10px; }
+}

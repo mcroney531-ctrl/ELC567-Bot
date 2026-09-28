@@ -136,6 +136,10 @@ try {
 
   await page.click('.bw-station[data-stage="5"] .bw-station-card');
   await page.waitForTimeout(700);
+  check('and Deploy teaches before it reveals',
+    await page.locator('#bw-lesson-body').isVisible() &&
+    !(await page.locator('#bw-prompt-v2').isVisible()));
+  await readLesson(page);
   check('Deploy is where a prompt finally appears',
     await page.locator('#bw-prompt-v2').isVisible());
 

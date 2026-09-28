@@ -253,6 +253,7 @@ try {
     (await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage')) === '5',
     await page.locator('.bw-mini-item[data-open="true"]').getAttribute('data-stage'));
 
+  await readLesson(page);
   const v2 = await page.locator('#bw-prompt-v2').inputValue();
   check('Deploy is where the prompt first appears', v2.startsWith('## CONTEXT'), v2.slice(0, 40));
   const heads = v2.match(/^## .+$/gm) || [];
@@ -264,10 +265,9 @@ try {
     v2.includes('what to flag next week') && v2.includes('match the roster'));
   check('with nothing left in brackets',
     !/\[Name the steps|\[Format, length|\[Facts, constraints/.test(v2));
-  check('and the note says where it came from, rather than apologising for the coach',
-    (await page.locator('#bw-v2-source').textContent())
-      .includes('Built from the decisions you made in Refine'),
-    await page.locator('#bw-v2-source').textContent());
+  check('and the six sections say which stages they came from',
+    await page.locator('#bw-prov-list .bw-prov-name').count() === 6,
+    String(await page.locator('#bw-prov-list .bw-prov-name').count()));
 
   // ==================== no prompt in stages 1 to 4, after a finished Refine ====================
   await page.click('#bw-to-map');

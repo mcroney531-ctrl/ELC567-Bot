@@ -95,9 +95,15 @@ try {
     (weakPrompt.match(/\[NEEDS DETAIL/g) || []).length >= 3, weakPrompt.slice(0, 200));
   check('the prompt tells the assistant to ask about them',
     weakPrompt.includes('too vague to act on') && weakPrompt.includes('wait for my answers'));
-  const notice = await page.locator('#bw-v2-source');
-  check('the block warns it is not ready', (await notice.textContent()).includes("isn't ready yet"));
-  check('the warning is styled as a warning',
+  /* Deploy flags them outside the artifact as well as inside it, and offers the
+     prompt as usable rather than broken - the assistant is already told to stop
+     and ask before acting on a marked gap. */
+  const notice = await page.locator('#bw-v2-detail');
+  check('the block says which parts still need detail',
+    (await notice.textContent()).includes('still need detail'), await notice.textContent());
+  check('without calling the result broken',
+    /use the prompt as-is/i.test(await notice.textContent()), await notice.textContent());
+  check('and it is styled as a warning',
     (await notice.getAttribute('class')).includes('bw-notice-warn'));
   await ctx.close();
 
@@ -114,7 +120,7 @@ try {
   const goodPrompt = await page.locator('#bw-prompt-v2').inputValue();
   check('a good prompt carries no NEEDS DETAIL markers', !goodPrompt.includes('[NEEDS DETAIL'));
   check('a good prompt gets no warning banner',
-    !(await page.locator('#bw-v2-source').getAttribute('class')).includes('bw-notice-warn'));
+    !(await page.locator('#bw-v2-detail').isVisible()));
   await ctx.close();
 
   // ---- 5. a sweeping handoff plus a carve-out is reconciled out loud ----

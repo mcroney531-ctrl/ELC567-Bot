@@ -230,6 +230,8 @@ try {
   await page.waitForTimeout(600);
   check('step5 open', await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
 
+  // Deploy reads before it reveals.
+  await readLesson(page);
   const v2 = await page.locator('#bw-prompt-v2').inputValue();
   check('V2 is assembled from the four decisions', v2.startsWith('## CONTEXT'), v2.slice(0, 80));
   check('V2 has no stray fence markers', !v2.includes('```'), v2.slice(0, 80));
@@ -238,10 +240,15 @@ try {
   check('V2 carries keep answer', v2.includes('judgment is mine'));
   check('V2 carries context answer', v2.includes('Never invent a number'));
   check('V2 has no unfilled placeholders', !/\[Name the steps|\[Format, length|\[Facts, constraints/.test(v2), v2);
-  check('the source note says where it came from',
-    (await page.locator('#bw-v2-source').textContent())
-      .includes('Built from the decisions you made in Refine'),
-    await page.locator('#bw-v2-source').textContent());
+  /* Provenance is a map above the artifact now, not a sentence: six rows, one
+     per section, saying which stages each came from. */
+  check('the six sections say where each came from',
+    await page.locator('#bw-prov-list .bw-prov-name').count() === 6,
+    String(await page.locator('#bw-prov-list .bw-prov-name').count()));
+  check('and the artifact is read-only until they ask for the pen',
+    await page.locator('#bw-prompt-v2').evaluate(n => n.readOnly) &&
+    await page.locator('#bw-edit-final').isVisible() &&
+    !(await page.locator('#bw-regen-v2').isVisible()));
 
   // persistence
   await page.reload();
@@ -270,17 +277,26 @@ try {
   await enter(5);
   await page.waitForTimeout(300);
 
-  // manual edit beats regeneration until explicitly rebuilt
+  // Taking the pen is deliberate, and a manual edit then beats regeneration
+  // until they explicitly rebuild.
+  await readLesson(page);
+  await page.click('#bw-edit-final');
   await page.fill('#bw-prompt-v2', 'MY OWN EDIT');
+  await page.waitForTimeout(400);
   await page.reload();
   await page.waitForTimeout(400);
   await enter(5);
+  await readLesson(page);
   check('user edit survives reload', (await page.locator('#bw-prompt-v2').inputValue()) === 'MY OWN EDIT');
-  check('source note hidden after user edit', await page.locator('#bw-v2-source').isHidden());
+  check('and the artifact stays theirs to edit across that reload',
+    !(await page.locator('#bw-prompt-v2').evaluate(n => n.readOnly)));
+  check('rebuild is offered once there are edits to lose',
+    await page.locator('#bw-regen-v2').isVisible());
   await page.click('#bw-regen-v2');
   await page.click('#bw-regen-v2');   // inline confirm: second press commits
   await page.waitForTimeout(300);
   check('rebuild restores generated prompt', (await page.locator('#bw-prompt-v2').inputValue()).includes('under 200 words'));
+  check('and hands the pen back', await page.locator('#bw-prompt-v2').evaluate(n => n.readOnly));
 
   // copy
   await page.click('#bw-copy-final');
@@ -288,7 +304,16 @@ try {
   check('copy confirms to learner', (await page.locator('#bw-copy-status').textContent()).includes('Copied'));
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   check('clipboard holds the prompt', clip.includes('WHAT STAYS WITH ME'), clip.slice(0, 60));
-  check('progress reads complete', (await page.locator('#bw-progress-label').textContent()) === 'Complete');
+  /* Copying is a utility, not the end of the journey. It used to be both, which
+     meant the learner who took the Ctrl+C fallback this very button offers
+     finished the activity at four stations of five. */
+  check('copying does not finish the journey on its own',
+    (await page.locator('#bw-progress-label').textContent()) !== 'Complete',
+    await page.locator('#bw-progress-label').textContent());
+  await page.click('#bw-finish');
+  await page.waitForTimeout(400);
+  check('finishing does', (await page.locator('#bw-progress-label').textContent()) === 'Complete',
+    await page.locator('#bw-progress-label').textContent());
 
   // Stage 1 has no field to edit any more, so starting its conversation over
   // is how a learner takes the problem statement back.

@@ -13,7 +13,7 @@ activity's specific framing.
 | 2 | **Map** — breaking a process into its real steps | Read what a step actually contains, then write the workflow down with the tool each step happens in |
 | 3 | **Envision** — deciding what better looks like | Describe the outcome you want, then the part you'd want AI to play in reaching it |
 | 4 | **Refine** — sharpening vague ideas into specifics | A coach walks four decisions: what AI handles, what stays yours, what good looks like, what AI needs to know |
-| 5 | **Deploy** — translating thinking into action | Edit and copy the finished master prompt |
+| 5 | **Deploy** — translating thinking into action | Read how the decisions became instructions, then copy the prompt or deliberately edit it |
 
 The learner sees no prompt before Deploy, and that is enforced rather than requested: no coach
 prints one, and any prompt a live model returns during Refine is stripped before the reply is

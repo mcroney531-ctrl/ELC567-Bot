@@ -233,6 +233,7 @@ try {
     progress: { current: 5, unlocked: 5, done: { 1: true, 2: true, 3: true, 4: true },
                 entered: { 1: true, 2: true, 3: true, 4: true } }
   });
+  await readLesson(page);   // Deploy reads before it reveals
   const v2 = await page.locator('#bw-prompt-v2').inputValue();
   check('Deploy shows a prompt', v2.startsWith('## CONTEXT'), v2.slice(0, 40));
   check('carrying the outcome as what the work is for',
@@ -258,13 +259,15 @@ try {
     (v2.match(/.{0,40}(ideal outcome|ai's role).{0,40}/i) || [''])[0]);
 
   /* A learner's own edits outrank a regenerated template, which is the rule the
-     vision must not have quietly broken. */
+     vision must not have quietly broken. Taking the pen is deliberate now. */
+  await page.click('#bw-edit-final');
   await page.fill('#bw-prompt-v2', 'MY OWN PROMPT');
   await page.waitForTimeout(400);
   await page.click('#bw-to-map');
   await page.waitForTimeout(600);
   await page.click('.bw-station[data-stage="5"] .bw-station-card');
   await page.waitForTimeout(900);
+  await readLesson(page);
   check('a hand-edited prompt is not overwritten by a regeneration',
     (await page.locator('#bw-prompt-v2').inputValue()) === 'MY OWN PROMPT',
     (await page.locator('#bw-prompt-v2').inputValue()).slice(0, 40));

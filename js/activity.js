@@ -1225,6 +1225,31 @@
     return best;
   }
 
+  /* The prompt's six sections, in order, with the stages each one came from.
+
+     Deploy shows this above the artifact so the learner can see their own
+     thinking in it rather than taking it on trust. `head` must be exactly what
+     generateMasterPromptV2() emits - a map that has drifted from the prompt is
+     worse than no map, so a test compares these against the real headings.
+
+     The last row is the one that carries weight: the instruction to stop and
+     ask about a vague section lives INSIDE the artifact, not in a reassurance
+     on this screen. A learner who doubts it can go and read the sentence. */
+  var PROMPT_SECTIONS = [
+    { head: "CONTEXT",
+      from: "From Identify, Map, and Envision" },
+    { head: "WHAT I NEED YOU TO DO",
+      from: "From Envision and Refine: What AI handles" },
+    { head: "WHAT STAYS WITH ME",
+      from: "From Refine: What stays yours" },
+    { head: "OUTPUT I EXPECT",
+      from: "From Refine: What good looks like" },
+    { head: "THINGS YOU NEED TO KNOW",
+      from: "From Refine: What AI needs to know, plus anything you added along the way" },
+    { head: "HOW TO WORK WITH ME",
+      from: "Builder safeguards, plus instructions to stop and ask when any part still needs detail" }
+  ];
+
   var SECTION_LABELS = {
     handoff: "WHAT I NEED YOU TO DO",
     output: "OUTPUT I EXPECT",
@@ -1982,10 +2007,16 @@
     el.chatNote = $("bw-chat-note");
     el.botBadge = $("bw-bot-badge");
     el.promptV2 = $("bw-prompt-v2");
-    el.v2Source = $("bw-v2-source");
     el.copyFinal = $("bw-copy-final");
     el.regenV2 = $("bw-regen-v2");
     el.copyStatus = $("bw-copy-status");
+    el.editFinal = $("bw-edit-final");
+    el.v2Detail = $("bw-v2-detail");
+    el.v2State = $("bw-v2-state");
+    el.provList = $("bw-prov-list");
+    el.finish = $("bw-finish");
+    el.finishRow = $("bw-finish-row");
+    el.finishStatus = $("bw-finish-status");
     el.progressFill = $("bw-progress-fill");
     el.progressLabel = $("bw-progress-label");
     el.reset = $("bw-reset");
@@ -2065,6 +2096,10 @@
       if (el.addStep) el.addStep.hidden = true;
       if (el.workflowWrap) el.workflowWrap.hidden = true;
     }
+
+    /* /role/artifact previews the whole Deploy experience except finishing a
+       journey it is not part of. */
+    if (el.finishRow) el.finishRow.hidden = true;
 
     var stepNo = ROLE.steps.length ? ROLE.steps[0] : 4;
     var copy = COACH_COPY[STAGE];
@@ -2999,47 +3034,156 @@
     save();
   }
 
+  /* Has the learner taken the pen? Once they have, the upstream answers are no
+     longer authoritative about this text and nothing here may grade it. */
+  function userOwnsPrompt() { return workflowData.v2Source === "user"; }
+
+  var NEEDS_DETAIL_RE = /\[NEEDS DETAIL/;
+
+  function renderProvenance() {
+    if (!el.provList) return;
+    el.provList.textContent = "";
+    PROMPT_SECTIONS.forEach(function (sec) {
+      var dt = el2("dt", "bw-prov-name", sec.head);
+      var dd = el2("dd", "bw-prov-from", sec.from);
+      el.provList.appendChild(dt);
+      el.provList.appendChild(dd);
+    });
+  }
+
+  /* Two independent notices, because they answer different questions and a
+     learner needs both. This used to be one slot that returned early on the
+     first, so anyone with a vague section was told what was wrong and never
+     told where the thing came from. Provenance is now the map above; this is
+     only "what still needs attention". */
+  function paintDetailNotice() {
+    if (!el.v2Detail) return;
+    var lead, body;
+
+    if (userOwnsPrompt()) {
+      /* They have edited it. weakSections() reads botAnswers, which editing
+         never touches, so it is stale in both directions from here on - it
+         would insist a section is vague after they fixed it, and miss one they
+         made vague. The only honest signal left is what the text itself still
+         says. If they delete a marker without adding detail, that stands: they
+         took the pen, and the application does not understand their prose well
+         enough to grade it. */
+      if (!NEEDS_DETAIL_RE.test(String(workflowData.masterPromptV2 || ""))) {
+        el.v2Detail.hidden = true;
+        return;
+      }
+      lead = "This edited prompt still has parts marked [NEEDS DETAIL].";
+      body = "You can fill them in now or leave them in place \u2014 the assistant will be told " +
+        "to ask before acting on those gaps.";
+    } else {
+      var weak = weakSections();
+      if (!weak.length) { el.v2Detail.hidden = true; return; }
+      /* Agrees in number: the locked copy was written for the plural case, and
+         "One part still needs detail... you can tighten them" reads as a bug. */
+      var many = weak.length > 1;
+      lead = many ? "A few parts still need detail." : "One part still needs detail.";
+      body = listPhrase(weak) + (many ? " are" : " is") + " still vague. You can tighten " +
+        (many ? "them" : "it") + " here or use the prompt as-is \u2014 it already tells the " +
+        "assistant to stop and ask you before acting on " + (many ? "those gaps" : "that gap") + ".";
+    }
+
+    /* .bw-notice is a flex row, so the lead and the body go in as one child -
+       two children would sit side by side in columns. */
+    el.v2Detail.textContent = "";
+    var box = el2("div", "bw-notice-body");
+    box.appendChild(el2("strong", "bw-notice-lead", lead));
+    box.appendChild(document.createTextNode(body));
+    el.v2Detail.appendChild(box);
+    el.v2Detail.hidden = false;
+  }
+
+  /* Three states, and the middle one is the point of the change: entering edit
+     mode is explicit and visible, and costs nothing until they actually change
+     something. Rebuild only appears once there are edits to lose - before that
+     there is nothing to rebuild from. */
+  function paintEditState() {
+    if (!el.v2State) return;
+    if (userOwnsPrompt()) {
+      el.v2State.textContent = "You're editing this copy directly. Rebuilding from your " +
+        "decisions will replace these edits.";
+      el.v2State.hidden = false;
+      if (el.regenV2) el.regenV2.hidden = false;
+      if (el.editFinal) el.editFinal.hidden = true;
+      return;
+    }
+    if (editing) {
+      el.v2State.textContent = "Editing is on. Your generated version is unchanged until you " +
+        "make an edit.";
+      el.v2State.hidden = false;
+      if (el.editFinal) el.editFinal.hidden = true;
+    } else {
+      el.v2State.hidden = true;
+      if (el.editFinal) el.editFinal.hidden = false;
+    }
+    if (el.regenV2) el.regenV2.hidden = true;
+  }
+
+  /* Read-only until they ask for the pen. */
+  var editing = false;
+  var editBaseline = null;   // the generated text they opted in against
+
   function paintV2() {
     if (el.promptV2.value !== workflowData.masterPromptV2) {
       el.promptV2.value = workflowData.masterPromptV2;
     }
-    var note = "";
-    var weak = weakSections();
-    if (weak.length) {
-      // Don't let a prompt built from vague answers look as finished as a good one.
-      el.v2Source.className = "bw-notice bw-notice-warn";
-      el.v2Source.textContent =
-        "This one isn't ready yet. " + weak.join(" and ") + (weak.length > 1 ? " are" : " is") +
-        " still too vague to act on. The prompt says so, and any assistant you paste it into will " +
-        "come back asking - so it's worth sharpening here, or in the conversation above, first.";
-      el.v2Source.hidden = false;
-      return;
-    }
-    el.v2Source.className = "bw-notice bw-notice-info";
-    if (workflowData.v2Source === "bot") {
-      note = "Lifted straight from your conversation with the coach. Change anything that isn't true \u2014 you know the job, it doesn't.";
-    } else if (workflowData.v2Source === "template") {
-      /* Assembly is the normal path now, not a fallback: Refine settles four
-         decisions and this is built from them, which is why the note explains
-         where it came from rather than apologising for the coach. */
-      note = "Built from the decisions you made in Refine. Read it once and change anything " +
-        "that isn't true, and fill in anything still in [brackets] before you use it.";
-    }
-    if (note) { el.v2Source.textContent = note; el.v2Source.hidden = false; }
-    else { el.v2Source.hidden = true; }
+    el.promptV2.readOnly = !(editing || userOwnsPrompt());
+    renderProvenance();
+    paintDetailNotice();
+    paintEditState();
+    paintFinish();
+  }
+
+  /* Survives a reload: a learner who finished and came back should not be
+     offered the button they already pressed. */
+  function paintFinish() {
+    if (!el.finish) return;
+    var done = !!workflowData.progress.done[lastStage()];
+    el.finish.disabled = done;
+    el.finish.textContent = done ? "Journey complete" : "Finish journey";
+    if (el.finishStatus && !done) el.finishStatus.textContent = "";
   }
 
   function wireStep5() {
     el.promptV2.addEventListener("input", function () {
       workflowData.masterPromptV2 = el.promptV2.value;
-      workflowData.v2Source = "user";
-      el.v2Source.hidden = true;
+      /* Ownership transfers on the first divergence from the generated text,
+         not on the click that enabled the field: someone who opens edit mode to
+         read more closely and changes nothing has not taken anything over, and
+         Rebuild should not have become destructive for them. It is a one-way
+         latch - undoing back to the generated wording does not hand the pen
+         back, because Rebuild's meaning flickering as they type would be worse
+         than it staying honest. */
+      if (!userOwnsPrompt() && editBaseline !== null && el.promptV2.value !== editBaseline) {
+        workflowData.v2Source = "user";
+      }
+      paintDetailNotice();
+      paintEditState();
       save();
     });
+
+    if (el.editFinal) {
+      el.editFinal.addEventListener("click", function () {
+        editing = true;
+        editBaseline = workflowData.masterPromptV2;
+        el.promptV2.readOnly = false;
+        paintEditState();
+        el.promptV2.focus();
+      });
+    }
+
     // Only worth confirming when there are edits of their own to lose.
     wireConfirm(el.regenV2, "Press again to replace your edits", function () {
       refreshV2(true);
-    }, function () { return workflowData.v2Source === "user"; });
+      editing = false;
+      editBaseline = null;
+      paintV2();
+    }, function () { return userOwnsPrompt(); });
+
     el.copyFinal.addEventListener("click", function () {
       copyText(workflowData.masterPromptV2, function (ok) {
         if (!ok) { el.promptV2.focus(); el.promptV2.select(); }   // leave it ready for Ctrl+C
@@ -3047,13 +3191,26 @@
           ? "Copied \u2014 now paste it into your assistant."
           : "Couldn't copy automatically \u2014 the text is selected, press Ctrl+C (Cmd+C on a Mac).";
         setTimeout(function () { el.copyStatus.textContent = ""; }, 4000);
-        if (ok) {
-          workflowData.progress.done[lastStage()] = true;
-          save();
-          render();
-        }
       });
     });
+
+    /* Finishing is a learning state, not a clipboard event. It used to be set
+       by a successful copy, which meant a learner who copied with Ctrl+C - the
+       fallback this very handler tells them to use - ended the activity at four
+       of five stations. Ungated on purpose: Refine was the assessment, Deploy
+       is review and use, and this is the learner saying they are done. */
+    if (el.finish) {
+      el.finish.addEventListener("click", function () {
+        workflowData.progress.done[lastStage()] = true;
+        save();
+        render();
+        el.finish.disabled = true;
+        el.finish.textContent = "Journey complete";
+        if (el.finishStatus) {
+          el.finishStatus.textContent = "Every stage is marked complete. Your work stays saved here.";
+        }
+      });
+    }
   }
 
   /* ---- confirmation without modals ---- */
@@ -3911,7 +4068,9 @@
       return;
     }
     if (!panel) return;
-    var rows = panel.querySelectorAll(".bw-actions");
+    /* The last action row in the panel, except Deploy's finish row - that one
+       closes the journey and is not where "Save draft" belongs. */
+    var rows = panel.querySelectorAll(".bw-actions:not(.bw-finish-row)");
     var row = rows[rows.length - 1];
     if (save) save.hidden = !row;
     if (!row) return;
@@ -4097,6 +4256,26 @@
       "play in reaching it." }
   ];
 
+  /* Deploy's reading: the instructional beat that was missing before the
+     reveal. Short on purpose - the artifact is the lesson, and this only has to
+     say how to read it. The [NEEDS DETAIL] paragraph is the one that has to
+     survive any rewrite: a learner who reads a marker as a broken result will
+     either stop or paper over it, and the whole point is that the prompt
+     handles its own gaps. */
+  var DEPLOY_LESSON = [
+    { type: "p", text:
+      "Your prompt is built from the decisions you made across the journey \u2014 not from a blank " +
+      "page. Before you use it, read it once as a set of instructions and make sure each part " +
+      "still feels true." },
+    { type: "p", text:
+      "If you see [NEEDS DETAIL], the prompt isn't broken. It means one decision stayed vague. " +
+      "The prompt already tells the assistant to stop and ask you for what it needs before " +
+      "acting on that gap." },
+    { type: "p", text:
+      "Then try it on real work. Notice what misses, improve the prompt, and keep the " +
+      "correction. That editing loop is how a one-time answer becomes a reusable workflow." }
+  ];
+
   var STAGE_LESSON = {
     1: { blocks: STAGE_1_LESSON, card: "plan" },
     /* Map is one job in two passes: stop summarising, then get specific. The
@@ -4108,7 +4287,10 @@
         blocks: MAP_PAGE_THINK_SMALLER },
       { blocks: MAP_PAGE_GET_SPECIFIC }
     ] },
-    3: { blocks: ENVISION_LESSON }
+    3: { blocks: ENVISION_LESSON },
+    5: { pages: [{ title: "Review before you run it",
+                   sub: "See how your decisions became instructions.",
+                   blocks: DEPLOY_LESSON }] }
   };
 
   function stageLesson(n) { return STAGE_LESSON[n]; }
@@ -4673,7 +4855,16 @@
     showChatError("");
     renderChatLog();
     el.promptV2.value = "";
-    el.v2Source.hidden = true;
+    /* Deploy goes back to read-only with nothing owned: starting over is not a
+       state anyone can be mid-edit in. */
+    editing = false;
+    editBaseline = null;
+    if (el.v2Detail) el.v2Detail.hidden = true;
+    if (el.v2State) el.v2State.hidden = true;
+    if (el.regenV2) el.regenV2.hidden = true;
+    if (el.editFinal) el.editFinal.hidden = false;
+    if (el.finishStatus) el.finishStatus.textContent = "";
+    el.promptV2.readOnly = true;
     el.handoff.hidden = true;
     // Every stage, not a list that has to be re-checked after each reorder -
     // showWarning() no-ops on a stage with no warning box of its own.
