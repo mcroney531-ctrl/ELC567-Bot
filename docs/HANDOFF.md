@@ -760,8 +760,15 @@ coupling.
 
 ### Open work, roughly in priority order
 
-1. **A lesson for stage 4.** `STAGE_LESSON` covers stages 1, 2, 3 and 5. Refine still opens
-   on its panel. Adding one is an entry plus prose:
+1. **Refine has no `STAGE_LESSON`, and that is the decision, not a gap.** Settled
+   2026-09-28. Refine is the one stage where the interaction *is* the instruction: the
+   learner gets the stage framing, an info strip saying the coach already has their prior
+   work, and a four-item rail naming exactly what they are about to decide — then the coach
+   walks them through it. A reading in front of that would make them read the same contract
+   twice before they can do anything. **Do not add one for symmetry with the other four.**
+
+   Machinery note, for whenever a lesson *is* wanted somewhere: an entry plus prose is all
+   it takes.
    ```js
    var STAGE_LESSON = { 1: { blocks: STAGE_1_LESSON, card: "plan" } };
    ```
@@ -769,10 +776,10 @@ coupling.
    user which card goes with which lesson rather than guessing. All the machinery
    (`renderLesson`, `placeWorkspaceExtras`, the Continue wiring) is already general.
 
-2. **Real lesson copy.** Stages 1, 2, 3 and 5 are written — stage 1, Map's two pages and
+2. **Real lesson copy.** Every lesson that exists is written — stage 1, Map's two pages and
    Deploy's reading verbatim as the user supplied them, Envision's short reading written to
-   the user's brief (outcome first, technology second). Stage 4 has none. **Do not write
-   instructional copy for it without asking** — the user writes it and hands it over.
+   the user's brief (outcome first, technology second). **Do not write instructional copy
+   without asking** — the user writes it and hands it over.
 
    Copy is a list of typed blocks, rendered one node per type by
    `buildLessonBlock()`: `h` (the question a section answers), `p`, `list`

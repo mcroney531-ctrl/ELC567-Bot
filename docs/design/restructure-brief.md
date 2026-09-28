@@ -435,9 +435,13 @@ recorded as answered rather than deleted, so nobody re-opens them by accident.
 8. **Theme split.** The landing is the last screen on the light lavender theme; home and every
    stage are the dark shell family. Still open.
 
-9. **Lessons for 04 and 05.** No copy. Stages 1, 2 and 3 have theirs.
+9. ~~**Lessons for 04 and 05.**~~ **Answered:** Deploy has one, written by the author.
+   Refine deliberately has none — its interaction is the instruction, and a reading in front
+   of the rail would make the learner read the same contract twice. Not a gap; do not add one
+   for symmetry.
 
-10. **Does Deploy want a coach?** `STAGE_CONVO` maps it to `deploy` and `STAGES` has an entry,
+10. ~~**Does Deploy want a coach?**~~ **Answered:** no — it is a guided review (§5). The
+    original note, for the record: `STAGE_CONVO` maps it to `deploy` and `STAGES` has an entry,
     but the stage is an artifact to read, edit and copy. Nothing is missing today; it is a
     question rather than a gap.
 
