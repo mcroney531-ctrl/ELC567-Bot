@@ -1504,8 +1504,9 @@
     },
 
     /* --- Fallback: built-in scripted coach ---------------------------------
-       Runs the same four-question arc a live model would, using the learner's
-       own words, and emits a real master-prompt block at the end. No network.
+       Walks the same four decisions a live model is asked to walk, using the
+       learner's own words, and closes on the same recap. Prompt assembly
+       belongs to Deploy, so neither coach shows one. No network.
        ---------------------------------------------------------------------- */
     mock: function () {
       return {
@@ -2043,8 +2044,8 @@
     guardrails: {
       title: "What must it never get wrong?",
       sub: "House rules, and what it can't invent",
-      intro: "Last conversation. Everything you've told the coach so far comes together here, and " +
-             "it hands back the finished prompt at the end.",
+      intro: "Last conversation. Everything you've told the coach so far comes together here, so " +
+             "the final prompt has the rules and context it needs.",
       next: "Next: your final prompt"
     }
   };
