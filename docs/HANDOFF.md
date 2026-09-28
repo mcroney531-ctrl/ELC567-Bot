@@ -209,9 +209,28 @@ what order:
 | 3 | `output` | What good looks like |
 | 4 | `context` | What AI needs to know |
 
+`refineRecap()` names them with these same labels, lowercased, so the close lands on the four
+things the learner watched tick off rather than four new words for them.
+
 `notes[]` stays optional. The rail items, the scripted questions, the live coach's
 instruction and `stepValid(4)` are all built from this list, so the order cannot drift
 between them. Change the list and all four follow.
+
+**The coach's voice, and where it lives.** Observant, concise, specific, nonjudgmental. It
+records what the learner decided and reflects it back accurately; it does not praise an answer
+it is in no position to evaluate. "That's the right instinct" fires identically whether someone
+hands over the right step or the one they should have kept, so it is gone, along with "that's a
+vibe" and "what would keep you up at night" — a push-back should teach the idea it is asking
+for, not perform. The strings are `DECISION_ACK` (one per decision), `PUSHBACKS`, `THIN_ACCEPT`
+and `refineRecap()`, and the same rule is written into `BOT_SYSTEM_PROMPT` so a live coach
+sounds like the same coach.
+
+**The opening picks up from the learner's work rather than reciting it.** The problem and the
+mapped steps are pinned in the coaching cards directly above the transcript, so an opening that
+read them back was the coach reciting a worksheet. It carries excerpts of the vision — which
+nothing else on the screen shows — and then asks the first question. A `/role/` slice never
+reaches the chat phase and so has no cards, which is the one case where the steps are still
+read back.
 
 **`decided` is not the same as "there is an answer".** The first thin answer is written to
 `botAnswers` — in case the learner stops there — while the coach is still challenging it.
@@ -571,7 +590,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `envision-stage.test.mjs` | 53 | Stage 3 end to end: reading→form, what counts as an answer, where it is stored, the carry into Refine's coach and Deploy's prompt, and the v2→v3 upgrade |
-| `refine-stage.test.mjs` | 73 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
+| `refine-stage.test.mjs` | 76 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |

@@ -100,10 +100,18 @@ try {
 
   const opening = await lastBot();
   check('the opening reads the vision back in excerpt, not in full',
-    opening.includes('already defined the version you want') &&
+    opening.includes('already pictured the version you want') &&
     opening.includes('…'), opening.slice(0, 200));
   check('it does not dump the whole field into the first message',
     !opening.includes(seedState().idealOutcome), 'full outcome text was pasted in');
+  /* The problem and the mapped steps are pinned in the cards directly above the
+     transcript. The coach picking up from them beats reciting them back. */
+  check('and it does not read the worksheet back',
+    !opening.includes(seedState().problem) &&
+    !opening.includes('Pull delivery numbers'), opening.slice(0, 200));
+  check('while the cards above it still carry both',
+    (await page.locator('[data-card="problem-summary"]').count()) === 1 &&
+    (await page.locator('[data-card="specificity"]').count()) === 1);
   check('and it opens on the first decision, not a general question',
     /which parts should AI take on or share with you/i.test(opening), opening.slice(-140));
 
@@ -123,8 +131,9 @@ try {
   check('a first thin answer does not complete its decision',
     await railDone() === 1, String(await railDone()));
   check('the coach pushes back instead of moving on',
-    /come at it from the other side|keep you up at night/i.test(await lastBot()),
-    (await lastBot()).slice(0, 140));
+    /make that boundary concrete/i.test(await lastBot()), (await lastBot()).slice(0, 140));
+  check('and the push-back teaches the idea rather than performing',
+    !/keep you up at night|that's a vibe/i.test(await lastBot()), (await lastBot()).slice(0, 140));
   let d = await stored();
   check('the words are kept in case they stop there',
     d.botAnswers.keep === 'idk', JSON.stringify(d.botAnswers.keep));
@@ -135,7 +144,8 @@ try {
   check('the second thin answer is accepted rather than asked a third time',
     await railDone() === 2, String(await railDone()));
   check('and the coach says plainly that it is marking it',
-    /needing detail/i.test(await lastBot()), (await lastBot()).slice(0, 140));
+    /needing more detail/i.test(await lastBot()) && /spot it in Deploy/i.test(await lastBot()),
+    (await lastBot()).slice(0, 140));
   check('the decision is settled', (await stored()).decided.keep === true);
 
   // ==================== turns are not the gate ====================
@@ -159,8 +169,11 @@ try {
 
   // ==================== it closes on a recap, not a prompt ====================
   const closing = await lastBot();
+  /* Named with the rail's own labels, so the close lands on the four things the
+     learner watched tick off rather than four new words for them. */
   check('the coach recaps the four decisions',
-    /job, the boundary, the standard, and the rules/i.test(closing), closing.slice(0, 160));
+    closing.includes('You\'ve made all four decisions: what AI handles, what stays yours, ' +
+      'what good looks like, and what AI needs to know.'), closing.slice(0, 200));
   check('and sends them to Deploy', /continue to deploy/i.test(closing), closing.slice(-90));
   check('no prompt appears anywhere in the conversation',
     !/## CONTEXT|```/.test(await page.locator('.bw-chat-log').textContent()));
@@ -252,7 +265,8 @@ try {
   check('with nothing left in brackets',
     !/\[Name the steps|\[Format, length|\[Facts, constraints/.test(v2));
   check('and the note says where it came from, rather than apologising for the coach',
-    (await page.locator('#bw-v2-source').textContent()).includes('four decisions you settled'),
+    (await page.locator('#bw-v2-source').textContent())
+      .includes('Built from the decisions you made in Refine'),
     await page.locator('#bw-v2-source').textContent());
 
   // ==================== no prompt in stages 1 to 4, after a finished Refine ====================

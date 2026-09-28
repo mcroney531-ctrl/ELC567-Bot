@@ -124,7 +124,7 @@
            "where do you still need your judgment, approval, relationship context, or final say?" },
     { key: "output", label: "What good looks like",
       ask: "Now set the bar. When AI finishes its part, what would a result look like that " +
-           "you'd actually use? Think format, length, tone, structure, and level of polish." },
+           "you'd actually use? Think about format, length, tone, structure, and level of polish." },
     { key: "context", label: "What AI needs to know",
       ask: "Last piece. What does AI need to know or follow every time? Think rules, " +
            "source-of-truth details, naming conventions, exceptions, and anything it must " +
@@ -238,6 +238,10 @@
     "  it has, take the second answer as it stands, say plainly that you are marking it as needing detail,",
     "  and move on rather than asking a third time.",
     "- Work from the outcome and AI role they already wrote. Do not propose a different vision.",
+    "- Be observant, concise, specific and nonjudgmental. Record what they decide; do not praise",
+    "  an answer you are in no position to evaluate. \"That's the right instinct\" and \"great call\"",
+    "  tell them nothing, and you cannot know whether the step they picked was the right one.",
+    "  Reflecting an answer back accurately is worth more than approving of it.",
     "- Read their answers against each other. If they offer to hand over everything and then carve out a",
     "  judgment call, say so, and make the exception explicit. Never leave two instructions that contradict",
     "  each other on the highest-stakes part of their job.",
@@ -753,11 +757,14 @@
     return workflowData.toolsAll.length ? workflowData.toolsAll.join(", ") : "(none listed)";
   }
 
-  /* "a, b and c" - for telling a learner what is still outstanding without it
-     reading like a machine reciting a list. */
+  /* "a and b", or "a, b, and c" - for naming decisions to a learner without it
+     reading like a machine reciting a list. The serial comma is deliberate:
+     three of these four labels contain "what", and without it the last two run
+     together into one clause. */
   function listPhrase(items) {
     if (items.length <= 1) return items[0] || "";
-    return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+    if (items.length === 2) return items[0] + " and " + items[1];
+    return items.slice(0, -1).join(", ") + ", and " + items[items.length - 1];
   }
 
   /* ==========================================================================
@@ -1556,39 +1563,37 @@
   }
 
   /* Stage 0 is the opening message; it is generated without user input. */
-  /* Reads back their own vision rather than proposing one. Every line comes
-     from something they wrote, so the scripted coach and a live model open on
-     the same footing - no improvisation is required to make this work. */
+  /* Picks up from the learner's work rather than reading it back to them. The
+     problem and the mapped steps are pinned in the cards directly above the
+     transcript, so repeating them here made the coach open by reciting a
+     worksheet. Excerpts of the vision stay, because nothing else on the screen
+     carries it - and they are excerpts because both fields can run to 600
+     characters, which would bury the question. The coach still receives all of
+     it in full through contextInjection().
+
+     A /role/ slice is the exception: it has no cards, so there the steps are
+     read back or the first question has nothing to point at. */
   function mockOpening() {
-    var list = filledSteps().map(function (s, i) {
-      return "  " + (i + 1) + ". " + s.action.trim() + "  (" + s.tools.trim() + ")";
-    }).join("\n");
     var outcome = String(workflowData.idealOutcome).trim();
     var role = String(workflowData.aiRole).trim();
+    var out = [];
 
-    /* Excerpts, not the whole field. Both Envision answers can run to 600
-       characters each, and an opening that repeated 1,200 of them back would
-       bury the question. The coach still receives them in full, invisibly,
-       through contextInjection(). */
-    var vision = outcome
-      ? ["You've already defined the version you want: \u201c" + shortQuote(outcome, 24) + "\u201d",
-         role ? "And you see AI's role as: \u201c" + shortQuote(role, 20) + "\u201d" : "",
-         "",
-         "Now let's make that concrete."].filter(Boolean)
-      : ["Before we write anything, I need to know where the weight is."];
+    if (!TIMELINE) {
+      var list = filledSteps().map(function (s, i) {
+        return "  " + (i + 1) + ". " + s.action.trim() + "  (" + s.tools.trim() + ")";
+      }).join("\n");
+      if (list) out.push("Here's the process you mapped:", "", list, "");
+    }
 
-    return [
-      "Right \u2014 here's what you gave me.",
-      "",
-      "You said: \"" + shortQuote(workflowData.problem, 22) + "\"",
-      "",
-      "And the process looks like this:",
-      list,
-      ""
-    ].concat(vision).concat([
-      "",
-      askFor(REFINE_DECISIONS[0])
-    ]).join("\n");
+    if (outcome) {
+      out.push("You've already pictured the version you want: \u201c" + shortQuote(outcome, 24) + "\u201d");
+      if (role) out.push("And the role you want AI to play: \u201c" + shortQuote(role, 20) + "\u201d");
+      out.push("", "Now let's make that specific.");
+    } else {
+      out.push("Let's work out where AI fits.");
+    }
+
+    return out.concat(["", askFor(REFINE_DECISIONS[0])]).join("\n");
   }
 
   /* What the coach says when it takes a decision down. The question that
@@ -1596,20 +1601,16 @@
      acknowledgement - the order lives in one place and this cannot reorder it. */
   var DECISION_ACK = {
     handoff: function (answer) {
-      return "Got it: " + shortQuote(answer, 18) + "\n\nThat's the right instinct \u2014 the steps " +
-        "that repeat with different names in them are exactly what an AI absorbs well. That goes " +
-        "into the prompt as the job.";
+      return "Got it \u2014 I'll treat \u201c" + shortQuote(answer, 16) + "\u201d as the work AI should handle.";
     },
     keep: function (answer) {
-      return "Good \u2014 " + shortQuote(answer, 14) + " stays yours, and the prompt will say so " +
-        "outright rather than leaving it to be assumed.";
+      return "Got it \u2014 \u201c" + shortQuote(answer, 14) + "\u201d stays with you. I'll keep that boundary explicit.";
     },
     output: function () {
-      return "That I can work with. A standard someone else could check the work against is worth " +
-        "more than a good intention.";
+      return "That gives us a standard the result can actually be checked against.";
     },
     context: function () {
-      return "Noted \u2014 that's the part a prompt can't guess on its own.";
+      return "Got it \u2014 those are the rules and context AI needs to work within.";
     }
   };
 
@@ -1617,17 +1618,22 @@
      second pass and is still thin. Praising it would contradict the
      [NEEDS DETAIL] mark it is about to earn. */
   var THIN_ACCEPT =
-    "Noted \u2014 I'll write that down as it is. I'm going to mark it as needing detail though, " +
-    "so the finished prompt doesn't look more settled than it really is.";
+    "I'll keep that answer, but I'm marking this part as needing more detail so you can spot " +
+    "it in Deploy.";
 
   /* The recap that closes Refine. Deliberately not the prompt: Deploy is the
      first place the learner sees one, and that rule is the product's, not a
      preference of whichever coach happens to be answering. */
+  /* Named with the rail's own labels, so the close lands on the four things the
+     learner has been watching tick off rather than on four new words for them. */
   function refineRecap() {
+    var named = REFINE_DECISIONS.map(function (d) {
+      return d.label.charAt(0).toLowerCase() + d.label.slice(1);
+    });
     return [
-      "You've defined the job, the boundary, the standard, and the rules.",
+      "You've made all four decisions: " + listPhrase(named) + ".",
       "",
-      "Continue to Deploy to review the finished prompt."
+      "Continue to Deploy to review how those decisions come together in your prompt."
     ].join("\n");
   }
 
@@ -1782,13 +1788,10 @@
       opening: mockOpening,   // same framing: their problem, their steps, one question
       turns: [{
         capture: "handoff",
-        ackParas: 2,   // "Got it" plus the "right instinct" line are both praise
+        ackParas: 1,
         reply: function (answer) {
           return [
-            "Got it: " + shortQuote(answer, 18),
-            "",
-            "That's the right instinct \u2014 the steps that repeat with different names in them are " +
-            "exactly what an AI absorbs well. That goes into your prompt as the job.",
+            "Got it \u2014 I'll treat \u201c" + shortQuote(answer, 16) + "\u201d as the work AI should handle.",
             "",
             "This piece is done. Keep reading below: next we pin down what a good result actually " +
             "looks like, because \"do it well\" isn't something you can hand to anyone."
@@ -1824,25 +1827,23 @@
           ackParas: 1,
           reply: function () {
             return [
-              "That I can work with.",
+              "That gives us a standard the result can actually be checked against.",
               "",
-              "Now the question that separates a useful prompt from a risky one. **What are you NOT " +
-              "handing over?** The judgment call, the relationship, the number you'd want to check " +
-              "yourself, the sentence your reader actually cares about.",
-              "",
-              "Name it plainly. We'll write it in as off-limits."
+              "**Now draw the line around what stays yours. What should AI not take over \u2014 where " +
+              "do you still need your judgment, approval, relationship context, or final say?**"
             ].join("\n");
           }
         },
         {
           capture: "keep",
           ackParas: 1,
-          reply: function () {
+          reply: function (answer) {
             return [
-              "Good \u2014 that stays yours, and the prompt will say so outright.",
+              "Got it \u2014 \u201c" + shortQuote(answer, 14) + "\u201d stays with you. I'll keep that " +
+              "boundary explicit.",
               "",
-              "Two pieces left in place now. One more below: what this thing needs to know before " +
-              "it can be trusted with the job."
+              "Two pieces in place. One more below: what this thing needs to know before it can be " +
+              "trusted with the job."
             ].join("\n");
           }
         }
@@ -1894,19 +1895,21 @@
      than just saying "be more specific". */
   var PUSHBACKS = {
     handoff:
-      "That's the feeling, not the task \u2014 and I can't write a prompt from a feeling.\n\n" +
-      "**Which numbered step is it, and what do you want handed back?** A finished draft? A list? " +
-      "A filled-in file you tidy up?",
+      "I need one level more specific before I can pin down the handoff.\n\n" +
+      "**Which mapped step or steps do you want AI to handle, and what should it hand back " +
+      "to you?**",
     output:
-      "That's a vibe rather than a spec, and \"professional\" means something different to every " +
-      "reader.\n\n**Give me three things: roughly how long, what shape it takes** (paragraphs? " +
-      "bullets? a table?), **and one thing it must never sound like.**",
+      "I need a standard someone could actually check.\n\n" +
+      "**What should the result look like \u2014 roughly how long, what format or structure " +
+      "should it use, and what tone or quality bar should it meet?**",
     keep:
-      "Let's come at it from the other side.\n\n**If the AI got one part of this wrong and nobody " +
-      "caught it before it went out, which part would keep you up at night?** That's the part you keep.",
+      "Let's make that boundary concrete.\n\n" +
+      "**What part still needs your judgment, approval, or final review \u2014 even if AI " +
+      "handles everything around it?**",
     context:
-      "Try this instead. **Think about someone brand new doing this in their first week. What did " +
-      "you have to correct them on?**\n\nThat correction is the rule I need written down.",
+      "Let's turn that into something the prompt can actually enforce.\n\n" +
+      "**What would a new person need to know to avoid getting this wrong \u2014 sources of " +
+      "truth, naming rules, exceptions, or things AI must never invent?**",
     _default: "Give me a little more to work with \u2014 a specific, not a feeling."
   };
 
@@ -3018,9 +3021,8 @@
       /* Assembly is the normal path now, not a fallback: Refine settles four
          decisions and this is built from them, which is why the note explains
          where it came from rather than apologising for the coach. */
-      note = "Assembled from the four decisions you settled with the coach \u2014 what AI handles, " +
-        "what stays yours, what good looks like, and what it needs to know. Change anything that " +
-        "isn't true, and fill in anything still in [brackets] before you use it.";
+      note = "Built from the decisions you made in Refine. Read it once and change anything " +
+        "that isn't true, and fill in anything still in [brackets] before you use it.";
     }
     if (note) { el.v2Source.textContent = note; el.v2Source.hidden = false; }
     else { el.v2Source.hidden = true; }
@@ -3595,8 +3597,8 @@
          quote: "People, process, and data create the full picture." },
     3: { framing: "Decide what better looks like, then AI's part in it.",
          quote: "Outcome first. Technology second." },
-    4: { framing: "Design, validate, and plan the workflow.",
-         quote: "Turn ideas into a clear plan." },
+    4: { framing: "Turn the vision into clear working decisions.",
+         quote: "Make the invisible decisions explicit." },
     5: { framing: "Put it into action and drive impact.",
          quote: "From plan to progress. Keep it going." }
   };
@@ -3621,9 +3623,8 @@
   var STAGE_INFO = {
     1: "In this stage you name the task. The steps, the tools and what good looks " +
        "like come later - one thing at a time.",
-    4: "The coach already has your problem, your steps and your tools, and the outcome " +
-       "you just described. It will ask about the parts a prompt cannot guess: what to " +
-       "hand over, what good looks like, and what must stay with you."
+    4: "The coach already has your problem, your mapped workflow, and your vision. Now " +
+       "you'll define the four decisions the finished prompt needs."
   };
 
   var miniNodes = [];
@@ -4140,7 +4141,8 @@
 
   var COACH_FOCUS = {
     1: "Name the task you want to hand off, in your own words.",
-    4: "Decide what the AI takes on, and what stays with you."
+    4: "Turn your vision into four concrete decisions: what AI handles, what stays yours, " +
+       "what good looks like, and what AI needs to know."
   };
 
   /* The rail's within-stage checklist. Each item says how it knows it is done,

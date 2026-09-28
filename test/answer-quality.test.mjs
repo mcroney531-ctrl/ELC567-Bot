@@ -58,8 +58,13 @@ try {
   await say(page, 'Probably the writing part. It just takes forever.');
   check('vague answer does not advance the stage', await stage(page, 'handoff') === 0);
   const push = await page.locator('.bw-msg-bot').last().textContent();
+  /* The re-ask has to name the thing that would make the answer usable - which
+     step, and what comes back - rather than asking them to be more specific in
+     the abstract. */
   check('the coach re-asks with something concrete',
-    push.includes('numbered step') || push.includes('handed back'), push.slice(0, 110));
+    /which mapped step/i.test(push) && /hand back to you/i.test(push), push.slice(0, 140));
+  check('and it teaches rather than performs',
+    !/that's a vibe|keep you up at night|right instinct/i.test(push), push.slice(0, 140));
   check('the vague answer is still kept, not discarded', await page.evaluate(() =>
     JSON.parse(localStorage.getItem('brainstorm_workflow_data')).botAnswers.handoff.length > 0));
 

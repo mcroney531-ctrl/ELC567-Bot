@@ -174,8 +174,17 @@ try {
   check('badge shows guided coach', (await page.locator('#bw-bot-badge').textContent()).includes('Guided'));
   await waitBots(1);
   const opening = await realBots().first().textContent();
-  check('opening quotes the problem', opening.includes('Every Monday'), opening.slice(0, 120));
-  check('opening lists their steps with tools', opening.includes('Asana, Harvest'), opening.slice(0, 200));
+  /* The coach picks up from the learner's work rather than reciting it: the
+     problem and the mapped steps are pinned in the cards directly above the
+     transcript, so the opening carries only what nothing else on screen does. */
+  check('the opening does not read the worksheet back',
+    !opening.includes('Every Monday') && !opening.includes('Asana, Harvest'),
+    opening.slice(0, 160));
+  check('but the cards above it carry both',
+    (await page.locator('[data-card="problem-summary"]').textContent()).includes('Every Monday') &&
+    (await page.locator('[data-card="specificity"]').textContent()).includes('Asana, Harvest'));
+  check('the opening picks up from the vision instead',
+    opening.includes('already pictured the version you want'), opening.slice(0, 160));
   await page.fill('#bw-chat-input', 'first answer, sent while I watch the lock');
   await page.keyboard.press('Enter');   // the send handler locks the composer synchronously
   const [lockedInput, lockedBtn, typingCount] = await Promise.all([
@@ -211,7 +220,7 @@ try {
     !['## CONTEXT', 'WHAT I NEED YOU TO DO', 'WHAT STAYS WITH ME', 'OUTPUT I EXPECT',
       'THINGS YOU NEED TO KNOW'].some(h => lastText.includes(h)), lastText.slice(0, 120));
   check('it recaps the four decisions instead',
-    /job, the boundary, the standard, and the rules/i.test(lastText), lastText.slice(0, 160));
+    /made all four decisions: what AI handles/i.test(lastText), lastText.slice(0, 160));
   check('and points at Deploy', /continue to deploy/i.test(lastText), lastText.slice(-80));
 
   // The coach's own next-step card is what moves the learner onward now.
@@ -230,7 +239,8 @@ try {
   check('V2 carries context answer', v2.includes('Never invent a number'));
   check('V2 has no unfilled placeholders', !/\[Name the steps|\[Format, length|\[Facts, constraints/.test(v2), v2);
   check('the source note says where it came from',
-    (await page.locator('#bw-v2-source').textContent()).includes('four decisions you settled'),
+    (await page.locator('#bw-v2-source').textContent())
+      .includes('Built from the decisions you made in Refine'),
     await page.locator('#bw-v2-source').textContent());
 
   // persistence

@@ -230,12 +230,37 @@ A consequence: nothing in the journey emits a prompt block any more, so `v2Sourc
 prompt says where it came from rather than apologising for the coach. `latestBotPrompt()` and
 the `"bot"` branch are unreachable in the full activity; deleting them is a separate decision.
 
-### What is still open in Refine
+### Voice (2026-09-28)
 
-The four questions came from the author. The connective copy did not: `DECISION_ACK`, the
-recap and the push-back lines were written in the build session and are the next thing to
-hand over. The "here are a few ways AI might help" move is still not built, and the
-live-vs-scripted asymmetry below is why.
+Authored, and the whole of it: the four questions, the acknowledgements, the push-backs, the
+thin-answer line, the close, and the stage's surrounding copy. The target is **observant,
+concise, specific, nonjudgmental** — a facilitator helping someone turn fuzzy intentions into
+explicit decisions, not an assistant handing out approval.
+
+What that ruled out, and why it is worth not reintroducing:
+
+- **Praise the coach cannot back.** "That's the right instinct" fired identically whether the
+  learner handed over the right step or the one they should have kept. The acknowledgements now
+  record the decision: *"Got it — I'll treat X as the work AI should handle."*
+- **Performance in the push-backs.** "That's a vibe rather than a spec" and "what would keep
+  you up at night" were doing personality where they should have been teaching. Each push-back
+  now restates the thing being asked for: *"Let's make that boundary concrete. What part still
+  needs your judgment, approval, or final review — even if AI handles everything around it?"*
+- **The system explaining itself.** The thin-accept line ran to two sentences about the prompt
+  not looking more settled than it is. It is now one: *"I'll keep that answer, but I'm marking
+  this part as needing more detail so you can spot it in Deploy."*
+- **Reciting the worksheet.** The opening quoted the problem and listed every mapped step —
+  both pinned in the cards directly above the transcript. It now picks up from the vision and
+  asks.
+- **Underselling the stage.** `COACH_FOCUS[4]` named two of the four decisions; the framing and
+  quote were generic. All three now say what Refine is for.
+
+The same voice rule is written into `BOT_SYSTEM_PROMPT`, so a live coach does not drift back
+into approving of answers. The retired split-coach slices carried the two retired phrases and
+were updated with them, so neither survives anywhere in the repo.
+
+Still open: the "here are a few ways AI might help" move is not built, and the live-vs-scripted
+asymmetry below is why.
 
 ## 6. Where AI actually appears
 

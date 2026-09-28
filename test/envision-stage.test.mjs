@@ -201,11 +201,11 @@ try {
   await waitBots(page, 1);
   const opening = await page.locator('.bw-msg-bot').first().textContent();
   check('Refine opens by reading the vision back',
-    /already defined the version you want/i.test(opening), opening.slice(0, 160));
+    /already pictured the version you want/i.test(opening), opening.slice(0, 160));
   check('naming the outcome the learner wrote',
     opening.includes('write-up shift'), opening.slice(0, 200));
   check('and the role they asked AI to play',
-    /you see AI's role as/i.test(opening) && opening.includes('Gather the figures'),
+    /the role you want AI to play/i.test(opening) && opening.includes('Gather the figures'),
     opening.slice(0, 280));
   check('then asks for specifics rather than proposing a different future',
     /which parts should AI take on or share with you/i.test(opening), opening.slice(-160));

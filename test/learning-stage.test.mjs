@@ -327,8 +327,10 @@ try {
     { unlocked: 4, current: 4, open: 4, done: [1, 2, 3], entered: [1, 2, 3, 4] }));
   check('a panel stage can carry an info strip',
     await page.locator('#bw-info-strip').isVisible());
-  check('which says what the coach already has',
-    (await page.locator('#bw-info-strip').textContent()).includes('your steps and your tools'));
+  check('which says what the coach already has, and what it will ask for',
+    (await page.locator('#bw-info-strip').textContent()).includes('your mapped workflow') &&
+    (await page.locator('#bw-info-strip').textContent()).includes('four decisions'),
+    await page.locator('#bw-info-strip').textContent());
   await ctx.close();
 
   // ---------------- the four states, in the compressed strip ----------------
