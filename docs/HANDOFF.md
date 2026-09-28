@@ -174,7 +174,7 @@ lesson.
 ### The single source of truth
 ```js
 workflowData = {
-  version: 3,
+  version: 4,
   problem: "",                       // stage 1's output
   steps: [{ action, tools }, ...],   // stage 2's output, min 2 complete rows
   toolsAll: [],                      // deduped across steps
@@ -185,6 +185,7 @@ workflowData = {
   mockProgress:  { ...same keys, all 0 },   // scripted-coach turn cursor
   botAnswers: { handoff, output, keep, context, notes: [] },
   pushedBack: {},                    // one push-back per question, so nobody loops
+  decided: {},                       // which of Refine's four decisions are settled
   progress: { current: 1, unlocked: 1, done: {}, entered: {} }
 }
 ```
@@ -197,9 +198,32 @@ coach got out of a learner. `idealOutcome` and `aiRole` are what the learner wro
 unmediated — so they sit beside `problem` and `steps`, which are the same kind of fact.
 A coach reads them; nothing writes them but the form.
 
-### Version 3, and opening a version 2 save
-`readStored()` gates on the version. A v2 payload is upgraded by `migrateV2()` rather than
-discarded, and `load()` writes the upgrade straight back — otherwise a learner who opens
+### Refine's four decisions
+`REFINE_DECISIONS` is the single source of truth for what stage 4 has to settle and in
+what order:
+
+| # | key | rail label |
+|---|---|---|
+| 1 | `handoff` | What AI handles |
+| 2 | `keep` | What stays yours |
+| 3 | `output` | What good looks like |
+| 4 | `context` | What AI needs to know |
+
+`notes[]` stays optional. The rail items, the scripted questions, the live coach's
+instruction and `stepValid(4)` are all built from this list, so the order cannot drift
+between them. Change the list and all four follow.
+
+**`decided` is not the same as "there is an answer".** The first thin answer is written to
+`botAnswers` — in case the learner stops there — while the coach is still challenging it.
+Only the second answer settles the decision, and it is accepted whatever it says, earning
+`[NEEDS DETAIL]` rather than a third question. That is the whole rule: **complete coverage,
+imperfect answers allowed.** `captureDecision()` is where it lives, and it runs on the
+learner's message before any coach replies — which is what makes it true of a live coach as
+well as the scripted one.
+
+### Version 4, and opening older saves
+`readStored()` gates on the version and upgrades in a chain: v2 → `migrateV2()` → v3 →
+`migrateV3()` → v4. Nothing is discarded, and `load()` writes the upgrade straight back — otherwise a learner who opens
 the page and leaves still has a v2 payload, and a sibling `/role/` block reading storage
 would see the old shape and the old stage meanings.
 
@@ -216,6 +240,12 @@ What the upgrade does:
   the upgrade does not pretend they have been into a stage that did not exist.
 
 `test/envision-stage.test.mjs` holds this with a v2 fixture.
+
+`migrateV3()` adds `decided`, deriving it from what is already there rather than re-asking
+questions the learner answered: an answer that is not thin was accepted when it arrived, and
+a thin one that has already drawn its push-back is what the accept rule leaves behind. The
+only state it misreads is the single turn between a push-back and the reply to it — and the
+coach is still showing that question, so answering it corrects the record.
 
 Whether the learner has started is a **separate key**, `bw_started` — where someone is
 looking is not learner data, and the state engine has no business knowing about it.
@@ -265,6 +295,12 @@ break by accident:
 });
 ```
 A stored tick is never taken at its word.
+
+Stage 4 is the same idea by a different route: `stepValid(4)` is `refineComplete()` — all four
+decisions accepted — not a turn count. A learner can talk for ten turns and still be held, and
+`warningFor(4)` names which decisions are outstanding rather than asking for more messages. A
+`/role/` slice runs one of the older split scripts and owns only part of the set, so it keeps
+the turn-count rule.
 
 ---
 
@@ -325,6 +361,36 @@ scripted coach with it.
 
 Do **not** move it on phase change. That was tried; it left the conversation half-visible
 under the lesson and was masking a false pass in the `live-endpoint` suite.
+
+### Refine's progression is the application's, not the model's
+`captureDecision(text)` runs in `sendChat()` — before any reply exists — so the scripted
+coach and a live one write the same state through the same push-once rule. The coach then
+*reads* it: `refineReply()` builds the scripted reply from what the capture just did, and a
+live model is told about it through `coachingState()`, which is appended to
+`contextInjection()`.
+
+**This was a real hole, not a precaution.** Before it, `mockCoachReply()` captured the four
+answers and the live path captured nothing at all — `askBot()` only appended the transcript.
+A coverage gate over those four keys would have let a scripted learner through and trapped a
+live one in Refine forever.
+
+**No wire-contract change was needed.** The decision state rides inside the `context` string
+the endpoint already receives; `{system, context, messages}` is unchanged.
+
+### No prompt before Deploy is enforced, not requested
+Three layers, because a system prompt is a request:
+1. The scripted coach closes Refine on a recap (`refineRecap()`), never a prompt.
+2. `BOT_SYSTEM_PROMPT` tells a live model not to show one.
+3. `stripPromptBlock()` removes any fenced block from a Refine reply before it is appended,
+   so a model that ignores the instruction costs the learner nothing. It also catches the
+   scripted coach, which is why a regression there shows up as a missing recap rather than a
+   leaked prompt.
+
+A consequence worth knowing: nothing in the journey emits a `master-prompt` block any more,
+so `latestBotPrompt()` never fires and `v2Source` is always `"template"` — assembly from the
+four decisions is the normal path now, and the note under the prompt says so rather than
+apologising for the coach. `parseMasterPrompt()` and the `"bot"` branch are left in place but
+are unreachable in the full activity; deleting them is a separate decision.
 
 ### Which stages have a coach
 ```js
@@ -403,7 +469,8 @@ executable. The scripted coach's opening reads the vision back deterministically
 survives reload; regenerating requires an explicit two-press confirm on `#bw-regen-v2`.
 
 `answerQuality()` marks thin answers so the artifact is honest about what it is missing
-rather than looking equally finished either way.
+rather than looking equally finished either way. Deploy can still say a section is weak; what
+it can no longer do is open with a section nobody was ever asked about.
 
 ---
 
@@ -483,6 +550,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `envision-stage.test.mjs` | 53 | Stage 3 end to end: reading→form, what counts as an answer, where it is stored, the carry into Refine's coach and Deploy's prompt, and the v2→v3 upgrade |
+| `refine-stage.test.mjs` | 54 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
@@ -570,7 +638,9 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 - The coach phase as a mode inside the stage.
 - Stage 1: lesson screen (real copy, supplied by the user) → coach → handoff.
 - Stage 2: two lesson pages → the workflow builder. Stage 3: lesson → the two-field vision.
-- Stage 4's coach, V2 capture, stage 5's artifact. V1 still generated, shown nowhere.
+- Stage 4: four required decisions, settled through the coach and owned by the app, with
+  the same progression whether the coach is scripted or live. Stage 5's artifact.
+  V1 still generated, shown nowhere.
 - Version 3 saves, with a v2 upgrade that keeps the work and re-earns the ticks.
 
 ### The journey, as built
@@ -656,24 +726,29 @@ coupling.
    `test/helpers.mjs`, which clicks through to the end of the reading rather than
    counting Continues — so adding a page to a lesson does not break them.
 
-3. **Map's coach.** The `workflow` and `tools` capture scripts exist and `STAGES` has
+3. **Refine's copy is Claude-drafted, not authored.** The four questions come from the
+   user's own brief and should not be reworded without asking, but the acknowledgements
+   between them (`DECISION_ACK`), the recap and the push-back lines were written in the
+   build session. They are the next thing to hand over to the user.
+
+4. **Map's coach.** The `workflow` and `tools` capture scripts exist and `STAGES` has
    entries for them, but Map is **not** in `STAGE_COACH` and there is no combined
    workflow-then-tools script for a single conversation. Map captures through its form
    today. This is the main unfinished piece of the coach story, and it is now a question of
    whether it is wanted rather than a gap: the form works.
 
-4. **Deploy has no coach and probably needs none.** `STAGE_CONVO` maps it to `deploy` and
+5. **Deploy has no coach and probably needs none.** `STAGE_CONVO` maps it to `deploy` and
    `STAGES` has an entry, but stage 5 is an artifact to read, edit and copy. Ask before
    adding a conversation to it. Envision deliberately has none — that was a product
    decision, not an omission.
 
-5. **Three unused coaching-card types** (`example`, `refinement`, and the specificity
+6. **Three unused coaching-card types** (`example`, `refinement`, and the specificity
    checklist) render correctly from the typed shape, but nothing emits them.
 
-6. **Chat scroll behaviour.** The chat-interface pack asks for "don't fight a learner who
+7. **Chat scroll behaviour.** The chat-interface pack asks for "don't fight a learner who
    has scrolled up." Not implemented — `scrollChat()` always scrolls to the bottom.
 
-7. **`STAGE_EXAMPLES[1]` has no screen to render on.** Those three starter examples were
+8. **`STAGE_EXAMPLES[1]` has no screen to render on.** Those three starter examples were
    written for stage 1's textarea, which is gone. The machinery still works for any panel
    stage. Left in place deliberately rather than deleted or relocated — it is the user's
    copy.

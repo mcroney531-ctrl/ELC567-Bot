@@ -104,6 +104,62 @@
     standards:  { answers: ["output", "keep"],                                minTurns: 2 },
     guardrails: { answers: ["context", "notes"],                              minTurns: 1 }
   };
+  /* Refine's contract, in one place.
+
+     The order here is the order the coach asks in, the order the rail lists,
+     and the order the gate fills. Nothing else may carry a second copy of it:
+     the scripted turns are built from this list, the rail items are built from
+     this list, and stepValid(4) reads this list. A live coach is told which
+     entry is current rather than being trusted to walk them itself.
+
+     `ask` is the question, shared by the scripted coach and the instruction a
+     live model is given, so the two cannot drift into asking different things.
+     `label` is what the learner sees on the rail before the conversation
+     reaches it - naming the four up front is deliberate. */
+  var REFINE_DECISIONS = [
+    { key: "handoff", label: "What AI handles",
+      ask: "Looking at the steps you mapped, which parts should AI take on or share with you?" },
+    { key: "keep", label: "What stays yours",
+      ask: "Now draw the line around what stays yours. What should AI not take over \u2014 " +
+           "where do you still need your judgment, approval, relationship context, or final say?" },
+    { key: "output", label: "What good looks like",
+      ask: "Now set the bar. When AI finishes its part, what would a result look like that " +
+           "you'd actually use? Think format, length, tone, structure, and level of polish." },
+    { key: "context", label: "What AI needs to know",
+      ask: "Last piece. What does AI need to know or follow every time? Think rules, " +
+           "source-of-truth details, naming conventions, exceptions, and anything it must " +
+           "never invent.",
+      /* Asked with the question, not after the answer: the learner's own tools
+         are the likeliest source of a rule a newcomer would not guess, and it
+         is no use as an afterthought once the decision is settled. */
+      hint: function () {
+        return workflowData.toolsAll.length
+          ? "Anything about how " + toolsAsList() + " is set up that a newcomer wouldn't guess " +
+            "counts here too."
+          : "";
+      } }
+  ];
+
+  /* The full journey's Refine stage is the conversation these decisions govern.
+     A /role/ slice runs one of the older split scripts, which ask in their own
+     order and own only part of the set, so they keep the turn-count rule. */
+  function refineGoverned() { return TIMELINE; }
+
+  /* Decided means accepted, not merely typed. A first thin answer is stored -
+     in case the learner stops there - but it is still being challenged, so it
+     does not count. The second answer is accepted whatever it says, and earns
+     [NEEDS DETAIL] instead of another question. Coverage, not perfection. */
+  function decided(key) { return !!workflowData.decided[key]; }
+
+  function undecidedDecisions() {
+    return REFINE_DECISIONS.filter(function (d) { return !decided(d.key); });
+  }
+
+  /* The one the coach is on: first in the list that has not been accepted. */
+  function currentDecision() { return undecidedDecisions()[0] || null; }
+
+  function refineComplete() { return undecidedDecisions().length === 0; }
+
   var ownsActions = function () { return STAGE && STAGES[STAGE].owns === "actions"; };
   var ownsTools = function () { return STAGE && STAGES[STAGE].owns === "tools"; };
 
@@ -157,48 +213,44 @@
      lets Step 5 lift the refined prompt back out of the conversation. */
   var BOT_SYSTEM_PROMPT = [
     "You are a workflow coach helping a working professional prepare one repetitive task for AI integration.",
-    "They have already described their problem and mapped their workflow; that context follows this message.",
+    "They have already described their problem, mapped their workflow, and decided what a better version of it",
+    "would look like. All of that context follows this message.",
     "",
-    "Your job: help them decide which steps an AI should take over, which stay with them, and what a good",
-    "output actually looks like \u2014 then turn that into a specific prompt they can paste into Claude or ChatGPT.",
+    "Your job: turn their stated future state into an operating agreement, by settling four decisions with them.",
+    "",
+    "The four decisions, in this order:",
+    "1. WHAT AI HANDLES  - which of their mapped steps AI takes on or shares.",
+    "2. WHAT STAYS THEIRS - the judgment, approval, relationships or final say they keep.",
+    "3. WHAT GOOD LOOKS LIKE - format, length, tone, structure, level of polish.",
+    "4. WHAT AI NEEDS TO KNOW - rules, sources of truth, naming, exceptions, what it must never invent.",
+    "",
+    "The activity tells you which decision is current before each of your replies, and records the learner's",
+    "answers itself. Ask about the current decision and nothing else. Do not skip ahead, do not bundle two",
+    "decisions into one question, and do not decide on their behalf that a decision is settled - the activity",
+    "does that.",
     "",
     "How to work:",
-    "- Ask ONE clarifying question at a time. Keep replies under 120 words.",
-    "- Push on vague answers once before accepting them. \"Make it faster\", \"sounds professional\"",
-    "  and \"just make it good\" are not specifications. Name the specific thing that would make the",
-    "  answer usable - a length, a shape, a rule, something it must never do - rather than asking",
-    "  them to be more specific in the abstract. If their second answer is still vague, accept it and",
-    "  mark that section [NEEDS DETAIL - too vague to act on yet] in the final block rather than",
-    "  writing a prompt that looks finished when it is not.",
-    "- Read their answers against each other. If they offer to hand over everything and then carve",
-    "  out a judgment call, say so, and write the exception into the prompt explicitly. Never leave",
-    "  two instructions that contradict each other on the highest-stakes part of their job.",
-    "- Write the finished prompt in instruction voice, not as a transcript of what they told you.",
-    "  \"It eats an hour and a half\" is a complaint; \"Rebuild the twelve account slides from the",
-    "  exported numbers\" is an instruction.",
+    "- Ask ONE question at a time, about the current decision. Keep replies under 120 words.",
+    "- Push on a vague answer once before accepting it. \"Make it faster\", \"sounds professional\" and",
+    "  \"just make it good\" are not specifications. Name the specific thing that would make the answer",
+    "  usable - a length, a shape, a rule, something it must never do - rather than asking them to be",
+    "  more specific in the abstract. The activity tells you when it has already pushed back once; when",
+    "  it has, take the second answer as it stands, say plainly that you are marking it as needing detail,",
+    "  and move on rather than asking a third time.",
+    "- Work from the outcome and AI role they already wrote. Do not propose a different vision.",
+    "- Read their answers against each other. If they offer to hand over everything and then carve out a",
+    "  judgment call, say so, and make the exception explicit. Never leave two instructions that contradict",
+    "  each other on the highest-stakes part of their job.",
     "- Reference their actual steps and tools by name. Never invent details they did not give you.",
-    "- Cover four things before you finish: (1) which steps the AI takes over, (2) what a great output",
-    "  looks like \u2014 format, length, tone, (3) what must stay in their hands, (4) rules and context the",
-    "  AI needs, including what it must never invent.",
     "",
-    "Once you have all four, reply with a short summary and then the finished prompt inside a fenced",
-    "block tagged master-prompt, exactly like this:",
+    "Do NOT write out, quote, preview or otherwise show the finished master prompt during this conversation,",
+    "in a fenced block or any other way. The learner sees their prompt for the first time in a later stage,",
+    "and the activity assembles it from the four decisions itself. A prompt shown here is stripped out before",
+    "the learner reads your reply, so it only costs them an answer.",
     "",
-    "```master-prompt",
-    "## CONTEXT",
-    "...",
-    "## WHAT I NEED YOU TO DO",
-    "...",
-    "## WHAT STAYS WITH ME",
-    "...",
-    "## OUTPUT I EXPECT",
-    "...",
-    "## THINGS YOU NEED TO KNOW",
-    "...",
-    "```",
-    "",
-    "Write that block in the learner's first person voice. If they ask for changes afterwards, reply with",
-    "a corrected master-prompt block the same way."
+    "When the activity tells you all four decisions are settled, do not ask another question.",
+    "Give a short recap naming the four - the job, the boundary, the standard, the rules - and tell",
+    "them to continue to the Deploy stage to review the finished prompt."
   ].join("\n");
 
   /* ==========================================================================
@@ -207,7 +259,7 @@
 
   function defaultData() {
     return {
-      version: 3,
+      version: 4,
       problem: "",
       steps: [{ action: "", tools: "" }, { action: "", tools: "" }],
       toolsAll: [],
@@ -227,6 +279,11 @@
       botAnswers: { handoff: "", output: "", keep: "", context: "", notes: [] },
       // one pushback per question, so a vague learner isn't trapped in a loop
       pushedBack: {},
+      /* Which of Refine's four decisions have been accepted. Separate from
+         botAnswers because a stored answer and a settled one are different
+         states: the first thin attempt is written down while the coach is
+         still challenging it. */
+      decided: {},
       progress: { current: 1, unlocked: 1, done: {}, entered: {} }
     };
   }
@@ -244,7 +301,8 @@
       var saved = JSON.parse(raw);
       if (!saved || typeof saved !== "object") return null;
       if (saved.version === 2) { saved = migrateV2(saved); migrated = true; }
-      if (!saved || saved.version !== 3) return null;
+      if (saved && saved.version === 3) { saved = migrateV3(saved); migrated = true; }
+      if (!saved || saved.version !== 4) return null;
       var fresh = defaultData();
       Object.keys(fresh).forEach(function (k) {
         if (saved[k] !== undefined && saved[k] !== null) fresh[k] = saved[k];
@@ -260,6 +318,7 @@
       if (!fresh.botAnswers || typeof fresh.botAnswers !== "object") fresh.botAnswers = blank.botAnswers;
       if (!Array.isArray(fresh.botAnswers.notes)) fresh.botAnswers.notes = [];
       if (!fresh.pushedBack || typeof fresh.pushedBack !== "object") fresh.pushedBack = {};
+      if (!fresh.decided || typeof fresh.decided !== "object") fresh.decided = {};
       if (!fresh.progress || typeof fresh.progress !== "object") fresh.progress = defaultData().progress;
       if (!fresh.progress.done || typeof fresh.progress.done !== "object") fresh.progress.done = {};
       // Saves written before the four-state map have no `entered`. Treat what
@@ -334,7 +393,28 @@
     return next;
   }
 
-  var migrated = false;   // set by readStored() when it upgrades a v2 payload
+  /* v3 saves predate Refine's decision set: they recorded the coach's answers
+     but not whether each one had been settled or was still being challenged.
+     Derive it rather than re-asking questions the learner already answered.
+
+     An answer that is not thin was accepted the moment it arrived. A thin one
+     that has already drawn its push-back is what the accept rule leaves behind,
+     so it counts too. The only state this misreads is the single turn between
+     a push-back and the reply to it - and the coach is still showing that
+     question, so the learner answers it and the record corrects itself. */
+  function migrateV3(old) {
+    var next = old;
+    next.decided = {};
+    ["handoff", "keep", "output", "context"].forEach(function (k) {
+      var text = String((next.botAnswers || {})[k] || "").trim();
+      if (!text) return;
+      if (!answerQuality(text).thin || (next.pushedBack || {})[k]) next.decided[k] = true;
+    });
+    next.version = 4;
+    return next;
+  }
+
+  var migrated = false;   // set by readStored() when it upgrades an older payload
 
   function load() {
     var stored = readStored();
@@ -385,10 +465,13 @@
       base.conversations[STAGE] = workflowData.conversations[STAGE];
       base.mockProgress[STAGE] = workflowData.mockProgress[STAGE];
       base.pushedBack = base.pushedBack || {};
+      base.decided = base.decided || {};
       STAGES[STAGE].answers.forEach(function (k) {
         base.botAnswers[k] = workflowData.botAnswers[k];
         if (workflowData.pushedBack[k]) base.pushedBack[k] = true;
         else delete base.pushedBack[k];
+        if (workflowData.decided[k]) base.decided[k] = true;
+        else delete base.decided[k];
       });
 
       // These stages have no answer key, so their one flag rides on the stage name.
@@ -471,6 +554,8 @@
         workflowData.botAnswers[ak] = stored.botAnswers[ak];
         if ((stored.pushedBack || {})[ak]) workflowData.pushedBack[ak] = true;
         else delete workflowData.pushedBack[ak];
+        if ((stored.decided || {})[ak]) workflowData.decided[ak] = true;
+        else delete workflowData.decided[ak];
       }
     });
     var mine = workflowData.progress.done;
@@ -644,6 +729,13 @@
 
   function toolsAsList() {
     return workflowData.toolsAll.length ? workflowData.toolsAll.join(", ") : "(none listed)";
+  }
+
+  /* "a, b and c" - for telling a learner what is still outstanding without it
+     reading like a machine reciting a list. */
+  function listPhrase(items) {
+    if (items.length <= 1) return items[0] || "";
+    return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
   }
 
   /* ==========================================================================
@@ -1246,6 +1338,20 @@
     return out.join("\n").replace(/\n{3,}/g, "\n\n");
   }
 
+  /* Take any fenced block out of a reply the learner is about to read.
+
+     "No prompt before Deploy" is a product rule, and an instruction in a system
+     prompt is a request, not enforcement: a live model can ignore it, and a
+     learner would then read their finished prompt two stages early. Refine's
+     replies are run through this, so the rule holds whoever is answering. What
+     the block contained is not lost - Deploy assembles the prompt from the four
+     decisions, which is where it comes from now. */
+  function stripPromptBlock(text) {
+    var out = String(text || "").replace(/```[ \t]*[A-Za-z-]*[ \t]*\r?\n[\s\S]*?```/g, "");
+    out = out.replace(/\n{3,}/g, "\n\n").trim();
+    return out || "That's noted.";
+  }
+
   /* Pull a ```master-prompt fenced block out of coach text. Tagged blocks win;
      an untagged block is accepted only if it looks like a prompt. */
   function parseMasterPrompt(text) {
@@ -1416,11 +1522,15 @@
     var outcome = String(workflowData.idealOutcome).trim();
     var role = String(workflowData.aiRole).trim();
 
+    /* Excerpts, not the whole field. Both Envision answers can run to 600
+       characters each, and an opening that repeated 1,200 of them back would
+       bury the question. The coach still receives them in full, invisibly,
+       through contextInjection(). */
     var vision = outcome
-      ? ["Here's the version you want: \u201c" + shortQuote(outcome, 26) + "\u201d",
-         role ? "With AI: \u201c" + shortQuote(role, 22) + "\u201d" : "",
+      ? ["You've already defined the version you want: \u201c" + shortQuote(outcome, 24) + "\u201d",
+         role ? "And you see AI's role as: \u201c" + shortQuote(role, 20) + "\u201d" : "",
          "",
-         "Let's work out exactly what that means in practice."].filter(Boolean)
+         "Now let's make that concrete."].filter(Boolean)
       : ["Before we write anything, I need to know where the weight is."];
 
     return [
@@ -1433,80 +1543,107 @@
       ""
     ].concat(vision).concat([
       "",
-      "**Which of those steps would you hand over first, and what makes that one the drain?** " +
-      "Give me the number and a sentence."
+      askFor(REFINE_DECISIONS[0])
     ]).join("\n");
   }
 
-  /* The scripted coach's turns inside one conversation. "Turn" rather than
-     "stage" on purpose: these are steps through Refine's chat, not stations on
-     the journey, and the two numbering schemes used to read as one. */
-  var MOCK_STAGES = [
-    // turn 1 - after they answer "which step"
-    {
-      capture: "handoff",
-      reply: function (answer) {
-        return [
-          "Got it: " + shortQuote(answer, 18),
-          "",
-          "That's the right instinct \u2014 the steps that repeat with different names in them are exactly " +
-          "what an AI absorbs well.",
-          "",
-          "Now the part most people skip. **Picture the finished output you'd actually be happy to use. " +
-          "What does it look like?** Format, length, tone. \"A good summary\" isn't a spec \u2014 " +
-          "\"four short paragraphs, no bullets, under 200 words, direct\" is."
-        ].join("\n");
-      }
+  /* What the coach says when it takes a decision down. The question that
+     follows comes from the next entry in REFINE_DECISIONS, so this is only the
+     acknowledgement - the order lives in one place and this cannot reorder it. */
+  var DECISION_ACK = {
+    handoff: function (answer) {
+      return "Got it: " + shortQuote(answer, 18) + "\n\nThat's the right instinct \u2014 the steps " +
+        "that repeat with different names in them are exactly what an AI absorbs well. That goes " +
+        "into the prompt as the job.";
     },
-    // turn 2 - after they describe the output
-    {
-      capture: "output",
-      reply: function (answer) {
-        return [
-          "That I can work with.",
-          "",
-          "Here's the question that separates a useful prompt from a risky one. **What are you NOT " +
-          "handing over?** The judgment call, the relationship, the number you'd want to check yourself, " +
-          "the sentence your reader actually cares about.",
-          "",
-          "Name it plainly. We'll write it into the prompt as off-limits."
-        ].join("\n");
-      }
+    keep: function (answer) {
+      return "Good \u2014 " + shortQuote(answer, 14) + " stays yours, and the prompt will say so " +
+        "outright rather than leaving it to be assumed.";
     },
-    // turn 3 - after they name what stays theirs
-    {
-      capture: "keep",
-      reply: function (answer) {
-        var toolLine = workflowData.toolsAll.length
-          ? " You mentioned " + toolsAsList() + " \u2014 say anything about how those are set up that a newcomer wouldn't guess."
-          : "";
-        return [
-          "Good. That stays yours, and the prompt will say so explicitly.",
-          "",
-          "Last one. **What context would a sharp new hire need on day one that isn't obvious from the " +
-          "steps?** House rules, naming conventions, things that must never be invented, where the real " +
-          "numbers live." + toolLine
-        ].join("\n");
-      }
+    output: function () {
+      return "That I can work with. A standard someone else could check the work against is worth " +
+        "more than a good intention.";
     },
-    // turn 4 - after they give context: emit the prompt
-    {
-      capture: "context",
-      reply: function () {
-        return [
-          "That's everything I need. Here's your master prompt \u2014 your workflow, your standards, and a " +
-          "clear line around what stays with you.",
-          "",
-          "```master-prompt",
-          generateMasterPromptV2(workflowData),
-          "```",
-          "",
-          "Read it once. If a line isn't true, tell me what to change and I'll rewrite it \u2014 otherwise " +
-          "move on to Step 5, where you can edit it directly and copy it out."
-        ].join("\n");
-      }
+    context: function () {
+      return "Noted \u2014 that's the part a prompt can't guess on its own.";
     }
-  ];
+  };
+
+  /* Said instead of the acknowledgement when an answer is accepted on the
+     second pass and is still thin. Praising it would contradict the
+     [NEEDS DETAIL] mark it is about to earn. */
+  var THIN_ACCEPT =
+    "Noted \u2014 I'll write that down as it is. I'm going to mark it as needing detail though, " +
+    "so the finished prompt doesn't look more settled than it really is.";
+
+  /* The recap that closes Refine. Deliberately not the prompt: Deploy is the
+     first place the learner sees one, and that rule is the product's, not a
+     preference of whichever coach happens to be answering. */
+  function refineRecap() {
+    return [
+      "You've defined the job, the boundary, the standard, and the rules.",
+      "",
+      "Continue to Deploy to review the finished prompt."
+    ].join("\n");
+  }
+
+  /* The question as it is put: the decision's own wording, plus whatever its
+     hint adds from the learner's work. One function, so the scripted coach and
+     the live instruction cannot end up asking differently worded questions. */
+  function askText(d) {
+    var hint = d.hint ? d.hint() : "";
+    return d.ask + (hint ? " " + hint : "");
+  }
+
+  function askFor(d) { return "**" + askText(d) + "**"; }
+
+  /* ---- the decision state machine, shared by both coaches ----
+
+     This runs on the learner's message, before any reply exists, so the same
+     push-once/accept rule governs the scripted coach and a live one. A live
+     model phrases, reflects and challenges; it never gets to decide which
+     required field was satisfied, because it is not the thing writing them
+     down. Without this the live path captured nothing at all, and a coverage
+     gate would have trapped a live learner forever. */
+  var lastDecision = null;   // what the most recent message did, for the reply
+
+  function captureDecision(text) {
+    var d = currentDecision();
+    var answer = String(text || "").trim();
+    if (!d) { lastDecision = { key: null, action: "extra", answer: answer }; return lastDecision; }
+
+    var thin = answerQuality(answer).thin;
+    if (thin && !workflowData.pushedBack[d.key]) {
+      // Keep it in case they stop here, but do not call it settled: this is the
+      // one push-back, and the decision stays open until they answer again.
+      workflowData.pushedBack[d.key] = true;
+      workflowData.botAnswers[d.key] = answer;
+      lastDecision = { key: d.key, action: "push", thin: true };
+      return lastDecision;
+    }
+    workflowData.botAnswers[d.key] = answer;
+    workflowData.decided[d.key] = true;
+    lastDecision = { key: d.key, action: "accept", thin: thin, answer: answer };
+    return lastDecision;
+  }
+
+  /* The scripted coach's reply, read off what the capture just did. */
+  function refineReply() {
+    var r = lastDecision;
+    if (!r) return refineRecap();
+    if (r.action === "extra") {
+      // Every decision is in. Anything further is a refinement of one of them.
+      if (r.answer) workflowData.botAnswers.notes.push(r.answer);
+      return "Folded that in: " + shortQuote(r.answer, 16) + "\n\n" + refineRecap();
+    }
+    if (r.action === "push") return PUSHBACKS[r.key] || PUSHBACKS._default;
+
+    var ack = r.thin
+      ? THIN_ACCEPT
+      : (DECISION_ACK[r.key] ? DECISION_ACK[r.key](r.answer) : "Noted.");
+    var next = currentDecision();
+    return next ? ack + "\n\n" + askFor(next) : ack + "\n\n" + refineRecap();
+  }
 
   /* Splitting the coach across blocks means several short conversations rather
      than one long one. Each stage opens on its own topic, captures its own
@@ -1518,14 +1655,13 @@
     return String((workflowData.botAnswers || {})[key] || "").trim();
   }
 
+  /* Folds an afterthought into the context notes. It does not show the prompt:
+     the learner sees one for the first time in Deploy, and a coach that printed
+     it here would make that rule a suggestion. */
   function foldNote(note, tail) {
     if (note) workflowData.botAnswers.notes.push(note);
     return [
       "Folded that in: " + shortQuote(note, 16),
-      "",
-      "```master-prompt",
-      generateMasterPromptV2(workflowData),
-      "```",
       "",
       tail
     ].join("\n");
@@ -1591,9 +1727,12 @@
       extra: function () { return captureCoachReply(); }
     },
 
-    // The single-block layout: one conversation covering all four questions.
-    all: { opening: mockOpening, turns: MOCK_STAGES,
-           extra: function (note) { return foldNote(note, "Keep going if anything else is off, or take it to Step 5."); } },
+    /* Refine. The turn list is empty on purpose: this conversation is driven by
+       REFINE_DECISIONS through captureDecision()/refineReply(), so that the
+       scripted coach and a live one walk the same four decisions in the same
+       order and write the same state. */
+    all: { opening: mockOpening, turns: [], decisions: true,
+           extra: function () { return refineReply(); } },
 
     handoff: {
       opening: mockOpening,   // same framing: their problem, their steps, one question
@@ -1695,15 +1834,10 @@
         ackParas: 1,
         reply: function () {
           return [
-            "That's everything. Here's your master prompt \u2014 your workflow, your standards, and a " +
-            "clear line around what stays with you.",
+            "That's everything \u2014 the job, the boundary, the standard, and the rules.",
             "",
-            "```master-prompt",
-            generateMasterPromptV2(workflowData),
-            "```",
-            "",
-            "Read it once. If a line isn't true, tell me what to change and I'll rewrite it \u2014 " +
-            "otherwise take it to the final section below and copy it out."
+            "Your prompt is assembled from those four in the final section below. Take it there " +
+            "to read it, change anything that isn't true, and copy it out."
           ].join("\n");
         }
       }],
@@ -1732,8 +1866,6 @@
     _default: "Give me a little more to work with \u2014 a specific, not a feeling."
   };
 
-  // The single-block script opens the same way, so its first turn praises twice too.
-  if (MOCK_STAGES[0]) MOCK_STAGES[0].ackParas = 2;
 
   function activeScript() { return SCRIPTS[sKey()] || SCRIPTS.all; }
 
@@ -1744,6 +1876,9 @@
     if (ownsProblem()) return identifyCoachReply();
 
     var script = activeScript();
+    /* Refine's answer was taken down by captureDecision() before this ran, so
+       the reply is read off that rather than capturing a second time. */
+    if (script.decisions) return refineReply();
     var i = workflowData.mockProgress[sKey()] || 0;
 
     if (i < script.turns.length) {
@@ -2048,7 +2183,14 @@
       // thin-answer heuristic the coach uses decides "says something", so a
       // learner is not held to an arbitrary character count.
       case 3: return visionOK("idealOutcome") && visionOK("aiRole");
-      case 4: return userTurns() >= turnsNeeded();
+      /* Refine is done when all four decisions have been accepted, not when
+         enough messages have been sent. A turn count let a learner take the
+         handoff with two of the four sections never asked about, and Deploy
+         then opened on a prompt with whole sections in brackets. Coverage is
+         the promise; the thin-answer rule is what keeps it from becoming a
+         demand for perfect answers. A slice runs one of the older split
+         scripts and owns only part of the set, so it keeps the turn count. */
+      case 4: return refineGoverned() ? refineComplete() : userTurns() >= turnsNeeded();
       default: return true;
     }
   }
@@ -2080,6 +2222,15 @@
         return "Describe the role you want AI to play in getting you there. The level of " +
                "\"draft the routine parts\" is enough; the details come next.";
       case 4:
+        /* Name what is actually missing. Under a turn count "answer two more
+           questions" was true; under coverage it would be nonsense to someone
+           who has answered ten and still has a decision open. */
+        if (refineGoverned()) {
+          var left = undecidedDecisions().map(function (d) { return d.label.toLowerCase(); });
+          if (!left.length) return "";
+          return "Still to settle with the coach: " + listPhrase(left) + ". " +
+            "Those four decisions are what make the final prompt yours rather than generic.";
+        }
         return turnsNeeded() === 1
           ? "Answer the coach's question first \u2014 that answer is what makes the final prompt yours."
           : "Answer at least " + turnsNeeded() + " of the coach's questions first \u2014 that " +
@@ -2391,7 +2542,36 @@
       "Work from their stated outcome and AI role. Do not propose a different vision - " +
       "help them turn that one into specifics: what AI actually takes over, what stays " +
       "theirs, what a good result looks like, and what it needs to know."
-    ].join("\n");
+    ].concat(coachingState()).join("\n");
+  }
+
+  /* What the application has decided, handed to a live coach every turn.
+
+     This is how the app stays the thing that owns the progression: the model is
+     told which decision is open and whether this one has already been pushed
+     back on, rather than being trusted to keep four topics and the app's state
+     in step by itself. It rides inside the context payload, so the endpoint's
+     wire contract is unchanged. */
+  function coachingState() {
+    if (!refineGoverned()) return [];
+    var settled = REFINE_DECISIONS.filter(function (d) { return decided(d.key); });
+    var current = currentDecision();
+    var out = ["", "--- where this conversation is up to ---"];
+    out.push(settled.length
+      ? "Settled so far: " + settled.map(function (d) { return d.label; }).join("; ") + "."
+      : "Nothing is settled yet.");
+    if (!current) {
+      out.push("All four decisions are settled. Do not ask another question: give a short recap and " +
+        "send them on to the Deploy stage.");
+      return out;
+    }
+    out.push("Current decision: " + current.label.toUpperCase() + ".");
+    out.push("Ask about this and nothing else. The question to put to them is: " + askText(current));
+    if (workflowData.pushedBack[current.key]) {
+      out.push("You have already pushed back once on this one. Take their next answer as it stands, " +
+        "say you are marking it as needing detail if it is still vague, and move on.");
+    }
+    return out;
   }
 
   /* Wire format includes a hidden priming turn; it is never shown in the log. */
@@ -2559,7 +2739,11 @@
       lastUserText: lastUserText
     }).then(function (reply) {
       setChatBusy(false);
-      appendMessage("bot", reply);
+      /* Refine must not show a prompt, whoever wrote the reply. The scripted
+         coach no longer emits one; this is what makes that true of a live one
+         as well. */
+      appendMessage("bot", refineGoverned() && activeScript().decisions
+        ? stripPromptBlock(reply) : reply);
       if (workflowData.v2Source !== "user") refreshV2(false);
       if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
       if (isCaptureChat) render();
@@ -2635,6 +2819,16 @@
       renderPromptV1();
       render();
     }
+    /* Refine's four decisions are written down here, before any coach replies,
+       so a live model and the scripted one produce the same state. Do it before
+       the round trip for the same reason the capture chats do: a live coach
+       writes better words than the script, but it cannot be the thing that
+       decides which required field was satisfied. */
+    if (refineGoverned() && activeScript().decisions) {
+      captureDecision(text);
+      render();
+      if (stepValid(4)) showWarning(4, "");
+    }
     appendMessage("user", text);
     if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
     save();
@@ -2687,8 +2881,16 @@
       delete workflowData.pushedBack[key];
       // Only the answers this conversation is responsible for; others stay put.
       var blankAnswers = defaultData().botAnswers;
+      /* Clear the decisions this conversation took down, and the record of
+         having already pushed back on them - otherwise a restarted Refine would
+         still read as covered, and a thin answer the second time round would be
+         accepted without ever being challenged. (pushedBack is keyed by answer
+         for these, which is why deleting the conversation's own key above is
+         not enough.) */
       sMeta().answers.forEach(function (k) {
         workflowData.botAnswers[k] = blankAnswers[k];
+        delete workflowData.pushedBack[k];
+        delete workflowData.decided[k];
       });
       if (ownsProblem()) {
         // This conversation is how the problem statement got written, so
@@ -2757,7 +2959,12 @@
     if (workflowData.v2Source === "bot") {
       note = "Lifted straight from your conversation with the coach. Change anything that isn't true \u2014 you know the job, it doesn't.";
     } else if (workflowData.v2Source === "template") {
-      note = "The coach didn't hand back a finished version, so this is assembled from your own answers. Fill in anything still in [brackets] before you use it.";
+      /* Assembly is the normal path now, not a fallback: Refine settles four
+         decisions and this is built from them, which is why the note explains
+         where it came from rather than apologising for the coach. */
+      note = "Assembled from the four decisions you settled with the coach \u2014 what AI handles, " +
+        "what stays yours, what good looks like, and what it needs to know. Change anything that " +
+        "isn't true, and fill in anything still in [brackets] before you use it.";
     }
     if (note) { el.v2Source.textContent = note; el.v2Source.hidden = false; }
     else { el.v2Source.hidden = true; }
@@ -3890,6 +4097,18 @@
       done: function () { return !!workflowData.progress.done[workflowData.progress.current]; } }
   ];
 
+  /* Refine's rail is the four decisions themselves, named before the
+     conversation reaches them. Showing the shape of the conversation up front
+     is the point: the learner can see what is left, and what the gate is
+     waiting for is never a mystery. Built from REFINE_DECISIONS so the rail
+     and the gate cannot come to disagree. */
+  function coachSteps(n) {
+    if (n !== 4 || !refineGoverned()) return COACH_STEPS;
+    return REFINE_DECISIONS.map(function (d) {
+      return { label: d.label, done: function () { return decided(d.key); } };
+    });
+  }
+
   var phase = "lesson";
 
   function stageHasCoach(n) { return !!STAGE_COACH[n]; }
@@ -3937,7 +4156,7 @@
     var list = document.getElementById("bw-focus-steps");
     if (!list) return;
     list.textContent = "";
-    COACH_STEPS.forEach(function (item, i) {
+    coachSteps(n).forEach(function (item, i) {
       var li = document.createElement("li");
       li.className = "bw-focus-step";
       li.setAttribute("role", "listitem");
@@ -4179,17 +4398,6 @@
     workflowData.mockProgress[key] = texts.length;
   }
 
-  /* One coach message carrying the finished prompt, so stage 5 shows the
-     "lifted from the coach" path rather than the template fallback. */
-  function adminSeedPromptBlock() {
-    var log = workflowData.conversations.all;
-    if (!log || !log.length) return;
-    if (latestBotPrompt()) return;
-    log.push({ role: "bot", at: timeLabel(), text:
-      "Here is your master prompt.\n\n```master-prompt\n" +
-      generateMasterPromptV2(workflowData) + "\n```" });
-  }
-
   /* What each stage produces, written the way that stage writes it. */
   function adminFillStage(n) {
     if (n === 1) {
@@ -4214,8 +4422,13 @@
     } else if (n === 4) {
       var a = ADMIN_SAMPLE.answers;
       Object.keys(a).forEach(function (k) { workflowData.botAnswers[k] = a[k]; });
+      /* Settle the four decisions the way answering the coach would. Filling
+         botAnswers alone would leave a state the real flow cannot produce: the
+         answers written down but the stage still open. */
+      REFINE_DECISIONS.forEach(function (d) {
+        if (String(workflowData.botAnswers[d.key] || "").trim()) workflowData.decided[d.key] = true;
+      });
       adminSeedConvo("all", ADMIN_SAMPLE.turns.all);
-      adminSeedPromptBlock();
     } else if (n === lastStage()) {
       refreshV2(true);
     }

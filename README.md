@@ -12,11 +12,13 @@ activity's specific framing.
 | 1 | **Identify** — naming a problem worth solving | Name the task that keeps eating your week |
 | 2 | **Map** — breaking a process into its real steps | Read what a step actually contains, then write the workflow down with the tool each step happens in |
 | 3 | **Envision** — deciding what better looks like | Describe the outcome you want, then the part you'd want AI to play in reaching it |
-| 4 | **Refine** — sharpening vague ideas into specifics | A conversation with a coach, working from that outcome |
+| 4 | **Refine** — sharpening vague ideas into specifics | A coach walks four decisions: what AI handles, what stays yours, what good looks like, what AI needs to know |
 | 5 | **Deploy** — translating thinking into action | Edit and copy the finished master prompt |
 
-The learner sees no prompt before Deploy. A draft is still generated on every change — it is what
-the coach reasons over — but the screen that used to show it mid-journey is retired.
+The learner sees no prompt before Deploy, and that is enforced rather than requested: no coach
+prints one, and any prompt a live model returns during Refine is stripped before the reply is
+shown. A draft is still generated on every change — it is what feeds the finished prompt — but
+the screen that used to show it mid-journey is retired.
 
 > **Status.** Originally an Articulate Rise custom block split across nine pasteable files. That
 > delivery is retired. The navigation is now a journey map; the artwork and card styling on it are
@@ -351,7 +353,7 @@ Everything tunable sits in one `CONFIG` block at the top of the `<script>`:
 | `storageKey` | `"brainstorm_workflow_data"` | localStorage key. Change the suffix to invalidate saved data after a breaking edit. |
 | `minProblemChars` | `25` | Characters Step 1 needs before Step 2 unlocks. A floor, not a cap. |
 | `minWorkflowSteps` | `2` | Complete cards (action **and** tool) Step 2 needs. Also the floor for the remove button. |
-| `minChatTurns` | `2` | Learner replies Step 4 needs before Step 5 unlocks. |
+| `minChatTurns` | `2` | Learner replies a coaching slice needs. Step 4 in the full journey is gated on its four decisions, not on a turn count. |
 | `blockRole` | `"all"` | Which slice to render. `"all"` is the whole activity and is what ships; see **Slices** above. |
 | `syncPollMs` | `1200` | How often a slice re-checks storage for another slice's work. Unused when `blockRole` is `"all"`. |
 | `followSystemDarkMode` | `false` | Off on purpose: the activity is light, and following the learner's OS dark mode drops a dark panel into a white page. |
@@ -396,6 +398,7 @@ flushed on unload so a reload can't drop the last edit):
   steps: [{ action: "", tools: "" }],  // Step 2
   toolsAll: [],                     // derived from steps, de-duplicated case-insensitively
   idealOutcome: "", aiRole: "",     // Step 3, in the learner's own words
+  decided: {},                      // which of Step 4's four decisions are settled
   masterPromptV1: "",               // regenerated from problem + steps on every keystroke
   masterPromptV2: "",               // the deliverable
   v2Source: "",                     // "bot" | "template" | "user"

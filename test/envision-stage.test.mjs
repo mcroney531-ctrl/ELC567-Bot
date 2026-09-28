@@ -153,7 +153,7 @@ try {
   check('not folded into what a coach got out of them',
     !JSON.stringify(d.botAnswers).includes('write-up shift'),
     JSON.stringify(d.botAnswers));
-  check('and the save is a v3 one', d.version === 3, String(d.version));
+  check('and the save is a current one', d.version === 4, String(d.version));
 
   // ============================ finishing unlocks Refine ============================
   await page.click('[data-next="3"]');
@@ -201,13 +201,14 @@ try {
   await waitBots(page, 1);
   const opening = await page.locator('.bw-msg-bot').first().textContent();
   check('Refine opens by reading the vision back',
-    /version you want/i.test(opening), opening.slice(0, 160));
+    /already defined the version you want/i.test(opening), opening.slice(0, 160));
   check('naming the outcome the learner wrote',
     opening.includes('write-up shift'), opening.slice(0, 200));
   check('and the role they asked AI to play',
-    /With AI/i.test(opening) && opening.includes('Gather the figures'), opening.slice(0, 260));
+    /you see AI's role as/i.test(opening) && opening.includes('Gather the figures'),
+    opening.slice(0, 280));
   check('then asks for specifics rather than proposing a different future',
-    /hand over first/i.test(opening), opening.slice(-160));
+    /which parts should AI take on or share with you/i.test(opening), opening.slice(-160));
 
   /* What a live coach would be told. Read off the page rather than the source so
      it is the wire payload being checked, not a string literal. */
@@ -303,7 +304,7 @@ try {
 
   d = await stored();
   check('an old save is upgraded in place rather than thrown away',
-    d.version === 3, String(d.version));
+    d.version === 4, String(d.version));
   check('the authored work survives',
     d.problem === V2.problem && d.steps.length === 2 &&
     d.toolsAll.join(',') === 'Tableau,Word');
@@ -334,7 +335,7 @@ try {
   await page.reload();
   await page.waitForTimeout(500);
   check('and the upgrade was written back, so it does not happen twice',
-    (await stored()).version === 3 && (await states()) ===
+    (await stored()).version === 4 && (await states()) ===
       'completed,completed,available,locked,locked', await states());
 } catch (e) {
   report.fail('THREW :: ' + String(e.message).split('\n')[0]);

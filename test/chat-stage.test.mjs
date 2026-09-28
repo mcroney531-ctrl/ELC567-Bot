@@ -192,8 +192,11 @@ try {
     (await page.locator('#bw-focus-text').textContent()).length > 10);
   check('the lesson meta block steps aside',
     !(await page.locator('.bw-ls-meta').isVisible()));
+  /* Refine's checklist is the four decisions it exists to settle, named before
+     the conversation reaches them. */
   check('the within-stage checklist is there',
-    await page.locator('.bw-focus-step').count() === 3);
+    await page.locator('.bw-focus-step').count() === 4,
+    String(await page.locator('.bw-focus-step').count()));
   check('with exactly one step marked as now',
     await page.locator('.bw-focus-step[data-state="now"]').count() === 1);
 
@@ -254,8 +257,16 @@ try {
   check('no handoff card before the coach has enough',
     await page.locator('[data-card="next-step"]').count() === 0);
   await say(page, 'Four short paragraphs, no bullets, under 200 words, direct tone.', 3);
-  check('the handoff card appears once it does',
-    await page.locator('[data-card="next-step"]').count() === 1);
+  check('and none while a required decision is still open',
+    await page.locator('[data-card="next-step"]').count() === 0,
+    'rail: ' + await page.locator('.bw-focus-step').evaluateAll(
+      els => els.map(e => e.dataset.state).join(',')));
+  await say(page, 'The judgement about what to flag next week stays mine.', 4);
+  await say(page, 'Never invent a number that is not in the export I paste.', 5);
+  check('the handoff card appears once all four are settled',
+    await page.locator('[data-card="next-step"]').count() === 1,
+    'rail: ' + await page.locator('.bw-focus-step').evaluateAll(
+      els => els.map(e => e.dataset.state).join(',')));
   await page.click('[data-action="save-and-continue"]');
   await page.waitForTimeout(700);
   check('and it moves the learner on',

@@ -164,8 +164,16 @@ try {
      '## OUTPUT I EXPECT', '## THINGS YOU NEED TO KNOW'].every(h => v2.includes(h)));
   check('built from the sample answers', v2.includes('under 200 words'), v2.slice(0, 120));
   check('with no fence markers left in it', !v2.includes('```'));
-  check('and credited to the coach, which is the path a learner takes',
-    (await stored()).v2Source === 'bot', (await stored()).v2Source);
+  /* Assembled from the four Refine decisions, which is the path a learner takes
+     now: no coach shows a prompt before Deploy, so none is lifted from one. */
+  check('and assembled the way a learner\'s own run assembles it',
+    (await stored()).v2Source === 'template', (await stored()).v2Source);
+  check('with all four decisions recorded as settled, not just written down',
+    await page.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem('brainstorm_workflow_data')).decided || {};
+      return ['handoff', 'keep', 'output', 'context'].every(k => d[k] === true);
+    }),
+    JSON.stringify((await stored()).decided));
   check('no placeholder survived', !/\[Name the steps|\[Format, length|\[Facts, constraints/.test(v2));
 
   // ==================== clear ====================

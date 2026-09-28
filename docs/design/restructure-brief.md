@@ -4,7 +4,8 @@
 **Repo:** `mcroney531-ctrl/ELC567-Bot`, branch `main`, deployed from `main`/root via GitHub Pages
 **Date:** 2026-09-27
 **State:** the five-stage journey — Identify / Map / Envision / Refine / Deploy — is
-implemented, deployed and green across twelve suites. Run `npm test` for the current totals.
+implemented, deployed and green across thirteen suites. Run `npm test` for the current totals.
+Refine's four-decision contract (§5) landed 2026-09-28.
 
 This document was written when the journey was mid-restructure. It has been brought forward
 to describe what is now built; where it records a decision and the reasoning behind it, that
@@ -178,76 +179,63 @@ reply so the acknowledgement doesn't contradict the `[NEEDS DETAIL]` mark.
 
 ---
 
-## 5. Building the 04 coach — the contract you'd be authoring against
+## 5. Refine, as built
 
-Still the open build, and now with less to invent: Envision hands Refine a stated outcome and
-a stated AI role, so the coach's first move is to reflect a vision it was given rather than
-to elicit one. The author's sketch, close to verbatim:
+**DECIDED AND IMPLEMENTED 2026-09-28.** Refine has four required decisions, in this order,
+and they are the stage's state model rather than a byproduct of chatting:
 
-> Coach opens with something like *"Okay, so here's my understanding. \_\_\_\_\_ Here are a
-> few ways that AI might be able to help in your process \_\_\_\_\_. What would the overall
-> ideal scenario / end-game be for you? How do you envision splitting the
-> responsibility(s)?"* … The ideas should be matched to master-prompt content — but the
-> master prompt isn't shown to the learner; it's knowledge and context for the coach. We
-> can provide some examples that match the integration examples we already gave:
-> *"I want \_\_\_\_\_"*
+| # | key | rail label | becomes |
+|---|---|---|---|
+| 1 | `handoff` | What AI handles | `## WHAT I NEED YOU TO DO` |
+| 2 | `keep` | What stays yours | `## WHAT STAYS WITH ME` |
+| 3 | `output` | What good looks like | `## OUTPUT I EXPECT` |
+| 4 | `context` | What AI needs to know | `## THINGS YOU NEED TO KNOW` |
 
-Three moves in order: **reflect back → propose → ask for the ideal end-state and the split
-of responsibility.**
+`notes[]` stays optional and folds into context. `REFINE_DECISIONS` (`js/activity.js`) is the
+single source of truth: the rail items, the scripted questions, the live coach's instruction
+and `stepValid(4)` are all built from it.
 
-What changed under it: the third move is no longer where the end-state gets decided. Envision
-already has it. Refine's job is to turn *"the numbers are already gathered and a first draft is
-waiting"* into which step is handed over, what a good result looks like, what stays with the
-learner, and what the AI must never invent. The scripted opening does the reflecting today:
-`mockOpening()` quotes the problem, lists the steps, reads the outcome and the AI role back,
-and asks which step they would hand over first.
+**The gate is coverage, not turns.** `stepValid(4)` was `userTurns() >= 2`, so a learner could
+take the handoff after two replies and arrive at Deploy with two sections never asked about.
+It is now "all four decisions accepted". The rail names the four up front — transparency is
+the feature: the learner can see the shape of the conversation and exactly what is left.
 
-### What the finished conversation has to produce
+**Accepted is not the same as typed.** The first thin answer is stored, in case they stop
+there, while the coach is still challenging it; only the second settles the decision, and it
+is taken whatever it says, earning `[NEEDS DETAIL]`. Complete coverage, imperfect answers
+allowed. `captureDecision()` holds the rule.
 
-Stage 4 writes `workflowData.botAnswers`. Those keys are load-bearing — they become the
-master prompt's sections via `SECTION_LABELS` (`1009`):
+**One progression, two coaches.** The application owns which decision is current and when it
+is satisfied. `captureDecision()` runs in `sendChat()` before any reply exists; the scripted
+coach reads that state through `refineReply()`, and a live model is told about it through
+`coachingState()` appended to `contextInjection()`. **This fixed a real hole**: the live path
+captured nothing at all, so a coverage gate would have trapped a live learner in Refine
+forever. No wire-contract change was needed — the state rides inside `context`.
 
-| key | becomes |
-|---|---|
-| `handoff` | `## WHAT I NEED YOU TO DO` |
-| `output` | `## OUTPUT I EXPECT` |
-| `keep` | `## WHAT STAYS WITH ME` |
-| `context` | `## THINGS YOU NEED TO KNOW` |
-| `notes[]` | folded into context |
+**The conversation.** Opens on short excerpts of `idealOutcome` and `aiRole` (the coach still
+receives them in full, invisibly), then walks the four in order, then recaps:
 
-`weakSections()` (`1018`) flags any of those that were answered thinly, and `paintV2()`
-refuses to let the artifact look finished when they are. **If the new opening changes what
-gets asked, it changes which of these keys get filled** — and an unfilled key shows as a
-bracketed placeholder in the final prompt.
+> You've defined the job, the boundary, the standard, and the rules.
+> Continue to Deploy to review the finished prompt.
 
-### How the conversation becomes the artifact
+**No prompt before Deploy is now enforced, not requested.** The scripted fourth turn used to
+print the finished `master-prompt` block inside Refine, and `BOT_SYSTEM_PROMPT` told the live
+model to do the same — both in direct conflict with the locked rule. Now: the scripted coach
+closes on the recap, the system prompt forbids it, and `stripPromptBlock()` removes any fenced
+block from a Refine reply before the learner reads it. The guardrails slice and admin mode's
+seeded prompt message went the same way.
 
-`STAGES.all.minTurns` is 2; `turnsNeeded()` (`1881`) gates the handoff card.
-`coachingCards()` (`3694`) emits the `save-and-continue` card only when
-`userTurns() >= turnsNeeded() && stepValid(current)`.
+A consequence: nothing in the journey emits a prompt block any more, so `v2Source` is always
+`"template"`. Assembly from the four decisions is the normal path, and the note under the
+prompt says where it came from rather than apologising for the coach. `latestBotPrompt()` and
+the `"bot"` branch are unreachable in the full activity; deleting them is a separate decision.
 
-The coach's last reply should contain a fenced block. `parseMasterPrompt()` (`1139`)
-accepts ` ```master-prompt `, ` ```prompt `, or an untagged fence whose body starts with
-`##` / `MASTER PROMPT` / `CONTEXT`. `latestBotPrompt()` walks `PROMPT_STAGE_ORDER` (`1154`)
-and the first block found wins; `computeV2()` sets `v2Source: "bot"`. No block → falls back
-to `generateMasterPromptV2()` (`1097`) and `v2Source: "template"`. A learner's manual edit
-sets `"user"` and beats both until an explicit rebuild.
+### What is still open in Refine
 
-### The asymmetry you have to design around
-
-The "here are a few ways AI might help" move is the whole problem.
-
-- **Live:** the model reads the actual tools and proposes real integrations. Works.
-- **Scripted:** cannot invent. The honest ceiling is keyword-matching `workflowData.toolsAll`
-  against the five pairs in `MAP_PAGE_GET_SPECIFIC`'s `defs` block (Spreadsheet→Email, PDF
-  Reader→File Storage, File Storage→Calendar, Video Conferencing→Task System, Claude
-  Connector→CRM) and naming the closest shape. It now also has the learner's own `aiRole`
-  sentence to work from, which is a stated intention rather than a guess.
-
-Since `botEndpoint` is `null`, **the scripted version is what ships today**. Designing only
-for live means the deployed activity does something visibly weaker than the design.
-
----
+The four questions came from the author. The connective copy did not: `DECISION_ACK`, the
+recap and the push-back lines were written in the build session and are the next thing to
+hand over. The "here are a few ways AI might help" move is still not built, and the
+live-vs-scripted asymmetry below is why.
 
 ## 6. Where AI actually appears
 
@@ -257,6 +245,10 @@ plainly: in an activity about AI, three of five stations have no AI in them. Tha
 correct consequence of the decisions in §7 — the learner does the thinking and AI helps make
 it precise — but it is the kind of thing that is invisible from inside the build, so it is
 written down rather than assumed to be obvious.
+
+Worth adding after Refine's rebuild: even in the two stations that do have a coach, the
+application owns the progression and what gets written down. The model phrases, reflects and
+challenges. Nothing the learner ends up with depends on a model behaving.
 
 ---
 
@@ -282,6 +274,11 @@ enumerate, which a numbered form *is* and a chat box actively works against.
 made the activity feel finished early and gave the learner something to fiddle with instead
 of a question to answer. This is why Envision reaches the artifact **transformed** rather than
 as a section of its own: the learner writes a future state, not a draft prompt.
+
+**Refine's gate is coverage of four decisions.** Decided 2026-09-28. A turn count promised
+nothing; four decisions promise exactly what the stage is for. The thin-answer rule keeps that
+from becoming a demand for perfect answers, and the rail makes the requirement visible instead
+of letting a learner discover it by being blocked. See §5.
 
 **Envision is a reading and a form, not a coach.** Decided 2026-09-27. It sidesteps the
 live-vs-scripted asymmetry in §5 entirely, and it keeps the learner doing the imagining
@@ -396,10 +393,10 @@ recorded as answered rather than deleted, so nobody re-opens them by accident.
    scripted coach's limits visible to the learner. Envision narrowed this a little: the coach no
    longer has to invent a future state, only to sharpen a stated one.
 
-4. **The 04 opening and the "I want \_\_\_\_\_" starters.** Do you want to author these? The
-   contract is §5. They should line up with the five `defs` pairs in `MAP_PAGE_GET_SPECIFIC`.
-   The scripted opening currently reflects the vision and asks which step they would hand over
-   first; the "here are a few ways AI might help" move is not built.
+4. **The "I want \_\_\_\_\_" starters, and Refine's connective copy.** The four questions are
+   authored; the acknowledgements between them, the recap and the push-backs are not. The
+   "here are a few ways AI might help" move is still unbuilt, and would need to line up with
+   the five `defs` pairs in `MAP_PAGE_GET_SPECIFIC`. See §5.
 
 5. ~~**A line that is now slightly wrong.**~~ **Answered:** Map's `turn` block no longer sends
    the learner "below" — the form is past the reading in the same stage, and the copy says so.
@@ -423,21 +420,22 @@ recorded as answered rather than deleted, so nobody re-opens them by accident.
 
 ```bash
 npm start     # http://127.0.0.1:8080   (and /admin/ for the review bar)
-npm test      # twelve suites, ~4 min, stops at the first failing suite
+npm test      # thirteen suites, ~5 min, stops at the first failing suite
 node test/timeline.test.mjs    # iterate on one
 ```
 
 | Suite | Asserts | Covers |
 |---|---|---|
 | `learning-stage` | 105 | shell, mini strip, multi-page reading, lessons, step-card geometry |
-| `scripted-coach` | 94 | the whole walkthrough offline |
+| `scripted-coach` | 96 | the whole walkthrough offline |
 | `timeline` | 94 | map, four states, navigation, per-station accents |
-| `chat-stage` | 69 | the coach as a mode, per-stage transcripts, the pinned rail |
+| `chat-stage` | 70 | the coach as a mode, per-stage transcripts, the pinned rail |
+| `refine-stage` | 54 | stage 4's four decisions, coverage as the gate, live parity, no prompt before Deploy |
 | `envision-stage` | 53 | stage 3 end to end, the carry into Refine and Deploy, the v2→v3 upgrade |
-| `admin` | 48 | `?admin=1`, and that its states match real ones |
+| `admin` | 49 | `?admin=1`, and that its states match real ones |
 | `journey-contract` | 42 | the journey the learner is told about, and the five coupled step-number definitions |
 | `capture-chat` | 35 | the retired prose→structure parser |
-| `live-endpoint` | 30 | the adapter, wire format, failures |
+| `live-endpoint` | 32 | the adapter, wire format, failures |
 | `station-count` | 25 | that the journey's length is data |
 | `answer-quality` | 21 | thin-answer heuristics |
 | `hardening` | 14 | charset, clipboard fallbacks, dark mode, two-press confirms |

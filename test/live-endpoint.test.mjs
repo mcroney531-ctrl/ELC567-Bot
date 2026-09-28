@@ -52,7 +52,11 @@ try {
   await waitBots(1);
   check('opening comes from the endpoint', (await bots().first().textContent()).includes('Live reply one'));
   const req = state.requests[0];
-  check('sends system prompt', typeof req.system === 'string' && req.system.includes('master-prompt'));
+  check('sends system prompt', typeof req.system === 'string' &&
+    req.system.includes('WHAT AI HANDLES') && req.system.includes('WHAT AI NEEDS TO KNOW'),
+    (req.system || '').slice(0, 60));
+  check('and tells the coach which decision is current',
+    /Current decision: WHAT AI HANDLES/.test(req.context), req.context.slice(-200));
   check('sends context block', req.context.includes('Pull delivery numbers') && req.context.includes('Asana, Harvest'));
   check('context includes the problem', req.context.includes('eleven client status updates'));
   check('priming turn is the only message', req.messages.length === 1 && req.messages[0].role === 'user');
@@ -87,13 +91,16 @@ try {
   check('error notice cleared after retry', await page.locator('#bw-chat-error').isHidden());
   check('no duplicate learner message on retry', await page.locator('.bw-msg-user').count() === 2);
 
-  // --- 4. anthropic-shaped fenced block flows into V2 ---
-  check('fenced block rendered as pre', await bots().last().locator('pre').count() === 1);
-  await page.click('[data-action="save-and-continue"]');
-  await page.waitForTimeout(500);
-  const v2 = await page.locator('#bw-prompt-v2').inputValue();
-  check('V2 lifted from live coach', v2.includes('Live-endpoint context line'), v2.slice(0, 90));
-  check('V2 credits the coach', (await page.locator('#bw-v2-source').textContent()).includes('conversation with the coach'));
+  /* --- 4. the anthropic shape is accepted, and its fenced block is not shown ---
+     The adapter still has to read `content: [{type:"text"}]`; what it must not
+     do is put a master prompt on screen during Refine. The prose around the
+     block survives, so the learner gets a reply rather than a blank turn. */
+  check('the anthropic shape still produces a reply',
+    (await bots().last().textContent()).includes('finished prompt'));
+  check('but its fenced block is stripped before the learner reads it',
+    await bots().last().locator('pre').count() === 0);
+  check('and no prompt text leaks into the transcript',
+    !/## CONTEXT|Live-endpoint context line/.test(await page.locator('.bw-chat-log').textContent()));
 
   // --- 5. timeout ---
   state.mode = 'hang';
@@ -125,19 +132,30 @@ try {
   await page.waitForSelector('#bw-chat-error:not([hidden])', { timeout: 8000 });
   check('unreachable endpoint reported', (await page.locator('#bw-chat-error').textContent()).includes("Couldn't reach"),
     await page.locator('#bw-chat-error').textContent());
-  // learner can still finish without the coach
-  await page.fill('#bw-chat-input', 'I want the drafting handled.');
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(500);
-  await page.fill('#bw-chat-input', 'Four short paragraphs, under 200 words.');
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(500);
+  /* The learner can still finish with the coach down, and this is why: their
+     four decisions are written down by the activity as they type, before any
+     request goes out. Nothing about completing Refine depends on a reply. */
+  for (const answer of [
+    'I want the drafting of each client update handled, steps 1 and 3.',
+    'The judgement about what to flag next week stays mine, and the final read.',
+    'Four short paragraphs per client, under 200 words, no bullets, direct.',
+    'Never invent a figure that is not in the export I paste in.'
+  ]) {
+    await page.fill('#bw-chat-input', answer);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+  }
+  check('the decisions are captured with no coach answering at all',
+    await page.locator('.bw-focus-step[data-state="done"]').count() === 4,
+    String(await page.locator('.bw-focus-step[data-state="done"]').count()));
   await page.click('[data-action="save-and-continue"]');
   await page.waitForTimeout(500);
   check('learner reaches step 5 with the coach down',
     await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
   const fallbackV2 = await page.locator('#bw-prompt-v2').inputValue();
-  check('fallback V2 is the template', fallbackV2.includes('## CONTEXT') && fallbackV2.includes('[Name the steps'), fallbackV2.slice(0, 120));
+  check('fallback V2 is assembled from those answers',
+    fallbackV2.includes('## CONTEXT') && fallbackV2.includes('under 200 words') &&
+    fallbackV2.includes('flag next week'), fallbackV2.slice(0, 120));
   check('fallback note explains the brackets',
     (await page.locator('#bw-v2-source').textContent()).includes('[brackets]'));
 } catch (e) {

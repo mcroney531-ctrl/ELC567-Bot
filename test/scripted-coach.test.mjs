@@ -201,10 +201,18 @@ try {
   }
   check('all four answers landed', await page.locator('.bw-msg-user').count() === 4,
     'user msgs=' + await page.locator('.bw-msg-user').count());
+  /* Refine closes on a recap, not on the prompt. Deploy is the first place the
+     learner sees one, and the coach no longer makes that rule optional. */
   const lastBot = realBots().last();
-  check('coach emits one fenced block', await lastBot.locator('pre').count() === 1);
+  check('the coach shows no prompt when it is done',
+    await lastBot.locator('pre').count() === 0);
   const lastText = await lastBot.textContent();
-  check('block carries all sections', ['CONTEXT','WHAT I NEED YOU TO DO','WHAT STAYS WITH ME','OUTPUT I EXPECT','THINGS YOU NEED TO KNOW'].every(h => lastText.includes(h)));
+  check('no section heading leaks into the conversation',
+    !['## CONTEXT', 'WHAT I NEED YOU TO DO', 'WHAT STAYS WITH ME', 'OUTPUT I EXPECT',
+      'THINGS YOU NEED TO KNOW'].some(h => lastText.includes(h)), lastText.slice(0, 120));
+  check('it recaps the four decisions instead',
+    /job, the boundary, the standard, and the rules/i.test(lastText), lastText.slice(0, 160));
+  check('and points at Deploy', /continue to deploy/i.test(lastText), lastText.slice(-80));
 
   // The coach's own next-step card is what moves the learner onward now.
   check('the coach offers the handoff once it has enough',
@@ -214,14 +222,16 @@ try {
   check('step5 open', await page.locator('.bw-step[data-step="5"]').getAttribute('data-state') === 'active');
 
   const v2 = await page.locator('#bw-prompt-v2').inputValue();
-  check('V2 parsed out of the fenced block', v2.startsWith('## CONTEXT'), v2.slice(0, 80));
+  check('V2 is assembled from the four decisions', v2.startsWith('## CONTEXT'), v2.slice(0, 80));
   check('V2 has no stray fence markers', !v2.includes('```'), v2.slice(0, 80));
   check('V2 carries handoff answer', v2.includes('while I watch the lock'));
   check('V2 carries output answer', v2.includes('under 200 words'));
   check('V2 carries keep answer', v2.includes('judgment is mine'));
   check('V2 carries context answer', v2.includes('Never invent a number'));
   check('V2 has no unfilled placeholders', !/\[Name the steps|\[Format, length|\[Facts, constraints/.test(v2), v2);
-  check('V2 source note credits the coach', (await page.locator('#bw-v2-source').textContent()).includes('conversation with the coach'));
+  check('the source note says where it came from',
+    (await page.locator('#bw-v2-source').textContent()).includes('four decisions you settled'),
+    await page.locator('#bw-v2-source').textContent());
 
   // persistence
   await page.reload();
