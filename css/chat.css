@@ -280,7 +280,22 @@
 
   .bw-chat-panel { max-height: none; }
   .bw-coach-head { padding: 11px 14px; gap: 9px; }
-  .bw-coach-sub, .bw-coach-restart { display: none; }
+  /* The descriptive subline goes; Restart stays. Restarting Refine clears its
+     four decisions and re-locks Deploy, so hiding the only control that does
+     that would take a capability away at a screen size rather than tidy a
+     layout. The stage chip goes instead: the mini-node strip directly above
+     and the stage panel below both already name the open stage, and the one
+     thing this header alone can say is who the learner is talking to. */
+  .bw-coach-sub, .bw-coach-chip { display: none; }
+  .bw-coach-name { white-space: nowrap; }
+}
+
+/* Phone. With the name held to one line, the adapter badge is what runs into
+   Restart - so the badge goes. Which coach is answering is worth saying when
+   there is room; who the learner is talking to, and the one control that can
+   undo this conversation, are worth more. */
+@media (max-width: 480px) {
+  .bw-coach-name .bw-badge { display: none; }
   .bw[data-phase="chat"] .bw-msg-bot .bw-msg-body,
   .bw[data-phase="chat"] .bw-msg-user .bw-msg-body { max-width: 88%; }
 }

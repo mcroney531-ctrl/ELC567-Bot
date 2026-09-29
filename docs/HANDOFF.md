@@ -928,9 +928,28 @@ landing cannot drift behind the journey again.
 
 ### Mobile
 No horizontal overflow at 360 px on any view, and that is tested. Home scales as one
-frame (see §2); the landing and the stage still reflow. But the **coach header
-wraps badly at 390 px** — the coach name stacks, the badge collides, and `#bw-coach-restart`
-is pushed off. Pre-existing, cosmetic, not covered by an assertion.
+frame (see §2); the landing and the stage still reflow.
+
+**The coach header is a responsive hierarchy, and the order it sheds things in is the
+point.** It has one job no other element on the screen can do — say who the learner is
+talking to — and one control with consequences, Restart, which clears Refine's four
+decisions and re-locks Deploy. Everything else gives way to those two first:
+
+| width | sheds | keeps |
+|---|---|---|
+| > 720 | — | name, badge, subline, compact `04 Refine` chip, Restart |
+| ≤ 720 | subline, stage chip | name, badge, Restart |
+| ≤ 480 | subline, stage chip, adapter badge | name, Restart |
+
+The stage chip goes before anything else because it is the only duplicated thing there:
+the mini-node strip directly above and the stage panel below both already name the open
+stage. Above 720 it reads `04 Refine` rather than `04  Working on: Refine` — same source
+(`STATIONS`), a third of the width.
+
+**Restart is never hidden.** It used to be `display: none` below 720, which was not a
+layout compromise but a capability that vanished at a screen size. `chat-stage` checks the
+name stays on one line, Restart stays reachable, and nothing overlaps, at 360 / 390 / 430 /
+768 — and that a two-press restart on a phone really does clear a settled decision.
 
 ### Environment note
 The git proxy in the Claude Code remote environment **rejects ref deletions**

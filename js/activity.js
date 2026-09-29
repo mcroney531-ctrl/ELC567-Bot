@@ -4391,7 +4391,12 @@
     setText("bw-focus-text", COACH_FOCUS[n] || (STATIONS[n - 1] || {}).blurb || "");
     var chip = document.getElementById("bw-coach-chip");
     if (chip) {
-      chip.textContent = pad2(n) + "  Working on: " + (STATIONS[n - 1] || {}).name;
+      /* Compact on purpose. "04  Working on: Refine" was the widest fixed item
+         in the header and said what the mini-node strip above it and the stage
+         panel below it were both already saying - it was spending the width
+         the coach's own name needed. Still read off STATIONS, so a renamed or
+         reordered station follows. */
+      chip.textContent = pad2(n) + " " + (STATIONS[n - 1] || {}).name;
       chip.setAttribute("data-accent", (STATIONS[n - 1] || {}).accent);
     }
     var list = document.getElementById("bw-focus-steps");

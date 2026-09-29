@@ -325,6 +325,72 @@ try {
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
   await ctx.close();
 
+  /* ---------- the coach header, across the widths it has to survive ----------
+
+     The header's job is to say who the learner is talking to and to offer the
+     one control that can undo the conversation. It used to give that width away
+     to "04  Working on: Refine" - which the mini-node strip above it and the
+     stage panel below it were both already saying - and the coach's name broke
+     across three lines to make room. Restart, meanwhile, was display:none below
+     720: not a layout compromise but a capability that disappeared at a screen
+     size, because restarting Refine clears its four decisions and re-locks
+     Deploy. */
+  for (const width of [360, 390, 430, 768]) {
+    ({ ctx, page } = await openCoach({ viewport: { width, height: 900 } }));
+    await page.click('[data-next="4"]');
+    await page.waitForTimeout(800);
+    const h = await page.evaluate(() => {
+      const box = s => { const el = document.querySelector(s); if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height), r: Math.round(r.right),
+                 shown: getComputedStyle(el).display !== 'none' && r.width > 0 }; };
+      return { name: box('.bw-coach-name'), chip: box('.bw-coach-chip'),
+               restart: box('.bw-coach-restart'), head: box('.bw-coach-head'),
+               overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    check(width + ': the coach name stays on one line', h.name.h < 30,
+      JSON.stringify(h.name));
+    check(width + ': Restart is reachable', h.restart && h.restart.shown,
+      JSON.stringify(h.restart));
+    check(width + ': nothing overlaps the way out',
+      h.restart.r <= h.head.r + 1 && h.name.r <= h.restart.r,
+      JSON.stringify({ name: h.name.r, restart: h.restart.r, head: h.head.r }));
+    check(width + ': no horizontal overflow', h.overflow <= 1, String(h.overflow));
+    /* Stage context is duplicated twice over on a phone; above 720 there is
+       room for the compact form. */
+    if (width <= 720) {
+      check(width + ': the stage chip stands aside', !h.chip.shown, JSON.stringify(h.chip));
+    } else {
+      check(width + ': the compact stage chip is there', h.chip.shown, JSON.stringify(h.chip));
+      check(width + ': and it is the short form, not the sentence',
+        (await page.locator('#bw-coach-chip').textContent()).trim() === '04 Refine',
+        await page.locator('#bw-coach-chip').textContent());
+    }
+    await ctx.close();
+  }
+
+  /* Reachable is not the same as working: the confirm is two presses, and the
+     second one has to still do what it did at desktop width. */
+  ({ ctx, page } = await openCoach({ viewport: { width: 390, height: 900 } }));
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(800);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+    null, { timeout: 12000 });
+  await say(page, 'Steps 1 and 3, the drafting of each client update.', 2);
+  check('a decision is settled before the restart',
+    await page.locator('.bw-focus-step[data-state="done"]').count() === 1);
+  await page.click('#bw-coach-restart');
+  check('one press asks rather than acts',
+    (await page.locator('#bw-coach-restart').textContent()).toLowerCase().includes('again'),
+    await page.locator('#bw-coach-restart').textContent());
+  await page.click('#bw-coach-restart');
+  await page.waitForTimeout(900);
+  check('and the second press clears the decision on a phone too',
+    await page.locator('.bw-focus-step[data-state="done"]').count() === 0,
+    String(await page.locator('.bw-focus-step[data-state="done"]').count()));
+  await ctx.close();
+
   // ============ coming back to a stage with everything already filled ============
   /* Pinned context is meant to orient the conversation, not crowd it out. Once
      a learner has reached the master prompt, every card has something to say,
