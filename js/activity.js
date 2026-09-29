@@ -2670,7 +2670,7 @@
     return msgs;
   }
 
-  function appendMessage(role, text, persist) {
+  function appendMessage(role, text, persist, follow) {
     var msg = { role: role, text: text, at: timeLabel() };
     if (persist !== false) convo().push(msg);
     /* The learner's own message always goes to the bottom - they just sent it.
@@ -2678,8 +2678,11 @@
        rather than when Send was pressed, because scrolling up to reread while
        the coach works is exactly the case this is for. Sampled BEFORE the node
        goes in: appending is what makes the log taller, so asked afterwards this
-       would report every learner as scrolled away. */
-    var follow = role === "user" || chatPinned();
+       would report every learner as scrolled away.
+
+       A caller that has already mutated the log takes the decision itself and
+       passes it - see appendReply(), where sampling here would be too late. */
+    if (follow === undefined) follow = role === "user" || chatPinned();
     el.chatLog.appendChild(buildMessage(msg));
     if (follow) scrollChat();
     else if (role === "bot") showNewReply(true);
@@ -2805,6 +2808,33 @@
     showNewReply(false);
   }
 
+  /* A reply resolving is two changes to the log, not one: the typing indicator
+     comes out and the reply goes in. The indicator plus its gap is 46px, which is
+     wider than the pin tolerance, so removing it shrinks the log past a learner
+     parked just outside that tolerance and scrollTop is clamped to the new bottom.
+     Ask after that and they read as pinned - a position the coach created, on the
+     strength of which the reply then follows the bottom. So the decision is taken
+     here, before any of it, and passed in rather than re-read.
+
+     Putting the position back has to wait until the reply is in: between the two
+     changes the log is shorter than their offset, so there is nothing to restore
+     it to. That is also why this cannot be solved inside showTyping().
+
+     That last line is doing real work only where the engine does not. Chromium's
+     scroll anchoring undoes the clamp by itself once the reply lands (traced:
+     499 -> 493 on removal, back to 499 on append), so the tests cannot observe
+     it - they pin the decision, which is the part that moved the learner a whole
+     screen. WebKit has never shipped overflow-anchor, and older iPad Safari is
+     what this file is written for, so there the clamp stands and this is what
+     puts the learner back. */
+  function appendReply(text) {
+    var follow = chatPinned();
+    var keepTop = el.chatLog.scrollTop;
+    setChatBusy(false);                        // takes the indicator out
+    appendMessage("bot", text, true, follow);  // decision already taken, not re-read
+    if (!follow) el.chatLog.scrollTop = keepTop;
+  }
+
   function showNewReply(on) {
     if (!el.chatJump) return;
     if (on) { el.chatJump.hidden = false; return; }
@@ -2876,11 +2906,10 @@
       messages: wireMessages(),
       lastUserText: lastUserText
     }).then(function (reply) {
-      setChatBusy(false);
       /* Refine must not show a prompt, whoever wrote the reply. The scripted
          coach no longer emits one; this is what makes that true of a live one
          as well. */
-      appendMessage("bot", refineGoverned() && activeScript().decisions
+      appendReply(refineGoverned() && activeScript().decisions
         ? stripPromptBlock(reply) : reply);
       if (workflowData.v2Source !== "user") refreshV2(false);
       if (phase === "chat") { renderCoachRail(); renderCoachCards(); }

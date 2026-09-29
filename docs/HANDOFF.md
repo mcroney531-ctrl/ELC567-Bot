@@ -409,13 +409,28 @@ Who may move the learner:
 | entering the conversation (`setPhase`) | showing the typing indicator |
 | Restart / a new opening | |
 
-Two things are easy to get wrong here:
+Three things are easy to get wrong here:
 
 - **Sample the pin before appending.** Appending is what makes the log taller, so a check
   made afterwards reports every learner as scrolled away. `appendMessage()` and
   `showTyping()` both read `chatPinned()` first.
 - **Read it when the event happens, not when Send was pressed.** Scrolling up *during* the
   wait is the whole case this exists for.
+- **Before the append is not early enough for a reply.** Resolving a reply changes the log
+  *twice*: `setChatBusy(false)` pulls the typing indicator out, then the reply goes in. The
+  indicator plus its gap is 46px — wider than the 32px tolerance — so its removal shrinks
+  the log past a learner parked just outside the tolerance, `scrollTop` clamps to the new
+  bottom, and they now read as pinned on the strength of the coach's own mutation.
+  `appendReply()` therefore takes the decision *before* `setChatBusy(false)` and passes it
+  to `appendMessage()` as an explicit `follow`, instead of letting it be re-read.
+
+  It also restores `scrollTop` after the append — and not before, because in between the
+  log is shorter than the learner's offset and there is nothing to restore it to. That line
+  is unobservable in the test harness: Chromium's scroll anchoring already undoes the clamp
+  when the reply lands (traced: 499 → 493 on removal, back to 499 on append). WebKit has
+  never shipped `overflow-anchor` and older iPad Safari is the target this file is written
+  for, so the line is what puts the learner back there. The tests pin the **decision**,
+  which is the part that moved someone a whole screen.
 
 `renderChatLog(force)` takes its scroll intent from the caller rather than having one of
 its own. Stage entry, restart, admin seeding and Start over pass `true`; the cross-block

@@ -503,6 +503,44 @@ try {
     check(label + ': the pin is restored, so the next reply follows',
       sg.fromBottom === 0 && !sg.jump, JSON.stringify(sg));
 
+    /* B2. Just outside the tolerance, which is where the coach's own DOM change
+       can decide the answer.
+
+       Resolving a reply removes the typing indicator first, which shrinks the log
+       by more than the tolerance is wide. The browser then clamps scrollTop to the
+       new bottom - so a learner who was genuinely scrolled away can be handed a
+       pinned position they never asked for, and the reply follows the bottom on
+       the strength of the coach's own mutation. Sampling before the append is not
+       enough; it has to be before any of it. */
+    await page.fill('#bw-chat-input', 'And keep the same order of sections every week, so it reads the same.');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(90);
+    const shrink = await page.evaluate(() => {
+      const l = document.querySelector('.bw-chat-log');
+      const t = l.querySelector('[data-typing]');
+      const gap = parseFloat(getComputedStyle(l).rowGap || getComputedStyle(l).gap) || 0;
+      return t ? Math.round(t.getBoundingClientRect().height + gap) : 0;
+    });
+    await page.evaluate(() => { const l = document.querySelector('.bw-chat-log');
+      l.scrollTop = l.scrollHeight - l.clientHeight - 40; });
+    const edge = await scrollGeo(page);
+    check(label + ': parked outside the tolerance while the coach is working',
+      edge.fromBottom > 32, JSON.stringify(edge));
+    /* Without this the case is not being exercised at all: if losing the indicator
+       no longer shrinks the log past where the learner is parked, nothing gets
+       clamped and the check below passes for the wrong reason. */
+    check(label + ': and near enough that losing the indicator would clamp them',
+      shrink > edge.fromBottom, JSON.stringify({ shrink: shrink, fromBottom: edge.fromBottom }));
+    await page.waitForFunction(
+      () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 6,
+      null, { timeout: 15000 });
+    await page.waitForTimeout(300);
+    sg = await scrollGeo(page);
+    check(label + ': the indicator disappearing does not decide that they are pinned',
+      sg.top === edge.top, JSON.stringify({ parked: edge.top, after: sg.top }));
+    check(label + ': so the reply announces itself rather than following', sg.jump,
+      JSON.stringify(sg));
+
     await ctx.close();
   }
 
