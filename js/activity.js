@@ -658,13 +658,13 @@
     var fresh = activeScript().opening();
     if (fresh === list[0].text) return;
     list[0].text = fresh;
-    renderChatLog();
+    renderChatLog(false);   // a sibling rewrote the opening; not a reason to move anyone
     save();
   }
 
   function adoptExternal() {
     if (ownsStep(2) && !isCaptureChat) renderCards();
-    if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(); }
+    if (ownsStep(4) || isCaptureChat) { refreshOpening(); renderChatLog(false); }
     render();
     maybeStartConversation();
     if (ownsStep(lastStage())) refreshV2(false);
@@ -2000,6 +2000,7 @@
     el.addStep = $("bw-add-step");
     el.promptV1 = $("bw-prompt-v1");
     el.chatLog = $("bw-chat-log");
+    el.chatJump = $("bw-chat-jump");
     el.chatInput = $("bw-chat-input");
     el.chatSend = $("bw-chat-send");
     el.chatError = $("bw-chat-error");
@@ -2344,7 +2345,7 @@
     lessonPage = 0;
     // One chat serves every stage, so the transcript has to be repainted from
     // whichever conversation the open stage owns before it goes on screen.
-    renderChatLog();
+    renderChatLog(true);
     var convoLen = (workflowData.conversations[STAGE_CONVO[n]] || []).length;
     setPhase(stageHasCoach(n) && convoLen > 1 ? "chat" : "lesson");
     renderStageContext();
@@ -2672,8 +2673,16 @@
   function appendMessage(role, text, persist) {
     var msg = { role: role, text: text, at: timeLabel() };
     if (persist !== false) convo().push(msg);
+    /* The learner's own message always goes to the bottom - they just sent it.
+       The coach's only follows if they are still there, and that is read now
+       rather than when Send was pressed, because scrolling up to reread while
+       the coach works is exactly the case this is for. Sampled BEFORE the node
+       goes in: appending is what makes the log taller, so asked afterwards this
+       would report every learner as scrolled away. */
+    var follow = role === "user" || chatPinned();
     el.chatLog.appendChild(buildMessage(msg));
-    scrollChat();
+    if (follow) scrollChat();
+    else if (role === "bot") showNewReply(true);
   }
 
   /* Static, trusted markup - no message content goes through innerHTML. */
@@ -2763,8 +2772,50 @@
     if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
   }
 
+  /* ---------------------- following the conversation ----------------------
+
+     The transcript used to be pinned to the bottom unconditionally, which meant
+     a learner who sent an answer and then scrolled up to reread what they had
+     said got yanked back down the moment the coach's reply landed - twice a
+     turn, counting the typing indicator, and six screens' worth on a phone.
+
+     Pin state is positional and nothing else: within a tolerance of the bottom
+     the transcript follows, past it the learner is reading and keeps their
+     place. Scrolling back down pins again on its own. There is no mode, no
+     preference and no stored state, because the scroll position IS the state.
+
+     The tolerance exists because "at the bottom" is rarely exactly zero -
+     fractional layout and browser zoom both leave a pixel or two behind, and at
+     a threshold of zero that silently unpins someone who never scrolled. */
+  var CHAT_PIN_SLACK = 32;
+
+  function chatPinned() {
+    var l = el.chatLog;
+    if (!l) return true;
+    return l.scrollHeight - l.scrollTop - l.clientHeight <= CHAT_PIN_SLACK;
+  }
+
+  /* Go to the newest turn and stay there. For the things the learner did on
+     purpose: sending, opening the conversation, restarting it. Being at the
+     bottom is the same statement as "nothing is waiting", so this is also what
+     clears the jump control - every deliberate return to the bottom clears it
+     without each caller having to remember to. */
   function scrollChat() {
     el.chatLog.scrollTop = el.chatLog.scrollHeight;
+    showNewReply(false);
+  }
+
+  function showNewReply(on) {
+    if (!el.chatJump) return;
+    if (on) { el.chatJump.hidden = false; return; }
+    /* Hiding the control while it holds focus would drop the tab position onto
+       the body. The transcript is the right place to land: it is where the reply
+       is, and unlike the composer it does not raise a phone keyboard as a side
+       effect of reading. */
+    if (el.chatJump === document.activeElement && el.chatLog.focus) {
+      try { el.chatLog.focus({ preventScroll: true }); } catch (e) { el.chatLog.focus(); }
+    }
+    el.chatJump.hidden = true;
   }
 
   function showTyping(on) {
@@ -2784,8 +2835,12 @@
     col.appendChild(body);
     wrap.appendChild(av);
     wrap.appendChild(col);
+    /* The indicator follows the pin but never raises the jump control: there is
+       nothing to jump to yet, and the composer goes disabled in the same breath,
+       which already says the coach is working wherever the learner is reading. */
+    var follow = chatPinned();
     el.chatLog.appendChild(wrap);
-    scrollChat();
+    if (follow) scrollChat();
   }
 
   function setChatBusy(busy) {
@@ -2918,12 +2973,19 @@
     askBot(text);
   }
 
-  function renderChatLog() {
+  /* A repaint has no opinion of its own about where the learner should be
+     looking, so the caller says. Arriving at a conversation, or restarting one,
+     means the bottom; a repaint that merely catches up with a sibling block must
+     leave the learner where they were - otherwise the same yank survives in the
+     split deployment, which is the one place that path is live. */
+  function renderChatLog(force) {
+    var keep = el.chatLog.scrollTop;
     el.chatLog.textContent = "";
     convo().forEach(function (m) {
       el.chatLog.appendChild(buildMessage(m));
     });
-    scrollChat();
+    if (force) scrollChat();
+    else el.chatLog.scrollTop = keep;   // clamped by the browser if it no longer fits
   }
 
   function autosize(node) {
@@ -2945,13 +3007,20 @@
       ? "Connected to your configured coach endpoint."
       : "Running the built-in scripted coach \u2014 no network required.";
 
-    renderChatLog();
+    renderChatLog(true);   // arriving at the conversation: show me the newest turn
 
     el.chatSend.addEventListener("click", sendChat);
     el.chatInput.addEventListener("input", function () { autosize(el.chatInput); });
     el.chatInput.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
+    /* Scrolling back down is how you re-pin, so it is also how the control goes
+       away. Nothing is remembered between events - the position is re-read each
+       time, which is what keeps this from becoming a mode. */
+    el.chatLog.addEventListener("scroll", function () {
+      if (chatPinned()) showNewReply(false);
+    });
+    if (el.chatJump) el.chatJump.addEventListener("click", scrollChat);
     wireConfirm(el.chatRestart, "Press again to clear it", restartConversation);
   }
 
@@ -3010,7 +3079,7 @@
       }
       if (workflowData.v2Source !== "user") { workflowData.masterPromptV2 = ""; workflowData.v2Source = ""; }
       showChatError("");
-      renderChatLog();
+      renderChatLog(true);
       if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
       save();
       startConversation();
@@ -4679,7 +4748,7 @@
       refreshV2(true);
     }
     renderPromptV1();
-    renderChatLog();
+    renderChatLog(true);
     save();
   }
 
@@ -4858,7 +4927,7 @@
     });
     renderVision();
     showChatError("");
-    renderChatLog();
+    renderChatLog(true);
     el.promptV2.value = "";
     /* Deploy goes back to read-only with nothing owned: starting over is not a
        state anyone can be mid-edit in. */

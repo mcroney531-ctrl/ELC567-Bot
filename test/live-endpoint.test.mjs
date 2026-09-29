@@ -91,6 +91,45 @@ try {
   check('error notice cleared after retry', await page.locator('#bw-chat-error').isHidden());
   check('no duplicate learner message on retry', await page.locator('.bw-msg-user').count() === 2);
 
+  /* --- 3b. retry is the one path where the typing indicator fires while the
+     learner is somewhere else in the transcript ---
+
+     Everywhere else the indicator follows a message the learner just sent, which
+     has already taken them to the bottom - so the rule that it respects their
+     scroll position is only reachable here. Retry re-sends a turn that is already
+     in the transcript: nothing new appears, so there is nothing to move anyone
+     to, and the reply announces itself the same way any other does.
+
+     Checked after the round trip rather than inside the typing window, which is
+     both deterministic and strictly stronger: had the indicator jumped to the
+     bottom, the reply would then have found the learner pinned and followed it
+     down, leaving no held position and no control. */
+  state.mode = 'error';
+  await page.fill('#bw-chat-input', 'One more that will fail, so there is something to retry.');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#bw-chat-error:not([hidden])', { timeout: 8000 });
+  const scrollable = await page.evaluate(() => {
+    const l = document.querySelector('.bw-chat-log');
+    return l.scrollHeight > l.clientHeight + 60;
+  });
+  check('the transcript is long enough to be read away from the bottom', scrollable);
+  await page.evaluate(() => { document.querySelector('.bw-chat-log').scrollTop = 0; });
+  await page.waitForTimeout(120);
+  const held = await page.evaluate(() => Math.round(document.querySelector('.bw-chat-log').scrollTop));
+  state.mode = 'anthropic';
+  await page.click('#bw-chat-error .bw-btn');
+  await waitBots(4);
+  await page.waitForTimeout(300);
+  const retried = await page.evaluate(() => {
+    const l = document.querySelector('.bw-chat-log');
+    const j = document.getElementById('bw-chat-jump');
+    return { top: Math.round(l.scrollTop), jump: !!j && !j.hidden };
+  });
+  check('retrying does not yank a learner who is reading further up',
+    retried.top === held, JSON.stringify({ held: held, after: retried.top }));
+  check('and the recovered reply announces itself instead', retried.jump,
+    JSON.stringify(retried));
+
   /* --- 4. the anthropic shape is accepted, and its fenced block is not shown ---
      The adapter still has to read `content: [{type:"text"}]`; what it must not
      do is put a master prompt on screen during Refine. The prose around the

@@ -424,6 +424,263 @@ try {
     String(await page.locator('.bw-focus-step[data-state="done"]').count()));
   await ctx.close();
 
+  /* =================== respecting where the learner is reading ===================
+
+     The transcript used to be pinned to the bottom unconditionally. The case
+     that broke: send an answer, scroll up while the coach works to reread what
+     you said, and the reply yanks you back down - 825px at desktop width, 1542
+     on a phone, and twice a turn counting the typing indicator. In Refine the
+     thing yanked away is the earlier decision you scrolled back to in order to
+     answer the current one.
+
+     Pin state is positional, so the whole contract is testable as geometry: who
+     is allowed to move the learner, and what tells them a reply arrived when
+     nobody is. */
+  const scrollGeo = page => page.evaluate(() => {
+    const l = document.querySelector('.bw-chat-log');
+    const j = document.getElementById('bw-chat-jump');
+    return {
+      top: Math.round(l.scrollTop),
+      fromBottom: Math.round(l.scrollHeight - l.scrollTop - l.clientHeight),
+      jump: !!j && !j.hidden
+    };
+  });
+  const toTop = page => page.evaluate(() => { document.querySelector('.bw-chat-log').scrollTop = 0; });
+  let sg;
+
+  for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }],
+                                   ['phone', { width: 390, height: 780 }]]) {
+    ({ ctx, page } = await openCoach({ viewport }));
+    await page.click('[data-next="4"]');
+    await page.waitForTimeout(800);
+    await page.waitForFunction(
+      () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+      null, { timeout: 12000 });
+    // Two turns, so there is more transcript than viewport to be moved around in.
+    await say(page, 'Steps 1 and 3 - the pulling of numbers and the drafting of each client update, which is the part that eats the morning.', 2);
+    await say(page, 'The judgement about what to flag for each client next week stays mine, and so does the final read before anything goes out.', 3);
+    check(label + ': the transcript is long enough to have somewhere to scroll',
+      await page.evaluate(() => { const l = document.querySelector('.bw-chat-log');
+        return l.scrollHeight > l.clientHeight + 120; }),
+      JSON.stringify(await scrollGeo(page)));
+
+    /* A. Pinned. Nothing changes: the learner never left the bottom, so the
+       conversation goes on following it and there is nothing to announce. */
+    sg = await scrollGeo(page);
+    check(label + ': a learner who stayed at the bottom is still at the bottom',
+      sg.fromBottom === 0, JSON.stringify(sg));
+    check(label + ': and is told nothing, because they saw it arrive', !sg.jump, JSON.stringify(sg));
+
+    /* B. Unpinned mid-turn - the actual bug. Pin state has to be read when the
+       reply lands, not when Send was pressed. */
+    await page.fill('#bw-chat-input', 'Four short paragraphs, no bullets, under two hundred words, direct and plain.');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(90);        // the user message and the typing indicator are in
+    await toTop(page);
+    const parked = await scrollGeo(page);
+    check(label + ': the typing indicator does not announce a reply that has not arrived',
+      !parked.jump, JSON.stringify(parked));
+    await page.waitForFunction(
+      () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 4,
+      null, { timeout: 15000 });
+    await page.waitForTimeout(300);
+    sg = await scrollGeo(page);
+    check(label + ': the reply does not yank a learner who scrolled up to reread',
+      sg.top === parked.top, JSON.stringify({ parked: parked.top, after: sg.top }));
+    check(label + ': and it says so, because the reply landed out of sight',
+      sg.jump, JSON.stringify(sg));
+
+    /* C. The way back. */
+    await page.click('#bw-chat-jump');
+    await page.waitForTimeout(250);
+    sg = await scrollGeo(page);
+    check(label + ': the control goes to the newest turn', sg.fromBottom === 0, JSON.stringify(sg));
+    check(label + ': and clears itself once there', !sg.jump, JSON.stringify(sg));
+    /* Restoring the pin is the point: the next reply has to follow again. */
+    await say(page, 'Never invent a number that is not in the export I paste in.', 5);
+    await page.waitForTimeout(200);
+    sg = await scrollGeo(page);
+    check(label + ': the pin is restored, so the next reply follows',
+      sg.fromBottom === 0 && !sg.jump, JSON.stringify(sg));
+
+    await ctx.close();
+  }
+
+  /* D and E on one transcript, at phone width where the yank was worst. */
+  ({ ctx, page } = await openCoach({ viewport: { width: 390, height: 780 } }));
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(800);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+    null, { timeout: 12000 });
+  await say(page, 'Steps 1 and 3 - the pulling of the numbers and the drafting of each update.', 2);
+  await say(page, 'The judgement about what to flag next week stays mine, and the final read too.', 3);
+
+  // D: scrolling back down by hand is the same thing as pressing the control.
+  await page.fill('#bw-chat-input', 'Four short paragraphs, no bullets, under two hundred words.');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(90);
+  await toTop(page);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 4,
+    null, { timeout: 15000 });
+  await page.waitForTimeout(250);
+  check('a reply is waiting before the manual re-pin', (await scrollGeo(page)).jump);
+  await page.evaluate(() => { const l = document.querySelector('.bw-chat-log'); l.scrollTop = l.scrollHeight; });
+  await page.waitForTimeout(250);
+  sg = await scrollGeo(page);
+  check('scrolling back down by hand clears the control', !sg.jump, JSON.stringify(sg));
+  check('and re-pins without a control to find', sg.fromBottom === 0, JSON.stringify(sg));
+  /* Within the tolerance counts as the bottom. Fractional layout and browser zoom
+     both leave a pixel or two behind, and at a threshold of zero that silently
+     unpins someone who never scrolled.
+
+     Read through the scroll listener rather than through an arriving reply: a
+     reply is preceded by the typing indicator being REMOVED, which shrinks the
+     log and re-clamps scrollTop to the bottom, so a learner parked just inside
+     the tolerance gets there by the clamp whatever the threshold is. That path
+     cannot tell a tolerance of 32 from one of 0. This one can. */
+  await page.fill('#bw-chat-input', 'Never invent a number that is not in the export I paste in.');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(90);
+  await toTop(page);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 5,
+    null, { timeout: 15000 });
+  await page.waitForTimeout(250);
+  check('unpinned again, with a reply waiting', (await scrollGeo(page)).jump);
+  await page.evaluate(() => { const l = document.querySelector('.bw-chat-log');
+    l.scrollTop = l.scrollHeight - l.clientHeight - 20; });
+  await page.waitForTimeout(200);
+  sg = await scrollGeo(page);
+  check('20px short of the bottom is inside the tolerance, not a near miss',
+    sg.fromBottom > 10 && sg.fromBottom < 32, JSON.stringify(sg));
+  check('so it counts as back at the bottom and clears the control',
+    !sg.jump, JSON.stringify(sg));
+
+  // E: the learner's own send is deliberate and always returns to the bottom.
+  await page.fill('#bw-chat-input', 'One more thing about the tone of the updates.');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(90);
+  await toTop(page);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 6,
+    null, { timeout: 15000 });
+  await page.waitForTimeout(250);
+  check('set up unpinned with a reply waiting', (await scrollGeo(page)).jump);
+  await page.fill('#bw-chat-input', 'And keep the same order of sections every week.');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  sg = await scrollGeo(page);
+  check('sending is deliberate, so it returns to the bottom', sg.fromBottom === 0, JSON.stringify(sg));
+  check('and clears the control on the way', !sg.jump, JSON.stringify(sg));
+  check('no horizontal overflow from the control', await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
+  await ctx.close();
+
+  /* A passive repaint must not move anyone either.
+
+     `renderChatLog()` used to end in an unconditional jump to the bottom, so
+     every caller inherited one whether or not the learner had done anything. The
+     cross-block sync is the caller that matters: it fires on a sibling block's
+     write, on a poll, on focus and on scrolling into view - none of which the
+     learner asked for. Production never reaches it (blockRole "all" returns
+     early from wireCrossBlockSync), which is exactly why it is worth a test: the
+     split configuration should not keep the bug because the shipped one cannot
+     see it. /role/coach-handoff is a split coach that owns step 4. */
+  {
+    const sctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const spage = await sctx.newPage();
+    report.watch(spage);
+    const turn = (role, text, at) => ({ role, text, at });
+    await spage.addInitScript(seed => {
+      localStorage.setItem('brainstorm_workflow_data', seed);
+      localStorage.setItem('bw_started', '1');
+    }, JSON.stringify({
+      ...SEED,
+      conversations: { handoff: [
+        turn('bot', 'Looking at the steps you mapped, which parts should AI take on?', '9:00 AM'),
+        turn('user', 'The drafting of each client update, and the first pass at the numbers.', '9:01 AM'),
+        turn('bot', 'Good. That is the part that repeats, and repetition is what it is for.', '9:01 AM'),
+        turn('user', 'The judgement about what to flag for each client next week stays mine.', '9:02 AM'),
+        turn('bot', 'Noted - the call stays with you and the assembly does not.', '9:02 AM'),
+        turn('user', 'Four short paragraphs, no bullets, under two hundred words, direct.', '9:03 AM'),
+        turn('bot', 'That is a bar you can hold a draft against.', '9:03 AM')
+      ] },
+      progress: { unlocked: 4, current: 4, done: { 1: true, 2: true, 3: true },
+                  entered: { 1: true, 2: true, 3: true } }
+    }));
+    await spage.goto(`http://127.0.0.1:${PORT}/role/coach-handoff`);
+    await spage.waitForTimeout(600);
+    check('the split coach has a transcript that scrolls', await spage.evaluate(() => {
+      const l = document.querySelector('.bw-chat-log');
+      return !!l && l.scrollHeight > l.clientHeight + 60;
+    }));
+    await spage.evaluate(() => { document.querySelector('.bw-chat-log').scrollTop = 0; });
+    await spage.waitForTimeout(120);
+    const before = await scrollGeo(spage);
+    // A sibling block writes something real, then tells this one about it.
+    await spage.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem('brainstorm_workflow_data'));
+      d.problem = 'A problem statement rewritten in the block above this one.';
+      const raw = JSON.stringify(d);
+      localStorage.setItem('brainstorm_workflow_data', raw);
+      window.dispatchEvent(new StorageEvent('storage',
+        { key: 'brainstorm_workflow_data', newValue: raw, storageArea: localStorage }));
+    });
+    await spage.waitForTimeout(500);
+    const after = await scrollGeo(spage);
+    check('a sibling block catching up does not move the learner',
+      after.top === before.top, JSON.stringify({ before: before.top, after: after.top }));
+    check('and does not claim a reply arrived, because none did', !after.jump,
+      JSON.stringify(after));
+    await sctx.close();
+  }
+
+  /* The control is a control, not a second announcement. #bw-chat-log is a
+     polite live region that already reads the incoming reply out; a live control
+     describing the same event would announce it twice. */
+  ({ ctx, page } = await openCoach({ viewport: { width: 1280, height: 900 } }));
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(800);
+  const a11y = await page.evaluate(() => {
+    const j = document.getElementById('bw-chat-jump');
+    return { inLog: !!document.querySelector('#bw-chat-log #bw-chat-jump'),
+             live: j.getAttribute('aria-live'), role: j.getAttribute('role'),
+             tag: j.tagName, label: j.getAttribute('aria-label'),
+             logLive: document.getElementById('bw-chat-log').getAttribute('aria-live') };
+  });
+  check('the control sits outside the transcript live region', !a11y.inLog, JSON.stringify(a11y));
+  check('and carries no live behaviour of its own',
+    !a11y.live && a11y.role !== 'status' && a11y.role !== 'alert', JSON.stringify(a11y));
+  check('the transcript is still what announces the reply', a11y.logLive === 'polite',
+    JSON.stringify(a11y));
+  check('it is an ordinary labelled button',
+    a11y.tag === 'BUTTON' && /newest/i.test(a11y.label), JSON.stringify(a11y));
+  /* Hiding a focused button would drop the tab position onto the body, and
+     focusing the composer instead would raise a phone keyboard for someone who
+     only wanted to read. */
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+    null, { timeout: 12000 });
+  await say(page, 'Steps 1 and 3, the drafting of each client update and the numbers behind it.', 2);
+  await page.fill('#bw-chat-input', 'The judgement about what to flag next week stays mine.');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(90);
+  await toTop(page);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 3,
+    null, { timeout: 15000 });
+  await page.waitForTimeout(250);
+  await page.focus('#bw-chat-jump');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(250);
+  const landed = await page.evaluate(() => document.activeElement.id || document.activeElement.tagName);
+  check('focus lands on the transcript, not the body', landed === 'bw-chat-log', landed);
+  check('and not on the composer, which would open a phone keyboard',
+    landed !== 'bw-chat-input', landed);
+  await ctx.close();
+
   // ============ coming back to a stage with everything already filled ============
   /* Pinned context is meant to orient the conversation, not crowd it out. Once
      a learner has reached the master prompt, every card has something to say,

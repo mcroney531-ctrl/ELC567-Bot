@@ -395,6 +395,48 @@ scripted coach with it.
 Do **not** move it on phase change. That was tried; it left the conversation half-visible
 under the lesson and was masking a false pass in the `live-endpoint` suite.
 
+### The transcript follows the learner, not the clock
+`scrollChat()` is not "go to the bottom" any more, and pin state is **positional and
+nothing else**: `chatPinned()` is true when `.bw-chat-log` is within `CHAT_PIN_SLACK`
+(32px) of its bottom. There is no mode, no toggle, no stored preference — the scroll
+position *is* the state, so scrolling back down re-pins with nothing to find.
+
+Who may move the learner:
+
+| May force the bottom (the learner did it) | Must respect the pin (the coach did it) |
+| --- | --- |
+| sending a message | appending the coach's reply |
+| entering the conversation (`setPhase`) | showing the typing indicator |
+| Restart / a new opening | |
+
+Two things are easy to get wrong here:
+
+- **Sample the pin before appending.** Appending is what makes the log taller, so a check
+  made afterwards reports every learner as scrolled away. `appendMessage()` and
+  `showTyping()` both read `chatPinned()` first.
+- **Read it when the event happens, not when Send was pressed.** Scrolling up *during* the
+  wait is the whole case this exists for.
+
+`renderChatLog(force)` takes its scroll intent from the caller rather than having one of
+its own. Stage entry, restart, admin seeding and Start over pass `true`; the cross-block
+sync passes `false` and restores `scrollTop`. Production never reaches the passive path
+(`wireCrossBlockSync()` returns early for `blockRole: "all"`), which is why it is tested —
+the split configuration should not keep a bug just because the shipped one cannot see it.
+
+When a reply lands unpinned, `#bw-chat-jump` ("New reply ↓") appears at the foot of the
+transcript viewport. It is deliberately **outside** `#bw-chat-log`: the log is
+`role="log" aria-live="polite"` and already announces the reply, so a live control would
+announce the same event twice. It has no `aria-live` of its own, just
+`aria-label="Jump to newest coach reply"`. Anything that reaches the bottom clears it,
+because `scrollChat()` clears it — one place, not five call sites remembering to. Hiding it
+while it holds focus moves focus to the transcript (`tabindex="-1"`), not the composer,
+which would raise a phone keyboard for someone who only wanted to read.
+
+The indicator never raises the control: there is nothing to jump to yet, and the composer
+goes disabled in the same breath, which already says the coach is working. The one path
+where that rule is reachable is retry after a failed request — tested in `live-endpoint`,
+since that is where the failing stub lives.
+
 ### Refine's progression is the application's, not the model's
 `captureDecision(text)` runs in `sendChat()` — before any reply exists — so the scripted
 coach and a live one write the same state through the same push-once rule. The coach then
@@ -856,10 +898,7 @@ coupling.
 6. **Three unused coaching-card types** (`example`, `refinement`, and the specificity
    checklist) render correctly from the typed shape, but nothing emits them.
 
-7. **Chat scroll behaviour.** The chat-interface pack asks for "don't fight a learner who
-   has scrolled up." Not implemented — `scrollChat()` always scrolls to the bottom.
-
-8. **`STAGE_EXAMPLES[1]` has no screen to render on.** Those three starter examples were
+7. **`STAGE_EXAMPLES[1]` has no screen to render on.** Those three starter examples were
    written for stage 1's textarea, which is gone. The machinery still works for any panel
    stage. Left in place deliberately rather than deleted or relocated — it is the user's
    copy.

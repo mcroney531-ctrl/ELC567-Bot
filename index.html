@@ -497,7 +497,15 @@ write [MISSING: metric name] and keep going.</pre>
           <button type="button" class="bw-btn bw-btn-quiet" id="bw-chat-restart">Restart conversation</button>
         </div>
         <div class="bw-chat">
-          <div class="bw-chat-log" id="bw-chat-log" role="log" aria-live="polite" aria-label="Coach conversation"></div>
+          <!-- The transcript's viewport. The jump control is anchored to it and
+               deliberately sits OUTSIDE #bw-chat-log: the log is a polite live
+               region that already announces an incoming reply, so a live
+               control here would announce the same event twice. -->
+          <div class="bw-chat-view">
+            <div class="bw-chat-log" id="bw-chat-log" role="log" aria-live="polite" aria-label="Coach conversation" tabindex="-1"></div>
+            <button type="button" class="bw-chat-jump" id="bw-chat-jump" hidden
+                    aria-label="Jump to newest coach reply">New reply <span aria-hidden="true">&darr;</span></button>
+          </div>
           <div class="bw-chat-compose">
             <label class="bw-sr" for="bw-chat-input">Your reply to the coach</label>
             <textarea id="bw-chat-input" rows="1" placeholder="Type your answer&hellip; (Enter to send, Shift+Enter for a new line)"></textarea>
