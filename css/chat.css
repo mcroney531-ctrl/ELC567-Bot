@@ -288,6 +288,9 @@
      thing this header alone can say is who the learner is talking to. */
   .bw-coach-sub, .bw-coach-chip { display: none; }
   .bw-coach-name { white-space: nowrap; }
+
+  .bw[data-phase="chat"] .bw-msg-bot .bw-msg-body,
+  .bw[data-phase="chat"] .bw-msg-user .bw-msg-body { max-width: 88%; }
 }
 
 /* Phone. With the name held to one line, the adapter badge is what runs into
@@ -296,6 +299,4 @@
    undo this conversation, are worth more. */
 @media (max-width: 480px) {
   .bw-coach-name .bw-badge { display: none; }
-  .bw[data-phase="chat"] .bw-msg-bot .bw-msg-body,
-  .bw[data-phase="chat"] .bw-msg-user .bw-msg-body { max-width: 88%; }
 }

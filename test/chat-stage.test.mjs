@@ -369,6 +369,39 @@ try {
     await ctx.close();
   }
 
+  /* ---------- the ground between the two breakpoints ----------
+
+     The header work added a 480 rule for the adapter badge, and the bubble cap
+     that belonged to 720 went in with it - so 481-720 quietly lost it. The two
+     rules answer different problems (a tablet-width column that reads too wide
+     against a phone header that runs out of room), so 600 is where a drifting
+     boundary shows: the cap has to be in force and the badge has to still be
+     there. A computed 88% is the tablet rule winning; the base 70ch/62ch
+     resolves to px, so the two are not confusable. */
+  ({ ctx, page } = await openCoach({ viewport: { width: 600, height: 900 } }));
+  await page.click('[data-next="4"]');
+  await page.waitForTimeout(800);
+  await page.waitForFunction(
+    () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+    null, { timeout: 12000 });
+  await say(page, 'Steps 1 and 3, the drafting of each client update.', 2);
+  const mid = await page.evaluate(() => {
+    const cap = s => getComputedStyle(document.querySelector(s + ' .bw-msg-body')).maxWidth;
+    const badge = document.querySelector('.bw-coach-name .bw-badge');
+    const chip = document.querySelector('.bw-coach-chip');
+    return { bot: cap('.bw-msg-bot'), user: cap('.bw-msg-user'),
+             badge: badge ? getComputedStyle(badge).display : 'missing',
+             chip: chip ? getComputedStyle(chip).display : 'missing' };
+  });
+  check('600: the coach bubble still takes the tablet cap', mid.bot === '88%',
+    JSON.stringify(mid));
+  check('600: and so does the learner bubble', mid.user === '88%', JSON.stringify(mid));
+  check('600: the adapter badge is a phone concession, not a tablet one',
+    mid.badge !== 'none' && mid.badge !== 'missing', JSON.stringify(mid));
+  check('600: the stage chip is still the 720 rule\'s business',
+    mid.chip === 'none', JSON.stringify(mid));
+  await ctx.close();
+
   /* Reachable is not the same as working: the confirm is two presses, and the
      second one has to still do what it did at desktop width. */
   ({ ctx, page } = await openCoach({ viewport: { width: 390, height: 900 } }));
