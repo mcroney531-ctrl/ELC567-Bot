@@ -2820,13 +2820,13 @@
      changes the log is shorter than their offset, so there is nothing to restore
      it to. That is also why this cannot be solved inside showTyping().
 
-     That last line is doing real work only where the engine does not. Chromium's
-     scroll anchoring undoes the clamp by itself once the reply lands (traced:
-     499 -> 493 on removal, back to 499 on append), so the tests cannot observe
-     it - they pin the decision, which is the part that moved the learner a whole
-     screen. WebKit has never shipped overflow-anchor, and older iPad Safari is
-     what this file is written for, so there the clamp stands and this is what
-     puts the learner back. */
+     That last line is doing real work only where the engine does not. Chromium
+     currently restores the position through its own scroll anchoring once the
+     reply lands (traced: 499 -> 493 on removal, back to 499 on append), which
+     makes the line unobservable in the Chromium test harness - the tests pin the
+     decision instead, which is the part that moved the learner a whole screen.
+     The older Safari versions this activity targets provide no scroll anchoring,
+     so there the clamp stands and this is what puts the learner back. */
   function appendReply(text) {
     var follow = chatPinned();
     var keepTop = el.chatLog.scrollTop;

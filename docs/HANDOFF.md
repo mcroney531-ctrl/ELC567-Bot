@@ -425,12 +425,15 @@ Three things are easy to get wrong here:
   to `appendMessage()` as an explicit `follow`, instead of letting it be re-read.
 
   It also restores `scrollTop` after the append — and not before, because in between the
-  log is shorter than the learner's offset and there is nothing to restore it to. That line
-  is unobservable in the test harness: Chromium's scroll anchoring already undoes the clamp
-  when the reply lands (traced: 499 → 493 on removal, back to 499 on append). WebKit has
-  never shipped `overflow-anchor` and older iPad Safari is the target this file is written
-  for, so the line is what puts the learner back there. The tests pin the **decision**,
-  which is the part that moved someone a whole screen.
+  log is shorter than the learner's offset and there is nothing to restore it to. Chromium
+  currently restores the position through its own scroll anchoring when the reply lands
+  (traced: 499 → 493 on removal, back to 499 on append), which makes that line unobservable
+  in the Chromium test harness. The older Safari versions this activity targets provide no
+  scroll anchoring, so the line is still required there. (Scroll anchoring is newly
+  available across current browsers — Safari ships it as of 27.0, controlled by
+  `overflow-anchor` — so this is a matter of which versions learners are on, not of one
+  engine lacking the feature.) The tests pin the **decision**, which is the part that moved
+  someone a whole screen.
 
 `renderChatLog(force)` takes its scroll intent from the caller rather than having one of
 its own. Stage entry, restart, admin seeding and Start over pass `true`; the cross-block
