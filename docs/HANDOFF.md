@@ -437,15 +437,17 @@ Three things are easy to get wrong here:
 
 `renderChatLog(force)` takes its scroll intent from the caller rather than having one of
 its own. Stage entry, restart, admin seeding and Start over pass `true`; the cross-block
-sync passes `false` and restores `scrollTop`. A passive repaint also returns early while a
-turn is in flight (`chatPending`): the typing indicator is not part of `convo()`, so a
-repaint rebuilt from it deletes the indicator as collateral, shrinks the log past a learner
-parked just outside the tolerance, and hands `appendReply()` a pin position the coach
-created — the same bug as the reply path, reached through a sibling block's write. The
-guard sits in `renderChatLog` rather than at the caller so the invariant (a passive repaint
-must not destroy transient in-flight UI) is stated where the destruction would happen. Production never reaches the passive path
+sync passes `false` and restores `scrollTop`. Production never reaches that passive path
 (`wireCrossBlockSync()` returns early for `blockRole: "all"`), which is why it is tested —
 the split configuration should not keep a bug just because the shipped one cannot see it.
+
+A passive repaint also returns early while a turn is in flight (`chatPending`). The typing
+indicator is not part of `convo()`, so a repaint rebuilt from it deletes the indicator as
+collateral, shrinks the log past a learner parked just outside the tolerance, and hands
+`appendReply()` a pin position the coach created — the same bug as the reply path, reached
+through a sibling block's write. The guard sits in `renderChatLog` rather than at the caller
+so the invariant (a passive repaint must not destroy transient in-flight UI) is stated where
+the destruction would happen.
 
 When a reply lands unpinned, `#bw-chat-jump` ("New reply ↓") appears at the foot of the
 transcript viewport. It is deliberately **outside** `#bw-chat-log`: the log is
