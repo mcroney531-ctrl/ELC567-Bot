@@ -672,6 +672,50 @@ try {
       after.top === before.top, JSON.stringify({ before: before.top, after: after.top }));
     check('and does not claim a reply arrived, because none did', !after.jump,
       JSON.stringify(after));
+
+    /* The same sync during a turn in flight.
+
+       The typing indicator is not part of the conversation, so a repaint rebuilt
+       from the conversation deletes it - as collateral, for a sibling's write to
+       something this block does not even own. That is the coach's transient UI
+       being removed by a passive path, and it moves the learner the same way
+       removing it on a reply does: the log shrinks past someone parked just
+       outside the tolerance and scrollTop clamps to the new bottom, so by the time
+       the reply samples the pin they read as pinned without having chosen to be.
+       Checked on the indicator itself first, because that is the direct proof. */
+    await spage.evaluate(() => { const l = document.querySelector('.bw-chat-log');
+      l.scrollTop = l.scrollHeight; });
+    await spage.fill('#bw-chat-input', 'Keep the same order of sections every week so it reads the same.');
+    await spage.keyboard.press('Enter');
+    await spage.waitForSelector('.bw-chat-log [data-typing]', { timeout: 3000 });
+    await spage.evaluate(() => { const l = document.querySelector('.bw-chat-log');
+      l.scrollTop = l.scrollHeight - l.clientHeight - 40; });
+    const inflight = await scrollGeo(spage);
+    check('a turn is in flight with the learner just outside the tolerance',
+      inflight.fromBottom > 32 && await spage.locator('.bw-chat-log [data-typing]').count() === 1,
+      JSON.stringify(inflight));
+    await spage.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem('brainstorm_workflow_data'));
+      d.problem = 'Rewritten again in the block above, while this coach is still answering.';
+      const raw = JSON.stringify(d);
+      localStorage.setItem('brainstorm_workflow_data', raw);
+      window.dispatchEvent(new StorageEvent('storage',
+        { key: 'brainstorm_workflow_data', newValue: raw, storageArea: localStorage }));
+    });
+    await spage.waitForTimeout(250);
+    const synced = await scrollGeo(spage);
+    check('a sibling write does not delete the typing indicator mid-turn',
+      await spage.locator('.bw-chat-log [data-typing]').count() === 1,
+      JSON.stringify({ typing: await spage.locator('.bw-chat-log [data-typing]').count() }));
+    check('and does not move the learner while it waits',
+      synced.top === inflight.top, JSON.stringify({ parked: inflight.top, after: synced.top }));
+    await spage.waitForFunction(
+      () => !document.querySelector('.bw-chat-log [data-typing]'), null, { timeout: 15000 });
+    await spage.waitForTimeout(300);
+    const landed = await scrollGeo(spage);
+    check('the reply that follows does not inherit a pin the learner never chose',
+      landed.top === inflight.top, JSON.stringify({ parked: inflight.top, after: landed.top }));
+    check('and announces itself', landed.jump, JSON.stringify(landed));
     await sctx.close();
   }
 

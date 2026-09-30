@@ -3008,6 +3008,16 @@
      leave the learner where they were - otherwise the same yank survives in the
      split deployment, which is the one place that path is live. */
   function renderChatLog(force) {
+    /* A passive repaint has nothing to add while this block has a turn in flight,
+       and a good deal to lose: the typing indicator is not part of the
+       conversation, so a repaint rebuilt from it deletes the indicator as
+       collateral - and with it the log's height, which clamps scrollTop and hands
+       appendReply() a pin position the learner never chose. The invariant is that
+       a passive repaint must not destroy transient in-flight UI, so it is stated
+       here, where the destruction would happen, rather than at each caller.
+       Nothing is lost by skipping: the reply's own append repaints what matters,
+       and the forced callers (entry, Restart, admin seed, Start over) still run. */
+    if (!force && chatPending) return;
     var keep = el.chatLog.scrollTop;
     el.chatLog.textContent = "";
     convo().forEach(function (m) {
