@@ -556,7 +556,8 @@ that `goNext()` would refuse.
 ### Prose → structured parsing
 The capture chats (`/role/coach-workflow`, `/role/coach-tools` — Map's slice roles, not
 reachable in the full activity) turn prose into a numbered list. Key functions:
-`splitIntoActions`, `parseToolPairs`, `tidyAction`, `isConfirm`, `resolveStep`.
+`splitIntoActions`, `parseToolPairs`, `tidyAction`, `isConfirm`. (`resolveStep` is a different
+job — see the next subsection.)
 
 Two bugs already fixed here, worth not reintroducing:
 - `ACTION_PREFIX` stripped only *one* leading filler word, so "oh and then I email it"
@@ -564,6 +565,43 @@ Two bugs already fixed here, worth not reintroducing:
 - A whole-string `CONFIRMS` regex failed on trailing words, so "yes that looks right" was
   parsed as a new workflow step. `isConfirm()` now requires an affirmative lead **and** a
   remainder of only affirmative words — so "yes, but step 2 is wrong" is still an edit.
+
+### Which mapped step a handoff answer is about
+Deploy's "what I need you to do" opens, when it can, with a canonical line — *"Take over this
+step of my workflow: Send each update in the client's preferred channel (Gmail, Slack)."* —
+with the learner's own words underneath. `resolveStep()` decides whether that line appears,
+and its rule is **precision over recall**: a canonical line appears only when the answer
+points at **exactly one** mapped step. With several steps, none, or any doubt, there is no
+match and the learner's wording stands alone through the existing fallback. A missing line
+costs nothing because their words survive; a wrong one tells the assistant to do something
+they did not ask for, in the one document the journey exists to produce.
+
+How it decides:
+1. **An explicit number is authoritative** (`step 4`, `4.`). Naming *two* — `step 1 and step 3`,
+   `steps 1 and 3` — is the clearest multi-step answer there is, so it resolves nothing; taking
+   the first would be the same silent narrowing with a digit instead of a word.
+2. **Otherwise, wording**, on normalised tokens: `pull/pulling`, `send/sending`,
+   `update/updates`, `client/client's` compare equal (`stepStem`, a few suffix rules — not a
+   library; it only has to agree with itself). A step's **own words** are the ones no other step
+   uses. Evidence for two steps means the answer is about two steps, so no match; evidence for
+   one needs at least two of that action's words behind it, since a single word is a coincidence.
+
+Why it was rewritten: the old matcher counted raw word overlap and took the highest scorer. It
+named *"Draft a four paragraph update for each client"* for *"Sending each update out to the
+client…"* — `update` and `client` are shared by the two neighbouring steps and won two to one,
+while `send`, the only word that tells them apart, was thrown away for being four letters long.
+It also returned one step for an answer about two. Neither was visible without reading the
+generated artifact, and **no test pinned the canonical line at all**.
+
+Known and intended false negatives: a sentence that happens to contain another step's own word
+("…before *anything* else happens", where *anything* belongs to "Check the shared inbox for
+*anything* unresolved") carries evidence for two steps and gets no canonical line. That is
+pinned in `step-resolution` on purpose, so nobody "fixes" it into a false positive. Tool names
+do not count as evidence; only the action's words do.
+
+Test the **generated section**, not just the resolver: the defect lived in what reached Deploy,
+and a unit test on the matcher would leave the composition path — the canonical line, the "in my
+words" line, the fallback — uncovered. One case runs through the real Refine conversation.
 
 ---
 
@@ -701,7 +739,7 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Twelve Playwright suites, all passing. Run `npm test` for the current totals; the counts
+Fifteen Playwright suites, all passing. Run `npm test` for the current totals; the counts
 below are each suite's own report at the time of writing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
@@ -717,6 +755,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `deploy-stage.test.mjs` | 50 | Stage 5 end to end: read before reveal, the provenance map against the real headings, ownership on request, the two notices, and finishing as a learning state |
 | `refine-stage.test.mjs` | 82 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
+| `step-resolution.test.mjs` | 27 | Which mapped step a handoff answer is about, read off the generated "what I need you to do" section: explicit numbers, one clear step, several steps, none, and never the wrong one |
 | `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
 | `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
 | `answer-quality.test.mjs` | 21 | Thin-answer heuristics and push-backs |

@@ -1207,22 +1207,91 @@
     return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
   }
 
-  /* Which mapped workflow step an answer is pointing at, by number or wording. */
+  /* ---------------------- which mapped step an answer is about ----------------------
+
+     Precision over recall. The result feeds the canonical line at the top of Deploy's
+     "what I need you to do" - "Take over this step of my workflow: ..." - and that line
+     may only appear when the answer points at exactly ONE mapped step. With several, or
+     none, or any doubt, there is no match and the learner's own words stand alone. That
+     costs nothing: their wording is kept either way. A wrong match tells the assistant to
+     do something they did not ask for, in the one document the journey exists to make.
+
+     The matcher this replaced counted raw word overlap and took the highest scorer. It
+     named "Draft a four paragraph update for each client" for "Sending each update out
+     to the client...", because "update" and "client" are shared by the two neighbouring
+     steps and outscored two to one, while "send" - the only word that tells them apart -
+     was discarded for being four letters long. It also returned one step for an answer
+     about two, silently narrowing it.
+
+     So: normalise words so that pull/pulling, send/sending, update/updates and
+     client/client's compare equal; work out which of each step's words are its own (not
+     shared with any other step); and accept a wording match only on evidence that points
+     at one step alone. */
+
+  var STEP_STOPWORDS = " the and for with from into onto each any all out our your their them " +
+    "this that then than its was were are has had have not but you how who what when where " +
+    "once also just about over under per via ";
+
+  /* A small deterministic normaliser, applied identically to the answer and to the step,
+     so what matters is that both sides agree, not that the stems are good English. */
+  function stepStem(w) {
+    if (w.length <= 3) return w;
+    if (/ies$/.test(w) && w.length > 4) w = w.slice(0, -3) + "y";
+    else if (/ing$/.test(w) && w.length > 5) {
+      w = w.slice(0, -3);
+      if (/([^aeiouls])\1$/.test(w)) w = w.slice(0, -1);       // running -> run, pulling stays pull
+    } else if (/ed$/.test(w) && w.length > 4) {
+      w = w.slice(0, -2);
+      if (/([^aeiouls])\1$/.test(w)) w = w.slice(0, -1);       // preferred -> prefer
+    } else if (/es$/.test(w) && w.length > 4) w = w.slice(0, -2);
+    else if (/s$/.test(w) && !/ss$/.test(w)) w = w.slice(0, -1);
+    if (w.length > 3 && /e$/.test(w)) w = w.slice(0, -1);        // update / updated / updates agree
+    return w;
+  }
+
+  function stepWords(text) {
+    var out = [];
+    String(text || "").toLowerCase().replace(/['\u2019]s\b/g, "").split(/[^a-z]+/).forEach(function (w) {
+      if (w.length < 3 || STEP_STOPWORDS.indexOf(" " + w + " ") !== -1) return;
+      var stem = stepStem(w);
+      if (stem.length >= 3 && out.indexOf(stem) === -1) out.push(stem);
+    });
+    return out;
+  }
+
   function resolveStep(text) {
     var t = String(text || "");
     var list = filledSteps();
-    var m = t.match(/\bstep\s*(\d+)/i) || t.match(/^\s*(\d+)[.)]/);
-    if (m) {
-      var i = parseInt(m[1], 10) - 1;
-      if (list[i]) return { index: i, step: list[i] };
-    }
-    var lower = t.toLowerCase(), best = null;
-    list.forEach(function (st, idx) {
-      var words = st.action.toLowerCase().split(/\s+/).filter(function (w) { return w.length > 4; });
-      var hits = words.filter(function (w) { return lower.indexOf(w) !== -1; }).length;
-      if (hits >= 2 && (!best || hits > best.hits)) best = { index: idx, step: st, hits: hits };
+
+    /* An explicit number is authoritative - when there is one. Naming two steps by
+       number is the clearest multi-step answer there is, and taking the first would be
+       the same narrowing as before with a digit instead of a word. */
+    var named = [];
+    function note(d) { var n = parseInt(d, 10); if (named.indexOf(n) === -1) named.push(n); }
+    var re = /\bsteps?\s*(\d+(?:\s*(?:,|and|&|\+|\/)\s*(?:steps?\s*)?\d+)*)/gi, m;
+    while ((m = re.exec(t))) (m[1].match(/\d+/g) || []).forEach(note);
+    var lead = t.match(/^\s*(\d+)[.)]/);
+    if (lead) note(lead[1]);
+    if (named.length > 1) return null;
+    if (named.length === 1 && list[named[0] - 1]) return { index: named[0] - 1, step: list[named[0] - 1] };
+
+    /* Wording. Each step's own words are the ones no other step uses. */
+    var answer = stepWords(t);
+    if (!answer.length) return null;
+    var sets = list.map(function (st) { return stepWords(st.action); });
+    var found = [];
+    sets.forEach(function (set, idx) {
+      var own = set.filter(function (w) {
+        return sets.every(function (other, j) { return j === idx || other.indexOf(w) === -1; });
+      });
+      var ownHits = own.filter(function (w) { return answer.indexOf(w) !== -1; }).length;
+      var allHits = set.filter(function (w) { return answer.indexOf(w) !== -1; }).length;
+      if (ownHits >= 1) found.push({ index: idx, step: list[idx], allHits: allHits });
     });
-    return best;
+    // Evidence for two steps means the answer is about two steps: no canonical line.
+    if (found.length !== 1) return null;
+    // One of a step's own words can be a coincidence; it needs the rest of the action behind it.
+    return found[0].allHits >= 2 ? { index: found[0].index, step: found[0].step } : null;
   }
 
   /* The prompt's six sections, in order, with the stages each one came from.
