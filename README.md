@@ -31,7 +31,7 @@ the screen that used to show it mid-journey is retired.
 
 ```bash
 npm start     # http://127.0.0.1:8080
-npm test      # ten suites, 521 assertions
+npm test      # eighteen suites, 1,233 assertions
 ```
 
 A server rather than opening `index.html` directly, because Chromium gives a `file://` page no
@@ -40,16 +40,16 @@ A server rather than opening `index.html` directly, because Chromium gives a `fi
 | Path | What it serves |
 |---|---|
 | `/` | the whole activity |
-| `/admin/` | the activity with the review bar up — a redirect to `/?admin=1` |
+| `/?admin=1` | the activity with the review bar up — local hosts only (see below) |
 | `/role/<name>` | one slice of it, for working on a stage in isolation |
 | `/frames/<a,b,c>` | several slices side by side on one origin, sharing state |
 
 `/role/` and `/frames/` are preview routes and exist only here; they 404 on the deployed site.
-`?admin=1` is a query flag, so it works everywhere the activity does.
+`?admin=1` is a query flag that only does anything on `localhost`, `127.0.0.1` and `::1`.
 
 ### Admin mode
 
-`/admin/` (or `?admin=1` on any host, including the deployed URL) puts a small bar at the bottom
+`?admin=1`, on a local host, puts a small bar at the bottom
 of the screen: **Skip →** fills the open stage with sample answers and continues, **Fill all**
 completes the whole journey, **1–5** jump to a stage, and a toggle switches between a stage's
 lesson and its coach. It exists so the activity can be walked and inspected without answering it
@@ -57,7 +57,7 @@ first.
 
 It writes only through the functions a learner's own clicks reach, so every state it produces is
 one the real flow could produce — that is asserted in `test/admin.test.mjs` by comparing the two.
-It is not a login: anyone can type `?admin=1`, and there is nothing behind it to protect.
+It is for local development only: on the deployed site the flag is ignored and no bar is built. It is not a login, and it must not grow one — this file is public to every learner.
 
 ### Layout
 
@@ -472,6 +472,10 @@ anywhere in the flow shows up as a test failure.
   jumping unlocks only as far as it claims, that Skip goes through the real gate rather than around
   it, and — the point of the suite — that the journey it leaves behind is indistinguishable from one
   somebody answered honestly, down to the computed completion lines and the prompt's provenance.
+- `test/release-hardening.test.mjs` — what a public deploy depends on: that Start leaves a clean
+  console, that `?admin=1` builds the toolbar on localhost / 127.0.0.1 / `[::1]` and nothing on any
+  other hostname, that there is no `/admin/` door and a `.nojekyll` at the root, and that the site
+  serves from the `/ELC567-Bot/` subpath with every asset resolving.
 - `test/hardening.test.mjs` — the failure modes that survived the move off Rise: that the page
   declares its own encoding, that dark mode stays off by default and still works when opted in,
   that copying survives a missing clipboard API and leaves the text selected when it can't copy at

@@ -8,7 +8,9 @@
  * nothing. So most of what follows checks that what the bar leaves behind is
  * indistinguishable from what answering the activity honestly leaves behind.
  *
- * The other half is containment: off by default, and invisible to a learner.
+ * The other half is containment: off by default, and invisible to a learner. It
+ * is also local-only: these run on 127.0.0.1, and test/release-hardening.test.mjs
+ * pins that a public hostname builds no toolbar at all.
  */
 import { serveSite, makeReporter, loadChromium } from './helpers.mjs';
 
@@ -183,14 +185,6 @@ try {
   check('and relocks everything',
     (await jumpStates()) === 'available,locked,locked,locked,locked', await jumpStates());
   check('with the saved data gone', !((await stored()).problem || '').length);
-
-  // ==================== the /admin/ door ====================
-  await open('admin/');
-  check('/admin/ resolves rather than 404ing',
-    !(await page.content()).includes('not found'));
-  check('and lands on the activity with the bar up', await bar().isVisible());
-  check('having rewritten the URL to the flag the app actually reads',
-    page.url().includes('admin=1'), page.url());
 
   // ==================== containment ====================
   await open();

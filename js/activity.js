@@ -3904,9 +3904,7 @@
                 { opacity: 1, y: 0, duration: .4, ease: "power2.out", clearProps: "opacity,transform" })
         .fromTo(".bw-station-card", { opacity: 0, scale: .9, y: 10 },
                 { opacity: 1, scale: 1, y: 0, duration: .42, ease: "back.out(1.6)",
-                  stagger: .07, clearProps: "all" }, .12)
-        .fromTo("#bw-rail-fill", { scaleX: 0 }, { scaleX: 1, duration: .4, ease: "power2.out",
-                  transformOrigin: "left center", clearProps: "all" }, .12);
+                  stagger: .07, clearProps: "all" }, .12);
     };
     if (motionOff()) { out(); return; }
     window.gsap.to("#bw-landing", {
@@ -4772,6 +4770,7 @@
       if (host) host.appendChild(buildCoachingCard(card));
     });
     paintContextStrip(cards.filter(function (c) { return c.where !== "bottom"; }));
+    syncContextScroll();
   }
 
   /* ----------------- pinned context, on a narrow screen -----------------
@@ -4820,7 +4819,28 @@
     ctxOpen = !!open;
     panel.setAttribute("data-ctx-open", ctxOpen ? "true" : "false");
     toggle.setAttribute("aria-expanded", ctxOpen ? "true" : "false");
+    syncContextScroll();
     if (wasPinned) scrollChat();
+  }
+
+  /* On a short phone the opened rail may not be able to show every card whole. It is
+     then a scroll region and has to behave like one: reachable by keyboard, named,
+     and carrying a visible cue (css/chat.css) while there is more below. When it all
+     fits, none of that is there. Nothing here touches the transcript's scrolling. */
+  function syncContextScroll() {
+    var rail = document.getElementById("bw-cards-top");
+    if (!rail) return;
+    var narrow = !window.matchMedia || window.matchMedia("(max-width: 900px)").matches;
+    var scrolls = ctxOpen && narrow && rail.scrollHeight > rail.clientHeight + 1;
+    if (!scrolls) {
+      ["tabindex", "role", "aria-label", "data-more"].forEach(function (a) { rail.removeAttribute(a); });
+      return;
+    }
+    rail.setAttribute("tabindex", "0");
+    rail.setAttribute("role", "region");
+    rail.setAttribute("aria-label", "Context loaded - scrollable");
+    rail.setAttribute("data-more",
+      rail.scrollTop + rail.clientHeight < rail.scrollHeight - 1 ? "true" : "false");
   }
 
   /* Continue on a coaching stage hands off to the coach rather than onward. */
@@ -4861,6 +4881,8 @@
 
     var top = el2("div", "bw-cards-rail");
     top.id = "bw-cards-top";
+    top.addEventListener("scroll", syncContextScroll);
+    window.addEventListener("resize", syncContextScroll);
     host.appendChild(top);
 
     moveChatIn();
@@ -4887,9 +4909,10 @@
   /* ==========================================================================
      11. ADMIN MODE
      --------------------------------------------------------------------------
-     A review harness, not a feature. Turned on by ?admin=1 (and /admin/, which
-     is a redirect to it), off in every other case. It exists so the activity
-     can be walked end to end and inspected without answering it first.
+     A review harness, not a feature, and for LOCAL DEVELOPMENT ONLY: ?admin=1
+     turns it on at localhost, 127.0.0.1 and ::1, and nowhere else - on the
+     published site the flag is ignored. It exists so the activity can be walked
+     end to end and inspected without answering it first.
 
      Two rules it must obey, because they are the reason the tool is trustworthy:
 
@@ -4901,13 +4924,21 @@
        2. It is additive. Every element it builds is created here, at wire time,
           and nothing in the learner's markup or CSS knows it exists.
 
-     It is not a security boundary - anyone can type ?admin=1. There is nothing
-     behind it to protect: it fills in sample answers, which the learner could
-     type themselves. Do not put anything here that is not safe to be public.
+     The hostname check keeps the public URL from handing every learner a button
+     that completes the journey for them. It is not a security boundary, and must
+     not grow a client-side password or key to pretend to be one: this file is
+     public, so anything it checked against would be too. Nothing here is secret -
+     it fills in sample answers a learner could type themselves.
      ========================================================================== */
 
   var ADMIN = (function () {
-    try { return /(^|[?&])admin=1(&|$)/.test(window.location.search); }
+    try {
+      if (!/(^|[?&])admin=1(&|$)/.test(window.location.search)) return false;
+      /* Local development only. The published site is public to every learner, so
+         there ?admin=1 builds nothing at all - no toolbar, no Fill all. Browsers
+         spell the IPv6 loopback with brackets in location.hostname. */
+      return /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/.test(window.location.hostname);
+    }
     catch (e) { return false; }   // no location in some embed sandboxes
   })();
 

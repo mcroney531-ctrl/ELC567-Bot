@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # seventeen Playwright suites, 1,171 assertions, ~10 min
+npm test      # eighteen Playwright suites, 1,233 assertions, ~10 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -46,7 +46,7 @@ css/
   home.css              the dark journey map
   stage.css             the learning stage (dark shell, light workspace)
   chat.css              the coach phase
-  admin.css             the ?admin=1 review bar — never loaded into the learner's flow
+  admin.css             the ?admin=1 review bar — styles only; the bar is built only on localhost (§6.5)
 img/
   explainer/            ten explainer cards (268x543 PNG) from the user's artwork package
 js/
@@ -56,8 +56,8 @@ test/
   helpers.mjs           serveSite, withConfig, makeReporter, waitBots, seedThroughStage3
   coach-stub.mjs        fake LLM endpoint for the live-adapter suite
   serve.mjs             the dev server behind `npm start`
-  *.test.mjs            seventeen suites (see §7)
-admin/index.html        a redirect to /?admin=1 (see §6.5)
+  *.test.mjs            eighteen suites (see §7)
+.nojekyll              empty; tells GitHub Pages to serve the files as they are, with no Jekyll build
 personas/               offline persona-run harness (see §9)
 docs/design/            three design packs the user supplied, committed verbatim
 docs/HANDOFF.md         this file
@@ -729,8 +729,7 @@ out without asking. If you touch shared code, keep the `TIMELINE` guards.
 
 > `/role/` and `/frames/` are **test-harness routes only** — they are implemented in
 > `serveSite()`, not on GitHub Pages. They work under `npm start` and in tests, and 404
-> on the deployed site. Admin mode (below) is different: it is a query flag, so it works
-> everywhere.
+> on the deployed site. Admin mode (below) is a query flag, but a local-only one.
 
 ---
 
@@ -739,10 +738,18 @@ out without asking. If you touch shared code, keep the `TIMELINE` guards.
 A review harness for walking the activity end to end without answering it. Section 11 of
 `activity.js`.
 
-**Turned on by `?admin=1`.** `/admin/` is a real directory (`admin/index.html`) whose only
-job is to `location.replace("../?admin=1")` — GitHub Pages has no router, so a query flag
-is the only thing that works on Pages, Netlify, `npm start` and inside a Storyline iframe
-alike. The flag is what the app reads; the directory is a convenience door.
+**Local development only.** `?admin=1` turns it on at `localhost`, `127.0.0.1` and `::1`
+(`location.hostname` spells the last `[::1]`, which the check allows for), and nowhere else. On
+the published site — or any other hostname — the flag is ignored: no toolbar is built, nothing
+is unlocked or filled in. There is no `/admin/` door any more: the redirect directory was
+removed from the published repo, so `/admin/` is a 404 there. Locally, `npm start` and
+`http://127.0.0.1:8080/?admin=1` is the way in. This is deliberate: the public URL used to hand
+every learner a button that completes the journey for them.
+
+**Do not add a client-side password or key to "protect" it.** `activity.js` is public to every
+learner, so anything it checked against would be too; that would look like a security boundary
+and not be one. The hostname rule is a containment measure, not a lock. If a gated review build
+is ever needed, it has to be a different deploy, not a flag in this file.
 
 The bar offers: **Skip →** (fill the open stage, then advance), **Fill all**, stage jump
 buttons **1–5**, a **lesson ⇄ chat** toggle, **Map**, and **Clear**.
@@ -762,38 +769,38 @@ Two rules it must keep, because they are why it is trustworthy:
 Asana/Harvest/Gmail). If one turns up in a screenshot of "learner work", the screenshot
 came from admin mode.
 
-**It is not a security boundary.** Anyone can type `?admin=1`. There is nothing behind it
-to protect — it fills in sample answers a learner could type themselves. Do not put
-anything there that is not safe to be public.
+Nothing in it is secret — it fills in sample answers a learner could type themselves — and
+nothing may be added to it that would not be safe in a public file.
 
 ---
 
 ## 7. Tests
 
-Seventeen Playwright suites, all passing. Run `npm test` for the current totals; the counts
+Eighteen Playwright suites, all passing. Run `npm test` for the current totals; the counts
 below are each suite's own report at the time of writing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
 
 | Suite | Asserts | Covers |
 |---|---|---|
-| `scripted-coach.test.mjs` | 90 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
-| `timeline.test.mjs` | 94 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `scripted-coach.test.mjs` | 101 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
+| `timeline.test.mjs` | 93 | Journey map: five stations, four states, navigation rules, the connector, responsive |
 | `journey-mobile.test.mjs` | 113 | The Journey on a phone: a natural-height route over the same stations, readable at 390 and 360, every state, the completed journey, the round trip, the 720/721 boundary, and that everything above it is untouched |
 | `completed-revisit.test.mjs` | 17 | What reopening a completed stage lands on in each of the five (their own work, not the reading), that an unfinished stage still reads first, moving between completed stages, a completion that no longer holds, and the phone |
 | `station-count.test.mjs` | 25 | That the journey's length is data: five as shipped, and the same machinery served one station shorter |
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
-| `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
+| `chat-stage.test.mjs` | 293 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
 | `envision-stage.test.mjs` | 53 | Stage 3 end to end: reading→form, what counts as an answer, where it is stored, the carry into Refine's coach and Deploy's prompt, and the v2→v3 upgrade |
-| `deploy-stage.test.mjs` | 50 | Stage 5 end to end: read before reveal, the provenance map against the real headings, ownership on request, the two notices, and finishing as a learning state |
+| `deploy-stage.test.mjs` | 52 | Stage 5 end to end: read before reveal, the provenance map against the real headings, ownership on request, the two notices, and finishing as a learning state |
 | `refine-stage.test.mjs` | 82 | Stage 4's four decisions: the rail, coverage as the gate, push-once acceptance, the same progression under a live coach, and that no prompt reaches the learner before Deploy |
 | `capture-chat.test.mjs` | 35 | Prose→structured parsing for workflow and tools |
 | `step-resolution.test.mjs` | 27 | Which mapped step a handoff answer is about, read off the generated "what I need you to do" section: explicit numbers, one clear step, several steps, none, and never the wrong one |
-| `live-endpoint.test.mjs` | 30 | The live adapter: request shape, history format, headers, errors, retry, timeout |
-| `admin.test.mjs` | 47 | Admin mode: off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
-| `answer-quality.test.mjs` | 21 | Thin-answer heuristics and push-backs |
-| `journey-contract.test.mjs` | 42 | The journey the learner is told about, the five places that must agree about what each step number means, and that no prompt reaches a learner before Deploy |
-| `hardening.test.mjs` | 14 | Charset, no blocking modals, OS dark mode, clipboard fallbacks, two-press confirms |
+| `live-endpoint.test.mjs` | 35 | The live adapter: request shape, history format, headers, errors, retry, timeout |
+| `admin.test.mjs` | 46 | Admin mode (on 127.0.0.1): off by default, jumping, skipping, fill-all, and that every state it produces matches what the real flow produces |
+| `answer-quality.test.mjs` | 23 | Thin-answer heuristics and push-backs |
+| `journey-contract.test.mjs` | 70 | The journey the learner is told about, the five places that must agree about what each step number means, and that no prompt reaches a learner before Deploy |
+| `hardening.test.mjs` | 15 | Charset, no blocking modals, OS dark mode, clipboard fallbacks, two-press confirms |
+| `release-hardening.test.mjs` | 48 | Start leaves a clean console (no GSAP target warnings); `?admin=1` builds the toolbar on localhost / 127.0.0.1 / `[::1]` and nothing on public-style hostnames; no `/admin/` door; `.nojekyll`; the site serves from `/ELC567-Bot/` with every asset resolving and nothing leaving the origin |
 
 ### The harness
 `serveSite(port, overrides)` is a **real directory server**, not a string fixture. Two
@@ -860,7 +867,7 @@ if (motionOff()) { doItInstantly(); return; }
 Reduced motion is never a degraded experience — the pulse becomes a static heavier ring,
 the enter-stage choreography becomes an instant navigation.
 
-Where motion is spent: Start (landing → map, with stations drawing along the spine),
+Where motion is spent: Start (landing → map, the map fading up and the stations popping in),
 entering a stage, and lesson → chat. Nowhere else.
 
 ---
@@ -1170,6 +1177,17 @@ learner's choice. Opening or closing it keeps a learner who was following the co
 pinned, for the same reason `sendChat()` does. This threshold belongs to the strip only; the
 coach header's 720/480 hierarchy above is untouched.
 
+**Opened on a small phone, nothing is clipped silently.** At 360×640 the opened rail (capped
+at 60% of the panel) used to cut the fourth mapped step off, and at 360×568 the last, with
+nothing to say so. Two things fix it, neither touching the transcript's scroll rules. At ≤480,
+*only while Context is open*, the same words get less air (card padding, list gaps — no type
+size changes), which is enough for the whole of it at 360×640. Where it physically cannot fit
+(360×568), the rail is a scroll region and behaves like one: `syncContextScroll()` makes it
+keyboard-focusable (`tabindex=0`, `role="region"`, `aria-label`) and sets `data-more`, which
+shows a sticky "More below ↓ scroll to see every step" cue until the end is reached. When it all
+fits, none of that is present. Collapsed is unchanged: no rail, the same transcript height. `chat-stage` pins both
+sizes with a realistic two-line task.
+
 Why it exists: at 390×780 the cards left the transcript 137–277px tall against replies
 282–421px tall, so **no reply began in view**, and at 768 the capped rail showed its second
 card as a title and nothing else.
@@ -1272,8 +1290,8 @@ Walking the app once is worth more than reading `activity.js` top to bottom. Cli
 enter stage 1, read the lesson, press Continue, talk to the coach, take the handoff. That
 path exercises most of what is described above.
 
-To reach a later stage quickly without walking it, open **`http://127.0.0.1:8080/admin/`**
-and use the review bar (§6.5) — that is what it is for. The seeding pattern in
+To reach a later stage quickly without walking it, open **`http://127.0.0.1:8080/?admin=1`**
+and use the review bar (§6.5; local hosts only) — that is what it is for. The seeding pattern in
 `test/helpers.mjs` (`seedThroughStage3`) and the slices (`/role/workflow`) are the other
 two ways in.
 

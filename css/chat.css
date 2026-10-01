@@ -297,6 +297,19 @@
      a glance, but someone who opened this to read their steps should not have to
      find a scroller to reach the fourth. */
   .bw-chat-panel[data-ctx-open="true"] #bw-cards-top .bw-cc-items { max-height: none; overflow: visible; }
+  /* Where even that cap is not enough - a short phone - the rail scrolls, and says so:
+     syncContextScroll() sets data-more while there is more below, and the cue sticks
+     to the foot of the rail until the end is reached. Focus ring because the rail is
+     then a keyboard-focusable scroll region. */
+  #bw-cards-top[data-more="true"]::after {
+    content: "More below \2193  scroll to see every step";
+    grid-column: 1 / -1; position: sticky; bottom: 0;
+    padding: 7px 10px; margin-top: 2px; text-align: center;
+    font-size: .75rem; font-weight: 700; color: var(--chat-ink);
+    background: linear-gradient(to bottom, transparent, var(--chat-canvas) 38%);
+    pointer-events: none;
+  }
+  #bw-cards-top[tabindex]:focus-visible { outline: 2px solid var(--accent, #3e8bff); outline-offset: -2px; }
 }
 
 @media (max-width: 720px) {
@@ -362,6 +375,16 @@
   #bw-cards-bottom .bw-cc { margin-bottom: 4px; }
   .bw[data-phase="chat"] .bw-chat-log { padding-top: 14px; padding-bottom: 10px; }
   .bw[data-phase="chat"] .bw-chat-note { padding-bottom: 8px; }
+
+  /* Context, opened, on a small phone. The task wraps to two lines at this width and
+     the cards' padding is sized for a roomier screen, which together wanted 352px of a
+     330px rail at 360x640 and cut the fourth step off. The same words in less air fit;
+     nothing here applies while it is collapsed, and no type size changes. */
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top { padding-top: 6px; gap: 6px; }
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top .bw-cc { padding: 8px 12px; }
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top .bw-cc-body { margin-top: 5px; }
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top .bw-cc-items { margin-top: 6px; }
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top .bw-cc-item { margin-top: 2px; }
 }
 
 /* Phone. With the name held to one line, the adapter badge is what runs into

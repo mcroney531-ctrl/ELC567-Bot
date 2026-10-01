@@ -859,14 +859,14 @@ try {
     idealOutcome: 'All eleven client updates are drafted and ready to review before nine on Monday, so my morning goes to client work instead of rebuilding decks.',
     aiRole: 'Pull the numbers and assemble a first draft of each update in our usual four-paragraph shape, so I am reviewing and adjusting rather than retyping.'
   };
-  async function openRefine(viewport) {
+  async function openRefine(viewport, extra = {}) {
     const rctx = await browser.newContext({ viewport });
     const rpage = await rctx.newPage();
     report.watch(rpage);
     await rpage.addInitScript(seed => {
       localStorage.setItem('brainstorm_workflow_data', seed);
       localStorage.setItem('bw_started', '1');
-    }, JSON.stringify({ ...SEED4, progress: { unlocked: 4, current: 4, done: { 1: true, 2: true, 3: true },
+    }, JSON.stringify({ ...SEED4, ...extra, progress: { unlocked: 4, current: 4, done: { 1: true, 2: true, 3: true },
                                             entered: { 1: true, 2: true, 3: true } } }));
     await rpage.goto(`http://127.0.0.1:${PORT}/`);
     await rpage.waitForTimeout(400);
@@ -931,6 +931,81 @@ try {
       document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
     await rctx.close();
   }
+  /* Small phones. Opening Context at 360x640 and 360x568 used to clip it silently: the
+     rail was capped at 60% of a 550px / 478px panel, its content wanted 352px, so the
+     fourth mapped step (640) or the last step (568) was cut off inside a rail that
+     looked finished. Whole is the goal; where it physically cannot fit, the rail has
+     to SAY it scrolls - a visible cue, and reachable by keyboard - and every item must
+     be reachable by scrolling it. */
+  const reach = page_ => page_.evaluate(() => {
+    const r = document.getElementById('bw-cards-top'), rr = () => r.getBoundingClientRect();
+    const items = [...r.querySelectorAll('.bw-cc-body, .bw-cc-item')];
+    const state = i => { const b = i.getBoundingClientRect(), q = rr();
+      return b.bottom <= q.bottom + 1 && b.top >= q.top - 1 ? 'whole' : 'cut'; };
+    const atRest = items.map(state);
+    const cue = getComputedStyle(r, '::after').content;
+    const out = { n: items.length, atRest: atRest.join(','), scrollable: r.scrollHeight > r.clientHeight + 1,
+      overflowY: getComputedStyle(r).overflowY, more: r.getAttribute('data-more'),
+      cue: cue && cue !== 'none' && cue !== 'normal' ? cue : '', tabindex: r.getAttribute('tabindex'),
+      label: r.getAttribute('aria-label') || '', clientH: r.clientHeight, scrollH: r.scrollHeight,
+      logH: Math.round(document.querySelector('.bw-chat-log').getBoundingClientRect().height),
+      stripVisible: document.getElementById('bw-ctx-toggle').getBoundingClientRect().height > 0 };
+    return out;
+  });
+  /* The cue follows the rail's scroll event, so the end is read a beat after getting there. */
+  const reachEnd = async page_ => {
+    await page_.evaluate(() => { const r = document.getElementById('bw-cards-top'); r.scrollTop = r.scrollHeight; });
+    await page_.waitForTimeout(150);
+    return page_.evaluate(() => {
+      const r = document.getElementById('bw-cards-top'), q = r.getBoundingClientRect();
+      const c = getComputedStyle(r, '::after').content;
+      const out = { afterScroll: [...r.querySelectorAll('.bw-cc-body, .bw-cc-item')].map(i => {
+          const b = i.getBoundingClientRect(); return b.bottom <= q.bottom + 1 && b.top >= q.top - 1 ? 'whole' : 'cut'; }).join(','),
+        moreAtEnd: r.getAttribute('data-more'), cueAtEnd: !!c && c !== 'none' && c !== 'normal' };
+      r.scrollTop = 0;
+      return out;
+    });
+  };
+  /* A realistic task: two lines at this width, which is what pushed the content past the
+     rail. The short sentence the other seeds use fits with room to spare. */
+  const LONG_TASK = { problem: 'Every Monday I spend about two hours building status updates for eleven clients - same numbers, same paragraphs, different names.' };
+  for (const [width, height] of [[360, 640], [360, 568]]) {
+    const tag = width + 'x' + height;
+    const { rctx, rpage } = await openRefine({ width, height }, LONG_TASK);
+    const closed = await ctxState(rpage);
+    const baseLog = closed.logH;
+    await rpage.click('#bw-ctx-toggle');
+    await rpage.waitForTimeout(250);
+    await rpage.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await rpage.waitForTimeout(150);
+    const g = { ...(await reach(rpage)), ...(await reachEnd(rpage)) };
+    check(tag + ': Context opens with the task and every mapped step in it', g.n === 5, JSON.stringify(g));
+    check(tag + ': every item can be reached - whole at rest, or by scrolling the rail',
+      g.afterScroll.split(',').every(v => v === 'whole') || g.atRest.split(',').every(v => v === 'whole'),
+      JSON.stringify(g));
+    check(tag + ': nothing is cut off without saying so - either it all shows, or the rail scrolls and cues it',
+      g.atRest.split(',').every(v => v === 'whole') ||
+        (g.scrollable && /auto|scroll/.test(g.overflowY) && g.more === 'true' && g.cue && g.tabindex === '0' && g.label),
+      JSON.stringify(g));
+    check(tag + ': the cue goes away once the end is reached', !g.scrollable || (g.moreAtEnd === 'false' && !g.cueAtEnd),
+      JSON.stringify(g));
+    if (height === 640) {
+      check(tag + ': there is room to show the whole of it, so it does',
+        g.atRest.split(',').every(v => v === 'whole') && !g.scrollable, JSON.stringify(g));
+    }
+    check(tag + ': the transcript is not squeezed to nothing while Context is open', g.logH >= 20, JSON.stringify(g));
+    await rpage.click('#bw-ctx-toggle');
+    await rpage.waitForTimeout(200);
+    const shut = await ctxState(rpage);
+    check(tag + ': collapsed is exactly as it was - no rail, same transcript room',
+      !shut.rail && shut.logH === baseLog, JSON.stringify({ shut, baseLog }));
+    check(tag + ': and the closed rail leaves nothing focusable behind', await rpage.evaluate(() => {
+      const r = document.getElementById('bw-cards-top');
+      return getComputedStyle(r).display === 'none'; }));
+    check(tag + ': Restart still reachable', await rpage.locator('#bw-coach-restart').isVisible());
+    await rctx.close();
+  }
+
   {
     // Above 900 nothing changed: no strip, the cards where they have always been.
     for (const width of [901, 1280]) {
