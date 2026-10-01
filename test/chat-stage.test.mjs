@@ -544,6 +544,66 @@ try {
     await ctx.close();
   }
 
+  /* The learner's own Send, and the geometry it causes.
+
+     Sending is one deliberate force-to-the-bottom, but it is also what makes the
+     coach's context cards appear. On Identify the second answer brings the "Next
+     step" card in above the composer, which shrinks the transcript viewport by
+     88px on desktop and 120px on a phone. A shrinking viewport fires no scroll
+     event, so a learner who never touched the scrollbar was suddenly 133-165px
+     from the bottom, read as scrolled away, and the reply that was asking them to
+     confirm a summary landed out of sight behind a "New reply" pill.
+
+     Geometry caused by processing the Send is the learner's, not the coach's: it
+     must not turn a deliberate Send into an unpinned state. Nothing here scrolls
+     manually, because that is exactly the learner this is about. */
+  for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }],
+                                   ['phone', { width: 390, height: 780 }]]) {
+    const ictx = await browser.newContext({ viewport });
+    const ipage = await ictx.newPage();
+    report.watch(ipage);
+    await ipage.addInitScript(() => localStorage.setItem('bw_started', '1'));
+    await ipage.goto(`http://127.0.0.1:${PORT}/`);
+    await ipage.waitForTimeout(400);
+    await ipage.click('.bw-station[data-stage="1"] .bw-station-card');
+    await ipage.waitForTimeout(700);
+    await ipage.click('#bw-lesson-next');
+    await ipage.waitForFunction(
+      () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+      null, { timeout: 12000 });
+    await say(ipage, 'Every Monday I spend about two hours building status updates for eleven clients - pulling the same delivery numbers, writing the same four paragraphs, just with different names.', 2);
+    const viewH = () => ipage.evaluate(() => Math.round(document.querySelector('.bw-chat-log').clientHeight));
+    const beforeH = await viewH();
+    await say(ipage, 'It happens every week, it has to be done before nine on Monday, and it eats my whole morning before I get to real client work.', 3);
+    await ipage.waitForTimeout(300);
+    const afterH = await viewH();
+    check(label + ' (Identify): the Next step card arrived and took space from the transcript',
+      await ipage.locator('#bw-cards-bottom .bw-cc').count() === 1 && beforeH - afterH > 32,
+      JSON.stringify({ before: beforeH, after: afterH }));
+    const fin = await ipage.evaluate(() => {
+      const l = document.querySelector('.bw-chat-log'), lr = l.getBoundingClientRect();
+      const bots = l.querySelectorAll('.bw-msg-bot:not([data-typing]) .bw-msg-body');
+      const br = bots[bots.length - 1].getBoundingClientRect();
+      const j = document.getElementById('bw-chat-jump');
+      return { fromBottom: Math.round(l.scrollHeight - l.scrollTop - l.clientHeight),
+               jump: !!j && !j.hidden,
+               replyBottomIn: br.bottom <= lr.bottom + 1,       // the end of the summary is on screen
+               replyTopIn: br.top >= lr.top - 1,                // and so is the start of it
+               replyH: Math.round(br.height), logH: Math.round(lr.height) };
+    });
+    check(label + ' (Identify): a learner who never scrolled is still at the newest turn',
+      fin.fromBottom <= 32, JSON.stringify(fin));
+    check(label + ' (Identify): so no "New reply" is raised for a reply they are looking at',
+      !fin.jump, JSON.stringify(fin));
+    check(label + ' (Identify): the summary they are asked to confirm ends in view',
+      fin.replyBottomIn, JSON.stringify(fin));
+    if (label === 'desktop') {
+      check('desktop (Identify): and all of it is in view',
+        fin.replyTopIn, JSON.stringify(fin));
+    }
+    await ictx.close();
+  }
+
   /* D and E on one transcript, at phone width where the yank was worst. */
   ({ ctx, page } = await openCoach({ viewport: { width: 390, height: 780 } }));
   await page.click('[data-next="4"]');

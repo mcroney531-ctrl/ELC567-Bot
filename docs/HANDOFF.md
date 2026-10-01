@@ -409,7 +409,7 @@ Who may move the learner:
 | entering the conversation (`setPhase`) | showing the typing indicator |
 | Restart / a new opening | |
 
-Three things are easy to get wrong here:
+Four things are easy to get wrong here:
 
 - **Sample the pin before appending.** Appending is what makes the log taller, so a check
   made afterwards reports every learner as scrolled away. `appendMessage()` and
@@ -434,6 +434,15 @@ Three things are easy to get wrong here:
   `overflow-anchor` — so this is a matter of which versions learners are on, not of one
   engine lacking the feature.) The tests pin the **decision**, which is the part that moved
   someone a whole screen.
+- **A learner's Send also changes the geometry, and must not be unpinned by it.**
+  `sendChat()` appends the message (a forced bottom), then re-renders the coach rail and
+  cards. On Identify the second answer brings in the "Next step" card, which shrinks the
+  transcript viewport by 88px on desktop and 120px on a phone — with no scroll event. The
+  learner then read as scrolled away, the reply (the very summary they are asked to
+  confirm) landed below the fold behind a "New reply" pill. `sendChat()` therefore calls
+  `scrollChat()` once more after the rail and cards settle, before the request starts.
+  Deliberately *not* given to the coach: a coach-driven layout change must not force the
+  bottom, or the mid-turn scroll-respect behaviour is gone.
 
 `renderChatLog(force)` takes its scroll intent from the caller rather than having one of
 its own. Stage entry, restart, admin seeding and Start over pass `true`; the cross-block
@@ -758,6 +767,11 @@ seeds only when storage is empty for exactly this reason.
 - Beware: a **save-on-exit flush runs during reload**, so writing `localStorage` and then
   calling `page.reload()` gets your write overwritten by the in-memory state. Drive the
   app instead.
+- Assert on **visibility**, not on `textContent`, for anything toggled with `hidden`. A
+  hidden element keeps the last sentence it held, so reading its text reports state that
+  is not on screen: it produced two false findings in one QA pass (a rail line that only
+  exists outside the chat phase, and an "Editing is on" note that is hidden after Rebuild).
+  Use `locator.isVisible()`.
 
 ---
 

@@ -2998,6 +2998,16 @@
     }
     appendMessage("user", text);
     if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
+    /* Sending is one deliberate return to the bottom, and processing it is what
+       changes the geometry: the context cards above and below the transcript can
+       appear or grow, which shrinks the viewport with no scroll event. Left alone,
+       that reads as the learner having scrolled away - and the coach's reply,
+       which can be the very summary they are being asked to confirm, then lands
+       out of sight behind a "New reply" pill. So the bottom is re-established
+       once those changes have settled, before the request starts. This is the
+       learner's own action finishing; the coach's later changes to the layout are
+       deliberately not given the same power. */
+    scrollChat();
     save();
     askBot(text);
   }

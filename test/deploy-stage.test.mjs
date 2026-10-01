@@ -168,6 +168,12 @@ try {
     !(await page.locator('#bw-prompt-v2').inputValue()).includes('one more rule'));
   check('and returns it to read-only', await readOnly());
   check('with rebuild put away again', !(await visible('#bw-regen-v2')));
+  /* The state note belongs to the editing state, so it goes with it. Checked on
+     what is visible rather than on its text: the element is hidden, but keeps the
+     sentence it last held, so reading its textContent reports "Editing is on"
+     after a rebuild that has in fact put everything back. */
+  check('and the pen is offered again', await visible('#bw-edit-final'));
+  check('with no editing note left showing', !(await visible('#bw-v2-state')));
 
   // ==================== what still needs attention ====================
   /* A thin answer that was accepted on the second pass: the artifact carries a
