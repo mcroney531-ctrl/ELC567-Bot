@@ -1064,11 +1064,30 @@ Getting there took layout only, in three parts, each measured:
 `svh`, not `vh`: `vh` is the viewport with the browser toolbar retracted and would push the
 composer beneath it. With the page scrolled to its end the panel and footer fill the screen.
 
-**Known limit — small phones (360×640 and shorter).** Replies there are 305–491px tall against
-a 236–338px transcript even fully collapsed, so replies still begin above the fold (by 27–193px).
-Layout cannot fix that: there is not the height. It is a *scroll* question — when an arriving reply
-is taller than the transcript, anchor to its beginning rather than its bottom — and it is a
-separate decision, deliberately not bundled with this change. `chat-stage` does not claim 360×640.
+**A reply taller than the transcript is followed from its beginning.** Layout makes the rule
+above hold at 390×780 and up. At 360×640 there is not the height: replies are 305–491px
+against a 236–338px transcript even fully collapsed, so following the bottom leaves a reply's
+first lines above the fold. `anchorTallReply()` handles it, and it is driven by *geometry*, not
+by a width or a "small phone" mode: once a followed reply has landed, if its beginning is above
+the visible transcript, the transcript goes to the beginning of it instead; if it is visible,
+nothing happens. So it applies equally to an unusually long reply at 390 or to a constrained
+Storyline embed.
+
+Boundaries, all deliberate:
+- **Only a learner who was following gets it.** One who scrolled away is untouched and gets
+  "New reply ↓" exactly as before.
+- **"New reply" stays hidden for it** — they are already being taken to the new content.
+- **Afterwards they read as not-at-the-bottom, and that is true.** There is no hidden "still
+  following" state; no coach turn happens until the learner acts, and their Send re-pins.
+- **The opening goes through `followNewest()`, not the append.** It arrives while the learner
+  is still on the stage's work page, when the panel is `hidden` and the log has no height to
+  measure; it is on entering the conversation that "is its beginning in view?" can be asked.
+- Plain `scrollTop` arithmetic, not `scrollIntoView` options (older Safari).
+
+Testing note: scrolling a reply that already *fits* to the top edge is clamped by the bottom, so
+"always anchor" is a harmless no-op and cannot be told apart from correct behaviour. The mutation
+that matters is moving someone who scrolled away — and `appendReply()`'s post-append `scrollTop`
+restore is a second safeguard against it, so a test of that mutation has to remove both.
 
 ### Environment note
 The git proxy in the Claude Code remote environment **rejects ref deletions**

@@ -450,9 +450,22 @@ try {
   });
   const toTop = page => page.evaluate(() => { document.querySelector('.bw-chat-log').scrollTop = 0; });
   let sg;
+  /* Following a reply means being at the bottom - or, for a reply too tall to show
+     whole, being at its beginning. Which of the two is a fact about the reply and the
+     transcript, not about the device, so the check asks the page rather than the
+     viewport width. */
+  const following = page_ => page_.evaluate(() => {
+    const l = document.querySelector('.bw-chat-log'), lr = l.getBoundingClientRect();
+    const bots = l.querySelectorAll('.bw-msg-bot:not([data-typing]) .bw-msg-body');
+    const br = bots[bots.length - 1].getBoundingClientRect();
+    const fromBottom = Math.round(l.scrollHeight - l.scrollTop - l.clientHeight);
+    return { fromBottom, startsInView: br.top >= lr.top - 1, replyH: Math.round(br.height),
+             logH: Math.round(lr.height), ok: fromBottom <= 32 || br.top >= lr.top - 1 };
+  });
 
   for (const [label, viewport] of [['desktop', { width: 1280, height: 900 }],
-                                   ['phone', { width: 390, height: 780 }]]) {
+                                   ['phone', { width: 390, height: 780 }],
+                                   ['small phone', { width: 360, height: 640 }]]) {
     ({ ctx, page } = await openCoach({ viewport }));
     await page.click('[data-next="4"]');
     await page.waitForTimeout(800);
@@ -470,8 +483,9 @@ try {
     /* A. Pinned. Nothing changes: the learner never left the bottom, so the
        conversation goes on following it and there is nothing to announce. */
     sg = await scrollGeo(page);
-    check(label + ': a learner who stayed at the bottom is still at the bottom',
-      sg.fromBottom === 0, JSON.stringify(sg));
+    const fw = await following(page);
+    check(label + ': a learner who was following is still following',
+      fw.ok && (sg.fromBottom === 0 || fw.startsInView), JSON.stringify({ ...sg, ...fw }));
     check(label + ': and is told nothing, because they saw it arrive', !sg.jump, JSON.stringify(sg));
 
     /* B. Unpinned mid-turn - the actual bug. Pin state has to be read when the
@@ -503,8 +517,9 @@ try {
     await say(page, 'Never invent a number that is not in the export I paste in.', 5);
     await page.waitForTimeout(200);
     sg = await scrollGeo(page);
+    const fw2 = await following(page);
     check(label + ': the pin is restored, so the next reply follows',
-      sg.fromBottom === 0 && !sg.jump, JSON.stringify(sg));
+      fw2.ok && !sg.jump, JSON.stringify({ ...sg, ...fw2 }));
 
     /* B2. Just outside the tolerance, which is where the coach's own DOM change
        can decide the answer.
@@ -955,9 +970,11 @@ try {
     const l = document.querySelector('.bw-chat-log'), lr = l.getBoundingClientRect();
     const bots = l.querySelectorAll('.bw-msg-bot:not([data-typing]) .bw-msg-body');
     const br = bots[bots.length - 1].getBoundingClientRect();
+    const j = document.getElementById('bw-chat-jump');
     return { startsInView: br.top >= lr.top - 1, hiddenAbove: Math.max(0, Math.round(lr.top - br.top)),
              replyH: Math.round(br.height), logH: Math.round(lr.height),
-             fromBottom: Math.round(l.scrollHeight - l.scrollTop - l.clientHeight) };
+             fromBottom: Math.round(l.scrollHeight - l.scrollTop - l.clientHeight),
+             jump: !!j && !j.hidden };
   });
   for (const [label, viewport] of [['390x780', { width: 390, height: 780 }],
                                    ['430x780', { width: 430, height: 780 }],
@@ -967,7 +984,11 @@ try {
                                    ['1280x900', { width: 1280, height: 900 }]]) {
     const { rctx, rpage } = await openRefine(viewport);
     let v = await replyView(rpage);
-    check(label + ': the opening begins in view', v.startsInView, JSON.stringify(v));
+    /* Where the reply fits it is NOT top-anchored: bottom-follow is the normal case and
+       moving someone to the top of a reply they can already see whole would be a change
+       for its own sake. */
+    check(label + ': the opening begins in view, at the bottom where it already fits',
+      v.startsInView && v.fromBottom <= 32 && !v.jump, JSON.stringify(v));
     for (let i = 0; i < REFINE_ANSWERS.length; i++) {
       await say(rpage, REFINE_ANSWERS[i], i + 2);
       await rpage.waitForTimeout(250);
@@ -977,6 +998,45 @@ try {
     }
     check(label + ': the Next step card is what the last turn carried',
       await rpage.locator('#bw-cards-bottom .bw-cc-next-step').count() === 1);
+    await rctx.close();
+  }
+
+  /* ============ a reply taller than the transcript ============
+
+     Layout got the locked rule to hold at 390x780 and up. At 360x640 there is not the
+     height: replies are 305-491px against a 236-338px transcript even fully collapsed,
+     so a reply that is followed to the bottom starts above the fold. The rule is about
+     geometry, not about a device: follow the reply as usual and, if that leaves its
+     beginning above the transcript, put the transcript at the beginning of the reply.
+
+     No "New reply" for it: the learner was following, and the system is taking them to
+     the new content. Once they are not at the bottom they read as unpinned, which is
+     correct - they are reading the top of a long reply, and their next Send re-pins. */
+  {
+    const { rctx, rpage } = await openRefine({ width: 360, height: 640 });
+    let v = await replyView(rpage);
+    check('360x640: the opening is taller than the transcript',
+      v.replyH + 40 > v.logH, JSON.stringify(v));
+    check('360x640: and still begins in view', v.startsInView, JSON.stringify(v));
+    check('360x640: with no "New reply", because they were following', !v.jump, JSON.stringify(v));
+    let anchored = 0;
+    for (let i = 0; i < REFINE_ANSWERS.length; i++) {
+      await say(rpage, REFINE_ANSWERS[i], i + 2);
+      await rpage.waitForTimeout(250);
+      v = await replyView(rpage);
+      const tall = v.replyH + 40 > v.logH;
+      if (tall) anchored++;
+      check('360x640: reply ' + (i + 1) + (i === 3 ? ' (Next step card showing)' : '') + ' begins in view',
+        v.startsInView, JSON.stringify(v));
+      check('360x640: reply ' + (i + 1) + ' raises no "New reply" for a learner who was following',
+        !v.jump, JSON.stringify(v));
+      if (!tall) {
+        check('360x640: reply ' + (i + 1) + ' fits, so it is left at the bottom',
+          v.fromBottom <= 32, JSON.stringify(v));
+      }
+    }
+    check('360x640: at least one late reply really was taller than the transcript',
+      anchored >= 1, String(anchored));
     await rctx.close();
   }
 

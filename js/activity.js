@@ -2683,9 +2683,54 @@
        A caller that has already mutated the log takes the decision itself and
        passes it - see appendReply(), where sampling here would be too late. */
     if (follow === undefined) follow = role === "user" || chatPinned();
-    el.chatLog.appendChild(buildMessage(msg));
-    if (follow) scrollChat();
+    var node = buildMessage(msg);
+    el.chatLog.appendChild(node);
+    if (follow) {
+      scrollChat();
+      if (role === "bot") anchorTallReply(node);
+    }
     else if (role === "bot") showNewReply(true);
+    return node;
+  }
+
+  /* A reply that is followed to the bottom is meant to be read from its first line,
+     and a reply can be taller than the transcript. On a 360x640 phone they are
+     305-491px against a transcript of 236-338px even with every bit of chrome
+     folded away, so following the bottom leaves the beginning above the fold - and
+     there is no layout that fixes that, there is simply not the height.
+
+     So this looks at what actually happened rather than at the device: if, once
+     followed, the beginning of the new reply is above the visible transcript, the
+     transcript goes to the beginning of it instead. A reply that fits is untouched.
+     Only a learner who was following gets here, so nobody who scrolled away is moved,
+     and "New reply" stays hidden: they are already being taken to the new content.
+
+     The learner then reads as no longer at the bottom, which is true - they are at
+     the top of a long reply. Nothing pretends otherwise: there is no hidden "still
+     following" state, no further coach turn happens until they act, and sending
+     re-pins them as it always does.
+
+     Plain scrollTop arithmetic, not scrollIntoView with options, which older Safari
+     does not take. */
+  /* Arriving at a conversation: the newest turn, by the same rule. The opening is
+     appended while the learner is still on the stage's work page, when the panel is
+     hidden and the log has no height to measure, so it is here, once the panel is on
+     screen, that "is its beginning in view?" can actually be asked. */
+  function followNewest() {
+    scrollChat();
+    var last = el.chatLog.lastElementChild;
+    if (last && last.className.indexOf("bw-msg-bot") !== -1 && !last.hasAttribute("data-typing")) {
+      anchorTallReply(last);
+    }
+  }
+
+  function anchorTallReply(node) {
+    var log = el.chatLog;
+    var viewTop = log.getBoundingClientRect().top;
+    var nodeTop = node.getBoundingClientRect().top;
+    if (nodeTop >= viewTop - 1) return;                       // its beginning is in view
+    var pad = parseFloat(window.getComputedStyle(log).paddingTop) || 0;
+    log.scrollTop += nodeTop - (viewTop + pad);               // beginning at the top edge, inside the padding
   }
 
   /* Static, trusted markup - no message content goes through innerHTML. */
@@ -4489,7 +4534,7 @@
       renderCoachRail();
       maybeStartConversation();
       renderCoachCards();
-      scrollChat();
+      followNewest();
     }
   }
 
