@@ -2,7 +2,7 @@
 
 A five-stage interactive activity that walks someone from a task that eats their Monday to a
 master prompt they can paste into an LLM and use that afternoon. It is a standalone web app served
-from the repository root, intended to be embedded in a Storyline slide from its own URL.
+from the repository root and hosted on GitHub Pages, opened from its own URL.
 
 **Stages.** The journey map names the transferable practice; the copy inside each stage keeps this
 activity's specific framing.

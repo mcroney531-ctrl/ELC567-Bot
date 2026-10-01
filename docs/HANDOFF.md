@@ -16,7 +16,9 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 - Served as a **static site from the repository root**. `index.html` is the entry point.
 - Deployed by **GitHub Pages from `main` / root**. Every push to `main` deploys.
-- Intended to be **embedded in an Articulate Storyline slide** from its own URL.
+- **Hosted on GitHub Pages and opened from its own URL.** The user decided (2026-10) not to
+  package it for Storyline; the earlier Storyline plan is dropped. The iframe-friendly pieces
+  (`reportHeight()`, the `bw:height` message, the clipboard fallback) still work and were left in.
 - All application logic is **one IIFE** in `js/activity.js` (~5,250 lines, eleven numbered
   sections).
 - **Commit straight to `main`.** The user asked for this explicitly on 2026-09-22. Do not
@@ -129,7 +131,7 @@ cards, a glowing wavy spine, and circuit-board scenery. The scenery is three inl
 depth is set in two places that must agree: `RAIL_Y` in `drawRail()` and `--wy` in
 `css/home.css`. The comment beside `--wy` has the arithmetic.
 
-**Above 720px home is a fixed 16:9 frame, scaled to fit, like a Storyline slide.** Everything in
+**Above 720px home is a fixed 16:9 frame, scaled to fit the window.** Everything in
 `#bw-map` sits inside `#bw-map-frame`, which is laid out at 1280×720 (1920×1080 at two
 thirds). `fitMap()` scales the frame to fit the page width and the window height minus
 the footer, then centres it. It runs on `setView("map")` and on resize. Consequences:
@@ -1216,8 +1218,8 @@ against a 236–338px transcript even fully collapsed, so following the bottom l
 first lines above the fold. `anchorTallReply()` handles it, and it is driven by *geometry*, not
 by a width or a "small phone" mode: once a followed reply has landed, if its beginning is above
 the visible transcript, the transcript goes to the beginning of it instead; if it is visible,
-nothing happens. So it applies equally to an unusually long reply at 390 or to a constrained
-Storyline embed.
+nothing happens. So it applies equally to an unusually long reply at 390 or to any other
+short viewport.
 
 Boundaries, all deliberate:
 - **Only a learner who was following gets it.** One who scrolled away is untouched and gets
