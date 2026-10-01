@@ -4485,6 +4485,7 @@
     if (focus) focus.hidden = next !== "chat";
     showLessonCard();
     if (next === "chat") {
+      setContextOpen(false);        // the conversation first; context is one tap away
       renderCoachRail();
       maybeStartConversation();
       renderCoachCards();
@@ -4619,10 +4620,61 @@
     });
     var top = document.getElementById("bw-cards-top");
     var bottom = document.getElementById("bw-cards-bottom");
-    coachingCards().forEach(function (card) {
+    var cards = coachingCards();
+    cards.forEach(function (card) {
       var host = card.where === "bottom" ? bottom : top;
       if (host) host.appendChild(buildCoachingCard(card));
     });
+    paintContextStrip(cards.filter(function (c) { return c.where !== "bottom"; }));
+  }
+
+  /* ----------------- pinned context, on a narrow screen -----------------
+
+     Above 900px the context cards sit over the transcript as they always have.
+     Below it there is not the room: on a phone they took most of the canvas
+     (a transcript 137-277px tall at 390x780, against replies 282-421px tall), and
+     on a tablet the capped rail showed the second card as a title and nothing
+     else. So there the cards go behind one disclosure, collapsed by default, and
+     the conversation owns the screen.
+
+     It is the SAME cards, in the same rail, from the same coachingCards() - the
+     strip only says what is in them and shows or hides the rail. Nothing is
+     duplicated, so nothing can disagree. */
+  var ctxOpen = false;
+
+  function contextSummary(tops) {
+    var parts = [];
+    tops.forEach(function (c) {
+      if (c.type === "problem-summary") parts.push("Task");
+      else if (c.type === "specificity") {
+        var n = (c.items || []).length;
+        parts.push(n + " mapped step" + (n === 1 ? "" : "s"));
+      } else parts.push(c.title);
+    });
+    return parts.join(" + ");
+  }
+
+  function paintContextStrip(tops) {
+    var toggle = document.getElementById("bw-ctx-toggle");
+    if (!toggle) return;
+    // With nothing pinned there is nothing to disclose, so there is no strip either.
+    toggle.hidden = !tops.length;
+    var sum = toggle.querySelector(".bw-ctx-sum");
+    if (sum) sum.textContent = contextSummary(tops);
+  }
+
+  /* Opening or closing it changes the transcript's height with no scroll event, so
+     someone who was following the conversation would read as having scrolled away.
+     It is their own action finishing, so it keeps them where they were. */
+  function setContextOpen(open) {
+    var panel = document.getElementById("bw-chat-panel");
+    var toggle = document.getElementById("bw-ctx-toggle");
+    if (!panel || !toggle) return;
+    var wasPinned = chatPinned();
+    ctxOpen = !!open;
+    panel.setAttribute("data-ctx-open", ctxOpen ? "true" : "false");
+    toggle.setAttribute("aria-expanded", ctxOpen ? "true" : "false");
+    if (wasPinned) scrollChat();
   }
 
   /* Continue on a coaching stage hands off to the coach rather than onward. */
@@ -4647,6 +4699,20 @@
     /* Context cards pin above the transcript, where they stay put while it
        scrolls; the handoff card sits just over the composer, which is where
        someone looks when they think they are done. */
+    var toggle = el2("button", "bw-ctx-toggle");
+    toggle.type = "button";
+    toggle.id = "bw-ctx-toggle";
+    toggle.hidden = true;                          // until there is something to disclose
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", "bw-cards-top");
+    toggle.appendChild(el2("span", "bw-ctx-label", "Context loaded"));
+    toggle.appendChild(el2("span", "bw-ctx-sum"));
+    toggle.appendChild(el2("span", "bw-ctx-caret"));
+    toggle.lastChild.setAttribute("aria-hidden", "true");
+    toggle.addEventListener("click", function () { setContextOpen(!ctxOpen); });
+    host.setAttribute("data-ctx-open", "false");
+    host.appendChild(toggle);
+
     var top = el2("div", "bw-cards-rail");
     top.id = "bw-cards-top";
     host.appendChild(top);

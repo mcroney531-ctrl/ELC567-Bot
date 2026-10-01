@@ -1030,6 +1030,46 @@ layout compromise but a capability that vanished at a screen size. `chat-stage` 
 name stays on one line, Restart stays reachable, and nothing overlaps, at 360 / 390 / 430 /
 768 — and that a two-press restart on a phone really does clear a settled decision.
 
+**Pinned context is behind a disclosure at 900px and below.** Above 900 the context cards
+(`#bw-cards-top`) sit over the transcript exactly as they always have. At 900 and below
+they are one strip — "Context loaded · Task + 4 mapped steps" — collapsed by default, which
+opens the **same cards** from the same `coachingCards()` (`paintContextStrip()` only
+summarises them; nothing is duplicated, so nothing can disagree). It is a real button
+(`aria-expanded`, `aria-controls="bw-cards-top"`, 44px tall) and hidden outright when there is
+nothing pinned. Expanded, the rail grows to show the cards whole and a card's list is
+uncapped; the transcript yields that room only while it is open, because opening it was the
+learner's choice. Opening or closing it keeps a learner who was following the conversation
+pinned, for the same reason `sendChat()` does. This threshold belongs to the strip only; the
+coach header's 720/480 hierarchy above is untouched.
+
+Why it exists: at 390×780 the cards left the transcript 137–277px tall against replies
+282–421px tall, so **no reply began in view**, and at 768 the capped rail showed its second
+card as a title and nothing else.
+
+**The acceptance rule is behavioural, not a height.** A reply that arrives while the learner is
+following the conversation must *begin in view*. A log of "about 280px" with a 400px reply
+pinned to its bottom still starts above the fold, so no height target is the right target.
+`chat-stage` checks it on the real scripted Refine replies — the opening through the fourth
+decision, with the Next step card showing, the heaviest chrome the conversation carries — and
+on Identify's confirmation summary, at 390×780, 430×780, 390×844, 768, 900 and 1280.
+
+Getting there took layout only, in three parts, each measured:
+
+| lever | where | what it recovered |
+|---|---|---|
+| the disclosure strip | ≤900 | ~104px of transcript (277 → 381 at 390×780) |
+| one-row Next step card, and 22px of dead space around it | ≤480 | ~40–60px late in a conversation |
+| panel fills the screen above the footer (`100svh - 90px`, `vh` fallback) | ≤720 | ~100px (593 → 690 panel at 780) |
+
+`svh`, not `vh`: `vh` is the viewport with the browser toolbar retracted and would push the
+composer beneath it. With the page scrolled to its end the panel and footer fill the screen.
+
+**Known limit — small phones (360×640 and shorter).** Replies there are 305–491px tall against
+a 236–338px transcript even fully collapsed, so replies still begin above the fold (by 27–193px).
+Layout cannot fix that: there is not the height. It is a *scroll* question — when an arriving reply
+is taller than the transcript, anchor to its beginning rather than its bottom — and it is a
+separate decision, deliberately not bundled with this change. `chat-stage` does not claim 360×640.
+
 ### Environment note
 The git proxy in the Claude Code remote environment **rejects ref deletions**
 (`git push origin --delete` fails with `the remote end hung up unexpectedly`, consistently,

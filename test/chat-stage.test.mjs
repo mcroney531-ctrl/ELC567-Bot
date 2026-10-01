@@ -58,8 +58,11 @@ async function openCoach(opts = {}) {
    thing under test. */
 /* Everything finished, then back to an earlier stage - the state someone is in
    once they have reached the master prompt and started looking around. */
-async function openFinished(stage) {
-  const ctx = await browser.newContext({ viewport: { width: 880, height: 760 } });
+async function openFinished(stage, width = 1000) {
+  /* 1000 rather than a narrow width on purpose: the rail checks below are about the
+     pinned context cards, which only sit over the transcript above 900px. Below it
+     they are behind a disclosure (see "pinned context on a narrow screen"). */
+  const ctx = await browser.newContext({ viewport: { width, height: 760 } });
   const page = await ctx.newPage();
   report.watch(page);
   await page.addInitScript(seed => {
@@ -597,10 +600,11 @@ try {
       !fin.jump, JSON.stringify(fin));
     check(label + ' (Identify): the summary they are asked to confirm ends in view',
       fin.replyBottomIn, JSON.stringify(fin));
-    if (label === 'desktop') {
-      check('desktop (Identify): and all of it is in view',
-        fin.replyTopIn, JSON.stringify(fin));
-    }
+    /* Interim assertion until the phone layout gave the transcript its height back
+       was "ends in view", which let a learner see the confirm button without seeing
+       what they were confirming. It starts in view too, at both widths now. */
+    check(label + ' (Identify): and it begins in view, so all of what they confirm is on screen',
+      fin.replyTopIn, JSON.stringify(fin));
     await ictx.close();
   }
 
@@ -822,6 +826,159 @@ try {
   check('and not on the composer, which would open a phone keyboard',
     landed !== 'bw-chat-input', landed);
   await ctx.close();
+
+  /* ============ pinned context, on a narrow screen ============
+
+     On a phone the context cards took most of the transcript's canvas: 137-277px
+     of a 593px panel at 390x780, against replies 282-421px tall, so no reply
+     began in view. On a tablet the capped rail showed its second card as a title
+     and nothing else. Below 900px they are now one disclosure, collapsed by
+     default, over the SAME cards. Above 900px nothing about them has changed. */
+  const SEED4 = {
+    ...SEED,
+    steps: [{ action: "Pull last week's delivery numbers", tools: 'Tableau' },
+            { action: 'Check the shared inbox for anything unresolved', tools: 'Gmail' },
+            { action: 'Draft a four paragraph update for each client', tools: 'Word' },
+            { action: "Send each update in the client's preferred channel", tools: 'Gmail, Slack' }],
+    toolsAll: ['Tableau', 'Gmail', 'Word', 'Slack'],
+    idealOutcome: 'All eleven client updates are drafted and ready to review before nine on Monday, so my morning goes to client work instead of rebuilding decks.',
+    aiRole: 'Pull the numbers and assemble a first draft of each update in our usual four-paragraph shape, so I am reviewing and adjusting rather than retyping.'
+  };
+  async function openRefine(viewport) {
+    const rctx = await browser.newContext({ viewport });
+    const rpage = await rctx.newPage();
+    report.watch(rpage);
+    await rpage.addInitScript(seed => {
+      localStorage.setItem('brainstorm_workflow_data', seed);
+      localStorage.setItem('bw_started', '1');
+    }, JSON.stringify({ ...SEED4, progress: { unlocked: 4, current: 4, done: { 1: true, 2: true, 3: true },
+                                            entered: { 1: true, 2: true, 3: true } } }));
+    await rpage.goto(`http://127.0.0.1:${PORT}/`);
+    await rpage.waitForTimeout(400);
+    await rpage.click('.bw-station[data-stage="4"] .bw-station-card');
+    await rpage.waitForTimeout(700);
+    await rpage.click('[data-next="4"]');
+    await rpage.waitForFunction(
+      () => document.querySelectorAll('.bw-msg-bot:not([data-typing])').length >= 1,
+      null, { timeout: 12000 });
+    await rpage.waitForTimeout(300);
+    return { rctx, rpage };
+  }
+  const ctxState = page_ => page_.evaluate(() => {
+    const t = document.getElementById('bw-ctx-toggle'), r = document.getElementById('bw-cards-top');
+    const vis = e => !!e && !e.hidden && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 0;
+    const rr = r.getBoundingClientRect();
+    const cards = [...r.querySelectorAll('.bw-cc')].map(c => { const cr = c.getBoundingClientRect();
+      return { title: c.querySelector('.bw-cc-title').textContent,
+               clipped: Math.round(Math.max(0, cr.bottom - rr.bottom)) }; });
+    const l = document.querySelector('.bw-chat-log').getBoundingClientRect();
+    return { strip: vis(t), expanded: t.getAttribute('aria-expanded'), controls: t.getAttribute('aria-controls'),
+             stripH: Math.round(t.getBoundingClientRect().height), sum: (t.querySelector('.bw-ctx-sum')||{}).textContent,
+             rail: vis(r), cards, logH: Math.round(l.height),
+             railOverlapsLog: vis(r) ? Math.round(rr.bottom - l.top) : 0 };
+  });
+
+  for (const width of [390, 430, 768, 900]) {
+    const { rctx, rpage } = await openRefine({ width, height: width >= 768 ? 1024 : 780 });
+    let c = await ctxState(rpage);
+    check(width + ': pinned context is one disclosure strip', c.strip, JSON.stringify(c));
+    check(width + ': collapsed by default, so the conversation owns the screen',
+      c.expanded === 'false' && !c.rail, JSON.stringify(c));
+    check(width + ': it names what is loaded, from the same cards',
+      /Task/.test(c.sum) && /4 mapped steps/.test(c.sum), JSON.stringify(c.sum));
+    check(width + ': and is a real tap target', c.stripH >= 44, JSON.stringify(c));
+    check(width + ': pointing at the rail it controls', c.controls === 'bw-cards-top', JSON.stringify(c));
+    const collapsedH = c.logH;
+    await rpage.click('#bw-ctx-toggle');
+    await rpage.waitForTimeout(150);
+    c = await ctxState(rpage);
+    check(width + ': opening it shows the context', c.expanded === 'true' && c.rail, JSON.stringify(c));
+    check(width + ': both cards, whole - none cut off to a title',
+      c.cards.length === 2 && c.cards.every(k => k.clipped === 0), JSON.stringify(c.cards));
+    /* Whole means the list too: on a phone the steps wrap to two lines, and the list's
+       own 104px cap used to scroll the fourth one away inside its card with nothing
+       to say so. */
+    check(width + ': and every mapped step is readable, not scrolled away inside its card',
+      await rpage.evaluate(() => { const ul = document.querySelector('.bw-cc-specificity .bw-cc-items');
+        return ul.scrollHeight <= ul.clientHeight + 1; }),
+      await rpage.evaluate(() => { const ul = document.querySelector('.bw-cc-specificity .bw-cc-items');
+        return JSON.stringify({ client: ul.clientHeight, scroll: ul.scrollHeight }); }));
+    check(width + ': without overlapping the transcript', c.railOverlapsLog <= 0, JSON.stringify(c));
+    check(width + ': the transcript yields room while it is open', c.logH < collapsedH,
+      JSON.stringify({ open: c.logH, collapsed: collapsedH }));
+    await rpage.click('#bw-ctx-toggle');
+    await rpage.waitForTimeout(150);
+    c = await ctxState(rpage);
+    check(width + ': closing it gives the room back', !c.rail && Math.abs(c.logH - collapsedH) <= 2,
+      JSON.stringify({ closed: c.logH, collapsed: collapsedH }));
+    check(width + ': Restart is still reachable', await rpage.locator('#bw-coach-restart').isVisible());
+    check(width + ': no horizontal overflow', await rpage.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
+    await rctx.close();
+  }
+  {
+    // Above 900 nothing changed: no strip, the cards where they have always been.
+    for (const width of [901, 1280]) {
+      const { rctx, rpage } = await openRefine({ width, height: 900 });
+      const c = await ctxState(rpage);
+      check(width + ': no disclosure strip above 900px', !c.strip, JSON.stringify(c));
+      check(width + ': the pinned cards are in place', c.rail && c.cards.length === 2, JSON.stringify(c));
+      await rctx.close();
+    }
+  }
+
+  /* Opening or closing it moves the transcript's edge without a scroll event, and a
+     learner who was following the conversation must not read as having left it. */
+  {
+    const { rctx, rpage } = await openRefine({ width: 390, height: 780 });
+    await say(rpage, 'The first draft of each update and the pulling of the numbers, and I review the result.', 2);
+    await rpage.click('#bw-ctx-toggle'); await rpage.waitForTimeout(150);
+    await rpage.click('#bw-ctx-toggle'); await rpage.waitForTimeout(150);
+    sg = await scrollGeo(rpage);
+    check('opening and closing context does not move someone who was following',
+      sg.fromBottom <= 32 && !sg.jump, JSON.stringify(sg));
+    await rctx.close();
+  }
+
+  /* THE acceptance rule. A reply that arrives while the learner is following the
+     conversation has to begin in view. Not "the log is some height": a 280px log
+     with a 400px reply pinned to its bottom still starts above the fold, which is
+     the failure this exists to prevent. Measured on the real scripted Refine
+     replies, opening to the last decision, with the Next step card present at the
+     end - the heaviest chrome the conversation ever carries. */
+  const REFINE_ANSWERS = [
+    'The first draft of each update and the pulling of the numbers. I want AI to assemble the routine parts, and I review the result.',
+    'The call on what to flag to each client next week stays mine, and so does anything that changes what we promised them.',
+    'Four short paragraphs, no bullets, under two hundred words, a direct tone, and the same shape every week.',
+    'Never invent a number that is not in the export I paste in. Client names come from the CRM, never from memory.'];
+  const replyView = page_ => page_.evaluate(() => {
+    const l = document.querySelector('.bw-chat-log'), lr = l.getBoundingClientRect();
+    const bots = l.querySelectorAll('.bw-msg-bot:not([data-typing]) .bw-msg-body');
+    const br = bots[bots.length - 1].getBoundingClientRect();
+    return { startsInView: br.top >= lr.top - 1, hiddenAbove: Math.max(0, Math.round(lr.top - br.top)),
+             replyH: Math.round(br.height), logH: Math.round(lr.height),
+             fromBottom: Math.round(l.scrollHeight - l.scrollTop - l.clientHeight) };
+  });
+  for (const [label, viewport] of [['390x780', { width: 390, height: 780 }],
+                                   ['430x780', { width: 430, height: 780 }],
+                                   ['390x844', { width: 390, height: 844 }],
+                                   ['768x1024', { width: 768, height: 1024 }],
+                                   ['900x1024', { width: 900, height: 1024 }],
+                                   ['1280x900', { width: 1280, height: 900 }]]) {
+    const { rctx, rpage } = await openRefine(viewport);
+    let v = await replyView(rpage);
+    check(label + ': the opening begins in view', v.startsInView, JSON.stringify(v));
+    for (let i = 0; i < REFINE_ANSWERS.length; i++) {
+      await say(rpage, REFINE_ANSWERS[i], i + 2);
+      await rpage.waitForTimeout(250);
+      v = await replyView(rpage);
+      check(label + ': reply ' + (i + 1) + (i === 3 ? ' (Next step card showing)' : '') + ' begins in view',
+        v.startsInView && v.fromBottom <= 32, JSON.stringify(v));
+    }
+    check(label + ': the Next step card is what the last turn carried',
+      await rpage.locator('#bw-cards-bottom .bw-cc-next-step').count() === 1);
+    await rctx.close();
+  }
 
   // ============ coming back to a stage with everything already filled ============
   /* Pinned context is meant to orient the conversation, not crowd it out. Once

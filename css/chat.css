@@ -181,6 +181,10 @@
 #bw-cards-bottom { padding-top: 4px; padding-bottom: 0; flex: 0 0 auto; background: var(--chat-canvas); }
 .bw-cards-rail:empty { display: none; }
 
+/* The disclosure for pinned context on a narrow screen (see renderCoachCards).
+   Not there at all above 900px, where the cards sit over the transcript as ever. */
+.bw-ctx-toggle { display: none; }
+
 .bw-cc {
   margin-bottom: 10px; padding: 13px 15px;
   background: #fff; border: 1px solid var(--chat-line); border-radius: 16px;
@@ -261,6 +265,41 @@
   .bw[data-phase="chat"] .bw-ls-body { grid-template-columns: minmax(160px, 200px) 1fr; }
 }
 
+/* Narrow: the conversation owns the screen. Pinned context is one line, collapsed,
+   and opens to the same cards when asked. Collapsed is what has to give the
+   transcript its room; if the learner opens it they have chosen to look at
+   context, and the transcript yields some height for as long as they do. */
+@media (max-width: 900px) {
+  .bw[data-phase="chat"] .bw-ctx-toggle {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    margin: 0; padding: 10px clamp(14px, 2.4vw, 26px);
+    background: var(--chat-canvas); color: var(--chat-ink);
+    border: 0; border-bottom: 1px solid var(--chat-line); border-radius: 0;
+    font: inherit; font-size: .8125rem; text-align: left; cursor: pointer;
+    min-height: 44px;                       /* a real tap target */
+  }
+  .bw-ctx-label { font-weight: 700; flex: 0 0 auto; }
+  .bw-ctx-sum { color: var(--chat-muted); flex: 1 1 auto; min-width: 0;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bw-ctx-caret {
+    flex: 0 0 auto; width: 8px; height: 8px; margin-right: 2px;
+    border-right: 2px solid var(--chat-muted); border-bottom: 2px solid var(--chat-muted);
+    transform: rotate(45deg); transition: transform .15s ease;
+  }
+  .bw-ctx-toggle[aria-expanded="true"] .bw-ctx-caret { transform: rotate(-135deg); }
+  .bw-ctx-toggle:focus-visible { outline: 2px solid var(--accent, #3e8bff); outline-offset: -2px; }
+
+  .bw-chat-panel[data-ctx-open="false"] #bw-cards-top { display: none; }
+  /* Opened on purpose, so it gets what it needs: the rail grows to show the cards
+     whole instead of the 25% cap that left the second one as a title and nothing
+     else. The cap that remains is only a backstop against a very long step list. */
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top { max-height: 60%; }
+  /* The same goes for a card's own list: it scrolls inside the card so a card stays
+     a glance, but someone who opened this to read their steps should not have to
+     find a scroller to reach the fourth. */
+  .bw-chat-panel[data-ctx-open="true"] #bw-cards-top .bw-cc-items { max-height: none; overflow: visible; }
+}
+
 @media (max-width: 720px) {
   /* The rail becomes a compact stage summary above the conversation. */
   .bw[data-phase="chat"] .bw-ls-body { grid-template-columns: 1fr; }
@@ -286,7 +325,15 @@
   .bw-focus-dot { width: 14px; height: 14px; }
   .bw-focus-step + .bw-focus-step::before { display: none; }
 
-  .bw-chat-panel { max-height: none; }
+  /* The panel was min(76vh, 740px): on a phone that left 187px of a 780px screen
+     unused while the transcript inside it was too short to show the start of a
+     reply. With the page scrolled to its end, the panel and the footer now fill the
+     screen. svh, not vh: vh is the viewport with the browser toolbar retracted, so
+     it would push the composer under the toolbar; the vh line is the fallback for
+     browsers that do not know svh yet. */
+  .bw-chat-panel { max-height: none;
+                   height: min(calc(100vh - 90px), 820px);
+                   height: min(calc(100svh - 90px), 820px); }
   .bw-coach-head { padding: 11px 14px; gap: 9px; }
   /* The descriptive subline goes; Restart stays. Restarting Refine clears its
      four decisions and re-locks Deploy, so hiding the only control that does
@@ -299,6 +346,23 @@
 
   .bw[data-phase="chat"] .bw-msg-bot .bw-msg-body,
   .bw[data-phase="chat"] .bw-msg-user .bw-msg-body { max-width: 88%; }
+}
+
+/* Phone. The Next step card is the one thing pinned over the composer, and it is
+   what costs the transcript the most height late in a conversation: its button
+   wraps onto a second row under the text. The button already says what it does,
+   so the "Ready to move on?" line is what goes, and the card is one row. */
+@media (max-width: 480px) {
+  .bw-cc-next-step { flex-wrap: nowrap; padding: 8px 12px; }
+  .bw-cc-next-step .bw-cc-body { display: none; }
+  /* And the dead space around it. The card kept a 10px gap under it that the
+     composer's own padding already provides, the transcript kept 18px under its
+     last bubble, and the note under the composer 12px: 22px between them, which is
+     the difference between the summary a learner is asked to confirm beginning in
+     view and not, at 390x780. */
+  #bw-cards-bottom .bw-cc { margin-bottom: 4px; }
+  .bw[data-phase="chat"] .bw-chat-log { padding-top: 14px; padding-bottom: 10px; }
+  .bw[data-phase="chat"] .bw-chat-note { padding-bottom: 8px; }
 }
 
 /* Phone. With the name held to one line, the adapter badge is what runs into
