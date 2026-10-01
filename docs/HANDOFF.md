@@ -129,19 +129,23 @@ cards, a glowing wavy spine, and circuit-board scenery. The scenery is three inl
 depth is set in two places that must agree: `RAIL_Y` in `drawRail()` and `--wy` in
 `css/home.css`. The comment beside `--wy` has the arithmetic.
 
-**Home is a fixed 16:9 frame, scaled to fit, like a Storyline slide.** Everything in
+**Above 720px home is a fixed 16:9 frame, scaled to fit, like a Storyline slide.** Everything in
 `#bw-map` sits inside `#bw-map-frame`, which is laid out at 1280×720 (1920×1080 at two
 thirds). `fitMap()` scales the frame to fit the page width and the window height minus
 the footer, then centres it. It runs on `setView("map")` and on resize. Consequences:
-- There is **no narrow layout for home**. A phone gets the same picture, smaller; on a
-  portrait phone it is letterboxed and small, and landscape is much better. This was
-  the user's call, on 2026-09-23.
+- **At 720px and below home is a vertical route instead — see "The Journey on a phone"
+  below.** This *supersedes* the earlier decision (the user's, 2026-09-23) that "a phone gets
+  the same picture, smaller". That was deliberate, and walking the finished journey as a
+  learner is the evidence that overturned it: at 390px the frame came out ~219px tall with
+  station names at ~4.9px, statuses and blurbs at ~3.7px and the completed-journey message at
+  ~4px. 768, 721 and every desktop width are unchanged, byte for byte.
 - `setView()` puts the current view on `<html>` as `data-bw-view`. `timeline.css` uses
   it to remove the browser page's margin and colour the page to match each view:
   lavender for the landing, the stage shell's navy, and the home letterbox. No white
   page shows in any view. A `/role/` slice never calls `setView()`, so an embedded
   slice keeps its host's page. On home, the map fills the window, the frame is centred
-  in it both ways, and the footer sits at the bottom, so nothing scrolls.
+  in it both ways, and the footer sits at the bottom, so nothing scrolls (in the frame
+  layout; the phone route is a normal scrolling page).
 - Nothing inside the frame may size itself off the viewport (`vw`, `vh`, or media
   queries), because the viewport is not what it is drawn in.
 - **Never `clearProps: "all"` on `#bw-map`.** It wipes the inline height and
@@ -739,7 +743,7 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Fifteen Playwright suites, all passing. Run `npm test` for the current totals; the counts
+Sixteen Playwright suites, all passing. Run `npm test` for the current totals; the counts
 below are each suite's own report at the time of writing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
@@ -748,6 +752,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 |---|---|---|
 | `scripted-coach.test.mjs` | 90 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
 | `timeline.test.mjs` | 94 | Journey map: five stations, four states, navigation rules, the connector, responsive |
+| `journey-mobile.test.mjs` | 113 | The Journey on a phone: a natural-height route over the same stations, readable at 390 and 360, every state, the completed journey, the round trip, the 720/721 boundary, and that everything above it is untouched |
 | `station-count.test.mjs` | 25 | That the journey's length is data: five as shipped, and the same machinery served one station shorter |
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
@@ -1028,7 +1033,8 @@ comes back.
 **The scenery is authored for this page, not borrowed.** `.bw-lc` is a restrained pair of
 corner SVGs in the journey's visual language. The map's three `svg.bw-circ` blocks are authored
 against `fitMap()`'s fixed 1280×720 frame and cannot be reused in normal document flow — do not
-move or duplicate them.
+move or duplicate them. (On a phone the same three SVGs are simplified rather than moved: two
+are hidden and the third is shrunk and dimmed into one corner, clear of the title.)
 
 **The two heroes have different jobs.** The landing owns the product promise ("Turn Ideas Into
 Impact"); home is functional ("Your Workflow Journey"). They shared a hero before, so Start
@@ -1045,8 +1051,42 @@ same journey the map shows, in the same order, and `journey-contract` asserts th
 landing cannot drift behind the journey again.
 
 ### Mobile
-No horizontal overflow at 360 px on any view, and that is tested. Home scales as one
-frame (see §2); the landing and the stage still reflow.
+No horizontal overflow at 360 px on any view, and that is tested. Above 720px home is the
+scaled frame (see §2); at 720px and below it is the vertical route described next. The landing
+and the stage reflow as they always did.
+
+**The Journey on a phone is the same journey, translated into portrait — not a second one.**
+At 720px and below the stations are a natural-height column: same `STATIONS`, same station
+buttons, same `statusOf()` engine, same stage colours, same completed/current/available/locked
+treatments, same copy. It is a presentation change over the existing DOM, written as a media
+block at the foot of `css/home.css`:
+- A station is a two-column grid: the **waypoint** (44px), then the **card**. The card is a row —
+  tile, words, arrow — with the status and blurb at 13px and the name at 17px. The stage
+  **number is the waypoint's, not the card's** (`.bw-card-num` is hidden), and a completed
+  waypoint is the stage-coloured star as on desktop.
+- **One continuous neutral glacier line.** Each station draws the stretch from its waypoint to
+  the next one's (`.bw-station:not(:last-child)::before`), so the joins sit under the waypoints.
+  State belongs to the waypoints and cards, never the connector — as on desktop. The old
+  horizontal rail is `display: none`, and `.bw-station-stem` becomes the short link from
+  waypoint to card.
+- Hint, legend and header are normal flow text, not scaled artwork.
+
+**The breakpoint is decided once, in CSS.** The media query sets `--map-layout: stack` on
+`.bw-map` (it is `frame` otherwise), and `fitMap()` reads that through `mapStacked()` instead of
+carrying its own copy of 720. In the stacked layout `fitMap()` *clears* the inline height,
+`--map-scale`, `--map-x` and `--map-y` it wrote when it was a frame, so a window dragged narrower
+does not keep a fixed height the layout no longer uses. Do not reintroduce a second number in JS.
+
+The desktop choreography needed no change: it fades the map and scales cards and measures
+nothing, so it carries over to the column (tested: no horizontal overflow while it plays and no
+styles left behind afterwards). The same rule as before holds — never `clearProps: "all"` on
+`#bw-map`.
+
+Tests: `journey-mobile.test.mjs` pins the readability floors (names 14px+, statuses and blurbs
+11px+, measured as rendered, i.e. computed size × any scale), tap targets, one-column order,
+the waypoint/number/connector structure, every state at 390 and 360, the completed journey, the
+round trip back from a stage, the 720/721 boundary and crossing it in both directions, and that
+721, 768, 1100 and 1280 are still the scaled frame.
 
 **The coach header is a responsive hierarchy, and the order it sheds things in is the
 point.** It has one job no other element on the screen can do — say who the learner is

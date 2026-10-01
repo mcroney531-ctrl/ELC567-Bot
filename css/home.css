@@ -51,6 +51,11 @@
      the idea, deliberately not an alias of any stage's identity token. */
   --legend-done: #ffb23d;  --legend-done-fill: #b86b08;
 
+  /* Which composition home is in. The media query at the foot of this file flips it to
+     "stack"; fitMap() reads it rather than carrying its own copy of the breakpoint, so
+     the width that decides it is written exactly once. */
+  --map-layout: frame;
+
   position: relative;
   overflow: hidden;
   color: var(--home-text);
@@ -423,3 +428,100 @@
                 0 18px 44px rgba(0, 0, 0, .3);
   }
 }
+
+
+/* ==========================================================================
+   Phone: the same journey, in portrait
+   --------------------------------------------------------------------------
+   At 720px and below home is not a scaled 1280x720 picture - at 390 that came out
+   219px tall with station names at ~4.9px, statuses at ~3.7px and the Overview button
+   at 4px - it is a natural-height column. Same stations, same buttons, same state
+   rules above, same stage colours and the same copy; only the composition changes.
+   The card is a row (tile, words, arrow), the waypoint sits beside it on one
+   continuous glacier line, and the number is the waypoint's rather than the card's.
+
+   Everything above this block is the desktop and tablet design and is untouched.
+   ========================================================================== */
+@media (max-width: 720px) {
+  .bw-map { --map-layout: stack; }
+
+  /* The frame stops being a fixed picture: no absolute box, no scale, no height.
+     fitMap() sees "stack" and clears what it wrote when it was one. */
+  .bw-map-frame {
+    position: relative; top: auto; left: auto;
+    width: auto; height: auto;
+    transform: none;
+    padding: 16px 16px 26px;
+    background:
+      radial-gradient(560px 380px at 50% 16%, rgba(40, 90, 190, .30) 0%, transparent 70%),
+      radial-gradient(720px 420px at 0% -6%, var(--home-bg-1) 0%, transparent 62%),
+      linear-gradient(170deg, var(--home-bg-0) 0%, var(--home-bg-2) 100%);
+  }
+
+  /* Scenery stays behind the route and out of its way: one corner, quieter. */
+  .bw-circ-l, .bw-circ-br { display: none; }
+  .bw-circ-tr { width: 120px; height: 99px; opacity: .45; }   /* clear of the title */
+
+  .bw .bw-map-title { font-size: 1.875rem; }
+  .bw-map .bw-back { min-height: 40px; }              /* a real tap target on a phone */
+  .bw-map .bw-stage-bar { margin-bottom: 16px; }
+
+  /* ---- the route ---- */
+  .bw-spine { display: block; margin: 22px 0 4px; }
+  .bw-rail { display: none; }                     /* the horizontal line; the route has its own */
+  .bw-stations { display: flex; flex-direction: column; gap: 14px; }
+
+  /* A station is a row: the waypoint's column, then its card. Both are the same
+     elements as ever - the grid below only decides where they sit. */
+  .bw-station {
+    display: grid; position: relative;
+    grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px;
+  }
+
+  .bw-station .bw-station-node {
+    grid-column: 1; grid-row: 1; align-self: stretch;
+    width: 44px; height: auto; justify-self: start;
+  }
+  .bw-station-way { left: 50%; top: 43px; }       /* level with the tile, whatever the card holds */
+
+  /* The stem becomes the short link from waypoint to card. */
+  .bw-station[data-place] .bw-station-stem {
+    top: 42px; bottom: auto; height: 2px; width: 13px;
+    left: calc(50% + 21px); transform: none;
+  }
+
+  /* One continuous neutral line: each station draws the stretch from its waypoint to the
+     next one's, so the joins sit under the waypoints and the line reads as one. State
+     belongs to the waypoints and the cards, never to the connector - as on desktop. */
+  .bw-station:not(:last-child)::before {
+    content: ""; position: absolute; z-index: 0;
+    left: 20.5px; top: 43px; width: 3px; height: calc(100% + 14px);
+    border-radius: 2px; background: #fff;
+    box-shadow: 0 0 6px rgba(110, 175, 255, .9), 0 0 16px rgba(50, 120, 255, .6);
+  }
+  .bw-station .bw-station-node { z-index: 1; }
+
+  /* ---- the card, as a row ---- */
+  .bw-station[data-place] .bw-station-card {
+    grid-column: 2; grid-row: 1; align-self: start; justify-self: stretch;
+    width: 100%; max-width: none;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+    gap: 0 14px; padding: 14px;
+    text-align: left;
+  }
+  .bw-station-card .bw-card-num { display: none; }   /* the waypoint says it */
+  .bw-station-card .bw-card-tile { width: 56px; height: 54px; }
+  .bw-station-card .bw-card-go {
+    position: static; transform: none; width: 32px; height: 32px;
+  }
+  .bw-station-card .bw-card-name { font-size: 1.0625rem; }
+  .bw-station-card .bw-card-status,
+  .bw-station-card .bw-card-blurb { font-size: .8125rem; line-height: 1.35; text-wrap: pretty; }
+  .bw-station:not([data-state="locked"]) .bw-station-card:hover { transform: none; }
+
+  /* ---- what is under the route ---- */
+  .bw-map-hint { margin-top: 22px; font-size: .875rem; line-height: 1.45; text-wrap: balance; }
+  .bw-legend { margin-top: 16px; }
+  .bw-legend-lede { max-width: none; flex-basis: 100%; }
+}
+

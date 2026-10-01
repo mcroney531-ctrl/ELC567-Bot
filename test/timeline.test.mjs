@@ -342,24 +342,16 @@ try {
   await page.setViewportSize({ width: 360, height: 780 });
   await page.waitForTimeout(200);
   await page.waitForTimeout(300);
-  /* Home is one fixed 16:9 frame scaled to fit, like a Storyline slide, so a
-     phone gets the same composition smaller - not a reflowed list. */
-  check('a phone gets the same composition, scaled down', await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('.bw-station-card')].map(c => c.getBoundingClientRect());
-    const frame = document.querySelector('#bw-map-frame').getBoundingClientRect();
-    return cards[4].left > cards[0].left + 100 &&           // still left to right
-           cards[1].top > cards[0].top &&                   // still above and below
-           Math.abs(frame.width / frame.height - 16 / 9) < 0.02 &&
-           frame.left >= 0 && frame.right <= document.documentElement.clientWidth + 1;
-  }));
-  check('home fills the phone: no page to scroll, and no white page showing',
+  /* Below 720px home is a vertical route, not the 16:9 frame scaled down: at a phone's
+     width that came out ~219px tall with names at ~5px. That layout, its readability
+     floors and its boundary have their own suite (journey-mobile.test.mjs); what is
+     kept here is the part that never depended on the composition. */
+  check('a phone is not showing a white page behind the dark journey',
     await page.evaluate(() => {
       const bg = getComputedStyle(document.body).backgroundColor;
-      return document.documentElement.scrollHeight <= window.innerHeight + 1 &&
-             bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(255, 255, 255)';
+      return bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(255, 255, 255)';
     }),
-    await page.evaluate(() => document.documentElement.scrollHeight + ' ' +
-      getComputedStyle(document.body).backgroundColor));
+    await page.evaluate(() => getComputedStyle(document.body).backgroundColor));
   check('no horizontal overflow on the map at 360px', await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth) <= 1);
   check('all five stations are still there',

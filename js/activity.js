@@ -3780,7 +3780,7 @@
     if (next === "map") { renderMap(); fitMap(); }
   }
 
-  /* Home is one fixed 16:9 composition, scaled whole to the space it is given -
+  /* Above 720px home is one fixed 16:9 composition, scaled whole to the space it is given -
      the width of the page, and the height of the window less the footer - and
      centred in it both ways, so the map fills the window and the footer sits
      at the bottom of the screen. The same picture at every size, never a
@@ -3789,8 +3789,27 @@
      dimensions at once, and a hidden map measures zero wide. */
   var MAP_W = 1280, MAP_H = 720;
 
+  /* Which composition home is in is CSS's decision, made once: the 720px media query
+     in home.css sets --map-layout to "stack", and this reads it. There is no second
+     copy of the number here to drift from it. */
+  function mapStacked() {
+    return !!el.map &&
+      window.getComputedStyle(el.map).getPropertyValue("--map-layout").trim() === "stack";
+  }
+
   function fitMap() {
     if (!TIMELINE || view !== "map" || !el.map) return;
+    if (mapStacked()) {
+      /* A natural-height column: CSS owns the size. Whatever the frame wrote when it
+         was a scaled picture has to go, or a phone that was once a tablet (or a
+         window that was dragged narrower) keeps a fixed height and a scale the
+         layout no longer uses. */
+      el.map.style.height = "";
+      ["--map-scale", "--map-x", "--map-y"].forEach(function (prop) {
+        el.map.style.removeProperty(prop);
+      });
+      return;
+    }
     var foot = document.querySelector(".bw-foot");
     var w = el.map.clientWidth;
     // Rounded up: offsetHeight rounds a 63.1px footer down, and that fraction
