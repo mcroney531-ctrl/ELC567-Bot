@@ -17,7 +17,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 - Served as a **static site from the repository root**. `index.html` is the entry point.
 - Deployed by **GitHub Pages from `main` / root**. Every push to `main` deploys.
 - Intended to be **embedded in an Articulate Storyline slide** from its own URL.
-- All application logic is **one IIFE** in `js/activity.js` (~3,640 lines, ten numbered
+- All application logic is **one IIFE** in `js/activity.js` (~5,250 lines, eleven numbered
   sections).
 - **Commit straight to `main`.** The user asked for this explicitly on 2026-09-22. Do not
   create a feature branch unless asked. (If a session-level instruction names a
@@ -26,7 +26,7 @@ Monday" to "a master prompt I can paste into an LLM this afternoon."
 
 ```bash
 npm start     # http://127.0.0.1:8080 — plain static server
-npm test      # ten Playwright suites, 521 assertions, ~3 min
+npm test      # seventeen Playwright suites, 1,171 assertions, ~10 min
 ```
 
 `npm test` runs the suites **sequentially** and **stops at the first failing suite**
@@ -38,7 +38,7 @@ directly: `node test/timeline.test.mjs`.
 ## 1. Repository layout
 
 ```
-index.html              markup only, no inline styles or scripts (~464 lines)
+index.html              markup only, no inline styles or scripts (~630 lines)
 css/
   tokens.css            palette + motion tokens, all scoped under .bw
   activity.css          shared components (typography, buttons, cards, chat bubbles)
@@ -56,7 +56,7 @@ test/
   helpers.mjs           serveSite, withConfig, makeReporter, waitBots, seedThroughStage3
   coach-stub.mjs        fake LLM endpoint for the live-adapter suite
   serve.mjs             the dev server behind `npm start`
-  *.test.mjs            nine suites (see §7)
+  *.test.mjs            seventeen suites (see §7)
 admin/index.html        a redirect to /?admin=1 (see §6.5)
 personas/               offline persona-run harness (see §9)
 docs/design/            three design packs the user supplied, committed verbatim
@@ -157,7 +157,8 @@ the footer, then centres it. It runs on `setView("map")` and on resize. Conseque
 
 - **lesson** — instructional content. For a stage with an entry in `STAGE_LESSON`, this is
   a heading + prose + one action row and *nothing to fill in*. For a stage without one, it
-  is that stage's original panel (the textarea, the workflow card builder, etc.).
+  is that stage's own panel (Map's workflow card builder, Envision's two fields, Deploy's
+  artifact, or for Refine just its info strip and the button that hands off to the coach).
 - **chat** — the AI coach.
 
 `Continue` moves lesson → chat on a coaching stage; the coach's own **Save and continue**
@@ -891,7 +892,12 @@ Not run by `npm test`. Run it when you change coach behaviour or prompt generati
 - Stage 4: four required decisions, settled through the coach and owned by the app, with
   the same progression whether the coach is scripted or live. Stage 5's artifact.
   V1 still generated, shown nowhere.
-- Version 3 saves, with a v2 upgrade that keeps the work and re-earns the ticks.
+- Version 4 saves, with v2 and v3 upgrades that keep the work and re-earn the ticks (§3).
+- The Journey on a phone: a portrait route over the same stations at 720px and below (§7 Mobile).
+- Completed stages reopen on what the learner made, not on the reading (§2).
+- Chat scrolling that respects where the learner is reading, a one-line context disclosure on
+  narrow screens, and tall replies followed from their beginning (§4, §7 Mobile).
+- Workflow-step resolution that names a step only when the answer points at exactly one (§4).
 
 ### The journey, as built
 
@@ -955,8 +961,9 @@ coupling.
    single-page lesson may be written as the page itself, which is what stages 1 and 3 do.
    Map uses two pages, so the counter and the Back button are live content, not
    theory. The page index `lessonPage` is module state, like `view` and `phase` — where
-   someone is looking is not part of their work, so entering a stage always starts its
-   reading at page one. **Past the last page is how a stage reaches its own panel**, so
+   someone is looking is not part of their work, so entering a stage that is not yet
+   completed starts its reading at page one (a completed one opens on the learner's own
+   work instead — see "Two phases inside a stage"). **Past the last page is how a stage reaches its own panel**, so
    `onLessonPage(n)` ("is reading") is a different question from `stageLesson(n)` ("has a
    lesson"); `placeWorkspaceExtras` and `renderLesson` both need the first one. A page may
    carry its own `title`/`sub` to retitle the workspace — Map's first page does, and its
@@ -1006,13 +1013,28 @@ coupling.
    conversation opens there. Envision deliberately has none either — both were product
    decisions, not omissions.
 
-6. **Three unused coaching-card types** (`example`, `refinement`, and the specificity
-   checklist) render correctly from the typed shape, but nothing emits them.
+6. **Coaching cards: three types, all live.** `coachingCards()` emits `problem-summary` and
+   `specificity` (both pinned above the transcript) and `next-step` (pinned over the composer).
+   `specificity` is a list card despite the name — "What the coach already has", the mapped
+   steps — and the narrow-screen "Context loaded" strip summarises the same list, so it must
+   stay. The earlier note about "three unused card types" was stale: `example` and `refinement`
+   were never emitted by anything and survived only as two CSS tone lines, now removed. The
+   renderer is generic (title / body / items / action), so a new type is a new entry in
+   `coachingCards()` plus a tone in `chat.css`, not new machinery.
 
-7. **`STAGE_EXAMPLES[1]` has no screen to render on.** Those three starter examples were
-   written for stage 1's textarea, which is gone. The machinery still works for any panel
-   stage. Left in place deliberately rather than deleted or relocated — it is the user's
-   copy.
+7. **`STAGE_EXAMPLES[1]` is unreachable, its machinery is gone, and its copy is waiting on a
+   decision.** The three starter examples were written for stage 1's textarea. Identify is a
+   conversation, so nothing ever shows that panel: `onLessonPage(1)` is true in every state
+   (the single reading page never gets "past", because a coach stage hands off to chat), which
+   keeps the panel hidden whatever the phase. Checked against the real UI — every stage-1 state
+   at desktop and phone width, every `/role` slice, admin mode — and the panel was never on
+   screen. The renderer (`renderExamples`), its markup (`#bw-examples`) and its CSS
+   (`.bw-examples*`, `.bw-starter*`) were removed. **The data stays**, because it is not
+   duplicated: the three *titles* are in `docs/design/learning-stage-pack`'s template, but the
+   three *quote sentences* exist only in `STAGE_EXAMPLES`. That is authored copy, so deleting it
+   is the author's call — move it to a design doc, bring it back on a surface, or drop it.
+   `STAGE_INFO[1]` has the same shape (an info strip placed into stage 1's hidden panel) and the
+   same answer, and is likewise left alone.
 
 ### Lesson artwork
 While a lesson is on screen, its explainer card (`img/explainer/`) replaces the SVG
@@ -1220,7 +1242,8 @@ Match what is already there:
   than stored twice. Completion lines are computed. If you find yourself writing a second
   copy of a fact, that is the bug.
 - **The `.bw-*` namespace is flat and crowded.** Three class collisions have already bitten
-  (`.bw-example` → `.bw-starter`, `.bw-card*` → `.bw-cc*` for coaching cards, and an
+  (`.bw-example` → `.bw-starter` — that examples panel has since been removed — `.bw-card*` →
+  `.bw-cc*` for coaching cards, and an
   unscoped `.bw-card-num` in `home.css` reaching into the workflow step cards in
   `activity.css` and tearing their number out of the grid). **Grep before you name a new
   class**, and scope a component's rules to something that component owns — `home.css`
@@ -1241,7 +1264,7 @@ Match what is already there:
 cd <repo>
 git log --oneline -8            # the last few commits explain the current direction
 cat README.md                   # user-facing framing
-npm test                        # ~3 min; confirms you are starting from green
+npm test                        # ~10 min; confirms you are starting from green
 npm start                       # then open http://127.0.0.1:8080 and walk it
 ```
 

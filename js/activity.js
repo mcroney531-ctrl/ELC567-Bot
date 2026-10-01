@@ -4030,8 +4030,19 @@
          quote: "From plan to progress. Keep it going." }
   };
 
-  /* Starting points, where a stage has them. Stage 1 is the worked sample from
-     the pack; the rest are empty until their lessons are written. */
+  /* NOT RENDERED ANYWHERE, and kept on purpose.
+
+     These three starter examples were written for stage 1's textarea, which the
+     journey no longer shows: Identify is a conversation, so there is no panel for
+     them to sit in (checked against the real UI - every state of stage 1, at desktop
+     and phone width, every /role slice and the admin harness). The panel that used
+     to display them, its renderer and its styles have been removed.
+
+     The text stays because it exists nowhere else. The three titles are in the
+     learning-stage design pack's template, but the three quote sentences below were
+     authored here and live in no document, so deleting them would destroy copy
+     rather than dead code. Whether they move to a design doc, come back on some
+     surface, or go is the author's decision - not a hygiene one. */
   var STAGE_EXAMPLES = {
     1: {
       head: "Need a starting point?",
@@ -4146,7 +4157,6 @@
 
     if (phase === "chat") { renderCoachRail(); renderCoachCards(); }
     renderLesson(n);
-    renderExamples(n);
     var strip = document.getElementById("bw-info-strip");
     if (strip) {
       strip.textContent = STAGE_INFO[n] || "";
@@ -4293,41 +4303,19 @@
     if (node) node.textContent = text;
   }
 
-  function renderExamples(n) {
-    var wrap = document.getElementById("bw-examples");
-    var list = document.getElementById("bw-examples-list");
-    if (!wrap || !list) return;
-    var data = STAGE_EXAMPLES[n];
-    wrap.hidden = !data;
-    if (!data) return;
-    setText("bw-examples-head", data.head);
-    setText("bw-examples-sub", data.sub);
-    list.textContent = "";
-    data.items.forEach(function (item) {
-      var li = document.createElement("li");
-      li.className = "bw-starter";
-      li.setAttribute("role", "listitem");
-      li.appendChild(el2("span", "bw-starter-title", item.title));
-      li.appendChild(el2("span", "bw-starter-quote", "“" + item.quote + "”"));
-      list.appendChild(li);
-    });
-  }
-
-  /* The examples, the info strip and Save draft are single elements that follow
+  /* The info strip and Save draft are single elements that follow
      whichever stage is open, because the Continue button they sit around lives
      inside the step panel. Moving a node keeps its listeners, so these stay one
      of each with one handler each - and since they are singletons, moving them
      every render leaves nothing behind. */
   function placeWorkspaceExtras(panel) {
     var save = document.getElementById("bw-save-draft");
-    var examples = document.getElementById("bw-examples");
     var info = document.getElementById("bw-info-strip");
-    // On a lesson screen there is nothing to give examples of and nothing to
-    // warn about - artwork and prose, and the one row under them. Save draft
-    // still rides along with Continue, because leaving mid-read is a thing
-    // people do and the button is how they know the work is kept.
+    // On a lesson screen there is nothing to warn about - artwork and prose, and
+    // the one row under them. Save draft still rides along with Continue, because
+    // leaving mid-read is a thing people do and the button is how they know the
+    // work is kept.
     if (onLessonPage(workflowData.progress.current)) {
-      if (examples) examples.hidden = true;
       if (info) info.hidden = true;
       var lessonRow = document.querySelector(".bw-lesson-actions");
       if (save && lessonRow) {
@@ -4344,7 +4332,6 @@
     if (save) save.hidden = !row;
     if (!row) return;
     var host = row.parentNode;
-    if (examples) host.insertBefore(examples, row);
     if (info) host.insertBefore(info, row);
     if (save && save.parentNode !== row) row.insertBefore(save, row.firstChild);
   }
@@ -4690,10 +4677,17 @@
 
   /* ---- coaching cards ----
      Rendered from typed data, one renderer for every type, and pinned either
-     above or below the transcript rather than interleaved - the two the coach
-     can back with real state are a summary of what it has, and the handoff to
-     the next stage. The other types render from the same shape the moment the
-     coach has something to say with them. */
+     above or below the transcript rather than interleaved. Three types are
+     emitted, each backed by real state:
+
+       problem-summary  (top)     "Your problem so far" - what the coach has taken down
+       specificity      (top)     "What the coach already has" - the mapped steps. Despite
+                                  the name it is a list card, and it is live: it is also
+                                  what the narrow-screen "Context loaded" strip summarises
+       next-step        (bottom)  the handoff to the next stage, once the stage is done
+
+     buildCoachingCard() is generic - title, body, items, action - so a new type is a
+     new entry here plus a tone in chat.css, not a new renderer. */
 
   function coachingCards() {
     var cards = [];

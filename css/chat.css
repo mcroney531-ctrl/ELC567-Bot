@@ -220,11 +220,10 @@
 }
 .bw-cc-action:hover:not(:disabled) { filter: brightness(1.06); }
 
-/* One tone per card type, so the kind of help is legible before it is read. */
+/* One tone per card type, so the kind of help is legible before it is read. These are
+   the three types the coach actually emits - see coachingCards(). */
 .bw-cc-problem-summary { --card-tone: #3e8bff; }
 .bw-cc-specificity     { --card-tone: #ffaa3e; }
-.bw-cc-example         { --card-tone: #41d6d4; }
-.bw-cc-refinement      { --card-tone: #c85bff; }
 .bw-cc-next-step       { --card-tone: #38b878; }
 .bw-cc-next-step {
   display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px;

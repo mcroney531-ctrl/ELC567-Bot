@@ -275,22 +275,6 @@
 .bw[data-view="stage"] .bw-progress { margin: 16px 0 0; }
 .bw[data-view="stage"] .bw-progress-track { background: var(--ls-line); }
 
-/* ---- examples ---- */
-.bw-examples { margin-top: 22px; }
-.bw .bw-examples-head { font-size: 1rem; font-weight: 700; color: var(--ls-strong); }
-.bw-examples-sub { margin-top: 2px; font-size: .875rem; color: var(--ls-muted); }
-.bw-examples-list {
-  list-style: none; margin: 12px 0 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(184px, 1fr)); gap: 10px;
-}
-.bw-starter {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 12px 13px; border-radius: 14px;
-  background: var(--ls-card); border: 1px solid var(--ls-line);
-}
-.bw-starter-title { font-size: .875rem; font-weight: 700; color: var(--ls-strong); }
-.bw-starter-quote { font-size: .8125rem; line-height: 1.4; color: var(--ls-muted); }
-
 .bw-info-strip {
   margin-top: 18px; padding: 12px 14px; border-radius: 14px;
   background: color-mix(in srgb, var(--accent, #3e8bff) 8%, var(--ls-card));
