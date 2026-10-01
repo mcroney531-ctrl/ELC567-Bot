@@ -2402,9 +2402,23 @@
 
   /* ---- accordion ---- */
 
-  /* Opening a stage lands on its lesson, unless its coach is already part-way
-     through - picking a conversation back up where it was left is what someone
-     returning to a stage actually wants. */
+  /* Opening a stage lands on its lesson, unless the learner is coming back to
+     something they already made.
+
+     The first time through, a stage is its reading and then its work, and the
+     reading is the instruction. Reopening is a different errand: someone returning
+     to a stage they have completed wants the thing they created or decided there -
+     the conversation, the workflow, the vision, the prompt - not the same lesson
+     again on the way to it. So a completed stage opens on its work, in every stage:
+     a coach stage on its conversation (which is what picking one back up has always
+     meant), and Map, Envision and Deploy on their populated panel. The journey's
+     own closing line is "Open Deploy to copy your master prompt again", and that
+     used to land on Deploy's reading.
+
+     "Completed" is the stage's own state, so a stage whose answer has since gone
+     (self-correction un-ticks it) is a first run again and reads first. This is only
+     about what a revisit lands on: the reading is not removed, and nothing new is
+     offered for getting back to it. */
   function startPhaseFor(n) {
     if (!TIMELINE) return;
     // Entering a stage starts its reading again. The render that got us here
@@ -2412,6 +2426,10 @@
     // reset rather than before it - otherwise a stage whose panel was showing
     // keeps showing it instead of going back to page one.
     lessonPage = 0;
+    // ...unless it is completed: then the page past the last one is the panel.
+    if (workflowData.progress.done[n] && !stageHasCoach(n) && stageHasWork(n)) {
+      lessonPage = lessonPages(n).length;
+    }
     // One chat serves every stage, so the transcript has to be repainted from
     // whichever conversation the open stage owns before it goes on screen.
     renderChatLog(true);
@@ -4555,8 +4573,9 @@
   }
 
   /* Which page is on screen. Module state, not learner data: like the view and
-     the phase, where someone is looking is not part of their work, and a stage
-     they leave and come back to opens at the top of its reading. */
+     the phase, where someone is looking is not part of their work. A stage that is
+     not completed opens at the top of its reading each time; a completed one opens
+     on its work instead (see startPhaseFor). */
   var lessonPage = 0;
 
   /* Reading, as opposed to working. Past the last page a stage shows its own

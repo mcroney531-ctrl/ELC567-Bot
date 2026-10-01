@@ -171,6 +171,32 @@ setPhase(stageHasCoach(n) && convoLen > 1 ? "chat" : "lesson");
 coach's opening. So a part-way conversation resumes; a fresh or cleared one replays the
 lesson.
 
+**Reopening a completed stage lands on what the learner made there, not on the reading.** The
+reading is the first run's instruction; coming back is a different errand. One rule, every stage:
+
+| stage | a completed stage opens on |
+|---|---|
+| 1 Identify | the completed conversation |
+| 2 Map | the populated workflow form |
+| 3 Envision | the populated vision form |
+| 4 Refine | the completed conversation |
+| 5 Deploy | the master prompt (and Copy) |
+
+The coach stages already did this (`convoLen > 1`); `startPhaseFor()` now does it for the
+panel stages too, by starting `lessonPage` *past the last page* when `progress.done[n]` is set
+and the stage has no coach — which is the same "past the end: the panel takes over" state
+Continue produces on a first run. It is keyed on the stage's own completed state, so:
+- a stage that is open but **not** completed (including Deploy, until Finish) still opens on
+  its reading — completed means finished, not visited;
+- a stage that **stops** being complete (self-correction un-ticks Map when its steps go, Restart
+  revokes Refine) is a first run again and reads first;
+- the journey's closing line, "Open Deploy to copy your master prompt again", now lands on the
+  prompt, which is what it promises.
+
+Deliberately not built: a "review the lesson" control or any other way back to the reading from a
+completed stage. The reading stays part of the first run. If that is ever wanted it is a
+separate, visible affordance — not a side effect of how a stage opens.
+
 ---
 
 ## 3. State model
@@ -743,7 +769,7 @@ anything there that is not safe to be public.
 
 ## 7. Tests
 
-Sixteen Playwright suites, all passing. Run `npm test` for the current totals; the counts
+Seventeen Playwright suites, all passing. Run `npm test` for the current totals; the counts
 below are each suite's own report at the time of writing.
 (The counts below are what each suite reports when it runs, which is authoritative —
 grepping for `check(` undercounts, because some assertions span lines.)
@@ -753,6 +779,7 @@ grepping for `check(` undercounts, because some assertions span lines.)
 | `scripted-coach.test.mjs` | 90 | Full walkthrough on the scripted coach: gating, the builder, V1, the conversation, V2 capture, persistence, copy, reset, mobile |
 | `timeline.test.mjs` | 94 | Journey map: five stations, four states, navigation rules, the connector, responsive |
 | `journey-mobile.test.mjs` | 113 | The Journey on a phone: a natural-height route over the same stations, readable at 390 and 360, every state, the completed journey, the round trip, the 720/721 boundary, and that everything above it is untouched |
+| `completed-revisit.test.mjs` | 17 | What reopening a completed stage lands on in each of the five (their own work, not the reading), that an unfinished stage still reads first, moving between completed stages, a completion that no longer holds, and the phone |
 | `station-count.test.mjs` | 25 | That the journey's length is data: five as shipped, and the same machinery served one station shorter |
 | `learning-stage.test.mjs` | 105 | Dark shell / light workspace, mini-node strip, the constant-shell rule, multi-page reading, lesson vs panel stages |
 | `chat-stage.test.mjs` | 69 | Coach phase as a mode not a second app; stage 1 lesson→coach; per-stage transcripts |
