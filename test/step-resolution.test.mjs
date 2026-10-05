@@ -101,6 +101,26 @@ try {
     check('and the learner\'s own words are what the section says', sec.includes(answer.slice(0, 20)), sec);
   }
 
+  // ======================= "Step N only: ..." must not take the learner's qualifiers with it =======================
+  /* Found by persona testing (P02, "Maggie"): her Refine answer was one sentence, "Step 4 only: drafting the
+     narrative sections ... following the funder's template headings in order." The generator dropped every
+     sentence that STARTS with "Step N", on the theory that it only points at the step. This one also said
+     something the canonical Map line does not - an execution constraint - and "in order" vanished from the
+     artifact while the report claimed it survived. What follows the pointer is the learner's own wording and
+     stays; only the pointer itself goes. */
+  sec = await sectionFor("Step 4 only: sending each update out in the client's preferred channel, once I have approved every one of them, in order of client priority.");
+  check('"Step 4 only: ..." still resolves step 4', canonical(sec) === CANON(4), String(canonical(sec)));
+  check('and the qualifier after the pointer survives ("in order of client priority")', sec.includes('in order of client priority'), sec);
+  check('and what she said about approval survives', sec.includes('once I have approved every one of them'), sec);
+  check('the pointer itself ("Step 4 only") does not leave debris', !/Step 4/.test(sec.split('\n').slice(1).join('\n')), sec);
+
+  sec = await sectionFor('Step 4 - and I will approve each one before it goes.');
+  check('"Step 4 - and I will approve..." keeps the approval instruction', sec.includes('approve each one before it goes'), sec);
+
+  sec = await sectionFor('Step 4.');
+  check('a bare pointer ("Step 4.") adds nothing but the canonical line',
+    canonical(sec) === CANON(4) && !/In my words/.test(sec), sec);
+
   // ======================= a clear single step =======================
   sec = await sectionFor('Drafting the four paragraph update for each client, which I then review.');
   check('an unambiguous reference to Draft resolves step 3', canonical(sec) === CANON(3), String(canonical(sec)));

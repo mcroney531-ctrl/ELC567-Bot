@@ -1358,12 +1358,21 @@
       lines.push("Take over this step of my workflow: " + hit.step.action.trim() +
                  " (" + hit.step.tools.trim() + ").");
       // Their own wording is worth keeping only where it says something the step
-      // line doesn't. Drop whole sentences that just point at the step - cutting
-      // the number out mid-sentence leaves debris behind.
-      var extra = sentences(cleaned).filter(function (x) {
+      // line doesn't. A sentence that opens with a pointer at the step ("Step 4
+      // only: ...") loses the pointer but keeps what follows it: that is the
+      // learner's wording, and it can carry a constraint the canonical line does
+      // not ("... in order"). Dropping the whole sentence discarded it silently.
+      // Short sentences that are nothing but a pointer still go.
+      var extra = sentences(cleaned).map(function (x) {
         var t = x.trim();
-        if (/^step\s*\d+\b/i.test(t)) return false;
-        return !(t.split(/\s+/).length <= 5 && /step\s*\d/i.test(t));
+        var lead = t.match(/^step\s*\d+\b\s*(?:only\b)?\s*(?:[:,\u2013\u2014-]\s*)?(.*)$/i);
+        if (lead) {
+          t = lead[1].replace(/^(?:and|but|so)\s+/i, "").trim();
+          if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
+        }
+        return t;
+      }).filter(function (t) {
+        return t && !(t.split(/\s+/).length <= 5 && /step\s*\d/i.test(t));
       }).join(" ").trim();
       var novel = extra.split(/\s+/).filter(function (w) {
         var bare = w.toLowerCase().replace(/[^a-z]/g, "");
