@@ -1795,14 +1795,48 @@
     return lastDecision;
   }
 
+  /* The structural way to change a settled decision: the learner names WHICH one
+     (the Edit control beside it), it goes back to being the open decision, and their
+     next answer overwrites it through the same capture as the first time. Nothing
+     tries to work out from free text which decision a message was meant to revise.
+     The old answer stays in place until it is replaced, so abandoning an edit loses
+     nothing, but Refine is not complete again until the decision is answered, so
+     Deploy goes back behind it exactly as it does for Restart. */
+  function reopenDecision(key) {
+    var d = REFINE_DECISIONS.filter(function (x) { return x.key === key; })[0];
+    if (!d || !refineGoverned() || !activeScript().decisions || !decided(key)) return;
+    delete workflowData.decided[key];
+    var n = workflowData.progress.current;
+    delete workflowData.progress.done[n];
+    if (workflowData.progress.unlocked > n) workflowData.progress.unlocked = n;
+    lastDecision = null;
+    var prior = heard(key);
+    appendMessage("bot", [
+      "Let's revisit **" + d.label.toLowerCase() + "**." +
+        (prior ? " You told me: \u201c" + shortQuote(prior, 24) + "\u201d. Your new answer replaces that one." : ""),
+      "",
+      askFor(d)
+    ].join("\n"));
+    render();
+    renderCoachRail();
+    renderCoachCards();
+    save();
+  }
+
   /* The scripted coach's reply, read off what the capture just did. */
   function refineReply() {
     var r = lastDecision;
     if (!r) return refineRecap();
     if (r.action === "extra") {
       // Every decision is in. Anything further is a refinement of one of them.
+      /* A free-form message cannot revise a settled decision: which decision it is about
+         is not something to guess from prose, and the prompt's dedicated sections are
+         written from the four decisions, not from notes. So it is kept as extra context
+         and the reply says exactly that, and where the real edit is. */
       if (r.answer) workflowData.botAnswers.notes.push(r.answer);
-      return "Folded that in: " + shortQuote(r.answer, 16) + "\n\n" + refineRecap();
+      return "Added as extra context: " + shortQuote(r.answer, 16) + "\n\n" +
+        "Your four decisions were not changed. To change one, press Edit beside it in the list " +
+        "and answer again - the new answer replaces the old one.\n\n" + refineRecap();
     }
     if (r.action === "push") return PUSHBACKS[r.key] || PUSHBACKS._default;
 
@@ -2756,7 +2790,10 @@
       : "Nothing is settled yet.");
     if (!current) {
       out.push("All four decisions are settled. Do not ask another question: give a short recap and " +
-        "send them on to the Deploy stage.");
+        "send them on to the Deploy stage. If they now say something that changes one of the four " +
+        "decisions, do not say you updated it: say it was kept only as extra context, that the " +
+        "decision itself was not changed, and that they can press Edit beside that decision in the " +
+        "list to answer it again.");
       return out;
     }
     out.push("Current decision: " + current.label.toUpperCase() + ".");
@@ -4629,7 +4666,7 @@
   function coachSteps(n) {
     if (n !== 4 || !refineGoverned()) return COACH_STEPS;
     return REFINE_DECISIONS.map(function (d) {
-      return { label: d.label, done: function () { return decided(d.key); } };
+      return { label: d.label, key: d.key, done: function () { return decided(d.key); } };
     });
   }
 
@@ -4695,6 +4732,15 @@
       li.setAttribute("data-state", done ? "done" : "todo");
       li.appendChild(el2("span", "bw-focus-dot"));
       li.appendChild(el2("span", "bw-focus-label", item.label));
+      if (done && item.key) {
+        // A settled Refine decision can be reopened, by name. See reopenDecision().
+        var edit = el2("button", "bw-focus-edit", "Edit");
+        edit.type = "button";
+        edit.setAttribute("aria-label", "Edit: " + item.label);
+        edit.setAttribute("data-edit-decision", item.key);
+        edit.addEventListener("click", function () { reopenDecision(item.key); });
+        li.appendChild(edit);
+      }
       list.appendChild(li);
     });
     var firstTodo = list.querySelector('[data-state="todo"]');
