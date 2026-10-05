@@ -1450,8 +1450,17 @@
       markThin("context", context) || "[Facts, constraints, and house rules. Say what I must never invent.]",
       "",
       "## HOW TO WORK WITH ME",
-      "If something above is missing for a given run, ask me for it before you produce anything.",
-      "Never invent facts, names, numbers, or quotes \u2014 mark a gap as [MISSING: what you need] and keep going.",
+      /* One missing-information rule, with a stated order. This used to be two unconditional
+         lines - "ask me before you produce anything" and "mark a gap and keep going" - that
+         contradicted each other and, worse, competed with whatever the learner had already said
+         about missing information (P05's "say insufficient information" rule). The learner's own
+         handling for that case comes first; the ask is the fallback when they gave none; and
+         "never invent" is unconditional and stands outside the conditional. No attempt is made
+         to detect the learner's rule: the prompt carries the precedence and the model applies it. */
+      "If information is missing or uncertain, follow any instructions I gave above for that case. " +
+        "If I gave none, ask me for the required information before completing the affected part. " +
+        "In all cases, never invent facts, names, numbers, or quotes. " +
+        "If you show partial work before I answer, mark only the affected part as [MISSING: what you need].",
       weak.length
         ? "\nBefore you start, note that I left " + weak.join(" and ") + " too vague to act on. Ask me " +
           "the questions that would pin " + (weak.length > 1 ? "those sections" : "that section") +
@@ -4525,6 +4534,10 @@
       "If you see [NEEDS DETAIL], the prompt isn't broken. It means one decision stayed vague. " +
       "The prompt already tells the assistant to stop and ask you for what it needs before " +
       "acting on that gap." },
+    { type: "p", text:
+      "You may also see [MISSING: ...] later, in what the assistant gives back when you use the " +
+      "prompt on real work. That is a different thing: it means an input that run needs was not " +
+      "supplied. It is not permission to guess, and the assistant should ask you for it." },
     { type: "p", text:
       "Then try it on real work. Notice what misses, improve the prompt, and keep the " +
       "correction. That editing loop is how a one-time answer becomes a reusable workflow." }
