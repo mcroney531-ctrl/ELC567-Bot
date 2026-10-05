@@ -65,7 +65,7 @@ async function openDeploy(answers) {
 const ASK = 'If I gave none, ask me for the required information before completing the affected part.';
 const DEFER = 'If information is missing or uncertain, follow any instructions I gave above for that case.';
 const NEVER = 'In all cases, never invent facts, names, numbers, or quotes.';
-const CONTINUE = 'You may continue with unaffected parts; if you show the affected part before I answer, mark it [MISSING: what you need].';
+const CONTINUE = 'You may continue with unaffected parts; if you show the affected part before I answer, clearly say what information is missing, for example [MISSING: what you need].';
 
 try {
   // ---- a learner who states their own missing-information rule (P05 / Corinne) ----
@@ -78,7 +78,7 @@ try {
   // ---- a learner who gave no rule: the generic fallback ----
   const none = await openDeploy({});
   check('with no rule of their own, the generic fallback asks before completing the affected part', none.closing.includes(ASK), none.closing);
-  check('and unaffected parts may continue, with the affected part marked [MISSING: ...] if shown before the answer', none.closing.includes(CONTINUE), none.closing);
+  check('and unaffected parts may continue, with the affected part clearly flagged as missing information (for example [MISSING: ...]) if shown before the answer', none.closing.includes(CONTINUE), none.closing);
   check('never-invent is unconditional here too', none.closing.includes(NEVER), none.closing);
 
   // ---- one procedure, in a stated order, no contradiction ----
@@ -119,8 +119,8 @@ try {
     /too vague to act on/.test(weak.closing) && /wait for my answers before producing anything/.test(weak.closing), weak.closing);
   check('the Deploy lesson still says a marked gap is handled, not a failure',
     /isn't broken/i.test(none.lesson) && /stop and ask/i.test(none.lesson), none.lesson);
-  check('and teaches [MISSING: ...] as a different thing: a run input that was not supplied',
-    /\[MISSING: \.\.\.\]/.test(none.lesson) && /different thing/i.test(none.lesson) && /input that run needs was not supplied/i.test(none.lesson), none.lesson);
+  check('and teaches a missing-information note such as [MISSING: ...] as a different thing, not required syntax: a run input that was not supplied',
+    /such as \[MISSING: \.\.\.\]/.test(none.lesson) && /wording can vary/i.test(none.lesson) && /different thing/i.test(none.lesson) && /input that run needs was not supplied/i.test(none.lesson), none.lesson);
   check('and that it is not permission to guess', /not permission to guess/i.test(none.lesson), none.lesson);
   check('[NEEDS DETAIL] is not used for the runtime case', !/\[MISSING[^\]]*\][^.]*workflow decision/i.test(none.lesson), none.lesson);
 } catch (e) {
