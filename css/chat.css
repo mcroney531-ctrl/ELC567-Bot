@@ -58,6 +58,14 @@
   content: ""; position: absolute; left: 8px; top: -7px; height: 14px;
   width: 2px; background: #dce5f0;
 }
+/* Reopens a settled Refine decision by name. Quiet until needed; a real button, so keyboard and touch work. */
+.bw-focus-edit {
+  margin-left: auto; padding: 3px 8px; min-height: 28px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--accent, #3e8bff); font: inherit; font-size: .75rem;
+  font-weight: 600; cursor: pointer; text-decoration: underline;
+}
+.bw-focus-edit:hover { background: color-mix(in srgb, var(--accent, #3e8bff) 10%, transparent); }
+.bw-focus-edit:focus-visible { outline: 2px solid var(--accent, #3e8bff); outline-offset: 1px; }
 .bw-focus-dot {
   flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid #cfdcea; background: #fff;
